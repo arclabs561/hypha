@@ -14,11 +14,11 @@
 use hypha::mycelium::NetProfile;
 use hypha::{EnergyStatus, SporeNode};
 use libp2p::futures::StreamExt;
-use libp2p::{gossipsub, swarm::SwarmEvent, Multiaddr};
+use libp2p::{gossipsub, swarm::SwarmEvent, Multiaddr, PeerId};
 use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Mode {
@@ -96,16 +96,31 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
             // Wait for the listen address so the publisher can dial.
             let mut announced = false;
-            let start = Instant::now();
-            let announce_deadline = start + Duration::from_secs(2);
-            let recv_deadline = start + Duration::from_secs(8);
+            let start = std::time::Instant::now();
+            let t0 = tokio::time::Instant::now();
+            let announce_deadline = t0 + Duration::from_secs(2);
+            let recv_deadline = t0 + Duration::from_secs(20);
 
             loop {
-                if Instant::now() > recv_deadline {
-                    return Err("subscriber timed out waiting for message".into());
-                }
+                let ev = if announced {
+                    tokio::select! {
+                        _ = tokio::time::sleep_until(recv_deadline) => {
+                            return Err("subscriber timed out waiting for message".into());
+                        }
+                        ev = mycelium.swarm.select_next_some() => ev,
+                    }
+                } else {
+                    tokio::select! {
+                        _ = tokio::time::sleep_until(announce_deadline) => {
+                            return Err("subscriber did not obtain listen addr".into());
+                        }
+                        _ = tokio::time::sleep_until(recv_deadline) => {
+                            return Err("subscriber timed out waiting for message".into());
+                        }
+                        ev = mycelium.swarm.select_next_some() => ev,
+                    }
+                };
 
-                let ev = mycelium.swarm.select_next_some().await;
                 match ev {
                     SwarmEvent::NewListenAddr { address, .. } if !announced => {
                         // Print and persist the dial addr including /p2p/<peerid>.
@@ -113,6 +128,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
                         fs::write(&outfile, dial.as_bytes())?;
                         println!("LISTEN {}", dial);
                         announced = true;
+                    }
+                    SwarmEvent::ConnectionEstablished { peer_id, .. } => {
+                        mycelium
+                            .swarm
+                            .behaviour_mut()
+                            .gossipsub
+                            .add_explicit_peer(&peer_id);
                     }
                     SwarmEvent::Behaviour(hypha::mycelium::MyceliumEvent::Gossipsub(
                         gossipsub::Event::Message { message, .. },
@@ -124,12 +146,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                             return Ok(());
                         }
                     }
-                    _ => {
-                        // Keep polling.
-                        if !announced && Instant::now() > announce_deadline {
-                            return Err("subscriber did not obtain listen addr".into());
-                        }
-                    }
+                    _ => {}
                 }
             }
         }
@@ -142,10 +159,29 @@ async fn main() -> Result<(), Box<dyn Error>> {
             // Dial; then give subscription gossip a moment to propagate.
             mycelium.dial(peer)?;
 
-            let settle_deadline = Instant::now() + Duration::from_millis(800);
-            while Instant::now() < settle_deadline {
+            let settle_deadline = tokio::time::Instant::now() + Duration::from_secs(5);
+            let mut connected: Option<PeerId> = None;
+            let mut subscribed = false;
+            while tokio::time::Instant::now() < settle_deadline
+                && !(connected.is_some() && subscribed)
+            {
                 tokio::select! {
-                    _ = mycelium.swarm.select_next_some() => {}
+                    ev = mycelium.swarm.select_next_some() => {
+                        match ev {
+                            SwarmEvent::ConnectionEstablished { peer_id, .. } => {
+                                connected.get_or_insert(peer_id);
+                                mycelium.swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
+                            }
+                            SwarmEvent::Behaviour(hypha::mycelium::MyceliumEvent::Gossipsub(gossipsub::Event::Subscribed { peer_id, topic })) => {
+                                // Wait until the remote peer has subscribed to our status topic.
+                                if topic == mycelium.status_topic.hash() {
+                                    subscribed = true;
+                                    mycelium.swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
                     _ = tokio::time::sleep(Duration::from_millis(10)) => {}
                 }
             }
@@ -196,19 +232,34 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
             mycelium.listen_on(listen_addr(&bind_ip, transport)?)?;
 
-            let start = Instant::now();
-            let announce_deadline = start + Duration::from_secs(2);
-            let run_deadline = start + Duration::from_millis(run_ms);
+            let start = std::time::Instant::now();
+            let t0 = tokio::time::Instant::now();
+            let announce_deadline = t0 + Duration::from_secs(2);
+            let run_deadline = t0 + Duration::from_millis(run_ms);
 
             let mut announced = false;
             let mut dialed = false;
 
             loop {
-                if Instant::now() > run_deadline {
+                if tokio::time::Instant::now() > run_deadline {
                     return Ok(());
                 }
 
-                let ev = mycelium.swarm.select_next_some().await;
+                let ev = if announced {
+                    tokio::select! {
+                        _ = tokio::time::sleep_until(run_deadline) => { return Ok(()); }
+                        ev = mycelium.swarm.select_next_some() => ev,
+                    }
+                } else {
+                    tokio::select! {
+                        _ = tokio::time::sleep_until(announce_deadline) => {
+                            return Err("relay did not obtain listen addr".into());
+                        }
+                        _ = tokio::time::sleep_until(run_deadline) => { return Ok(()); }
+                        ev = mycelium.swarm.select_next_some() => ev,
+                    }
+                };
+
                 match ev {
                     SwarmEvent::NewListenAddr { address, .. } if !announced => {
                         // Dial addr including /p2p/<peerid>.
@@ -217,11 +268,43 @@ async fn main() -> Result<(), Box<dyn Error>> {
                         println!("LISTEN {}", dial);
                         announced = true;
                     }
-                    _ => {
-                        if !announced && Instant::now() > announce_deadline {
-                            return Err("relay did not obtain listen addr".into());
+                    SwarmEvent::ConnectionEstablished { peer_id, .. } => {
+                        mycelium
+                            .swarm
+                            .behaviour_mut()
+                            .gossipsub
+                            .add_explicit_peer(&peer_id);
+                    }
+                    SwarmEvent::Behaviour(hypha::mycelium::MyceliumEvent::Gossipsub(
+                        gossipsub::Event::Message { message, .. },
+                    )) => {
+                        if message.topic == mycelium.status_topic.hash() {
+                            // Application-level relay: re-publish once we see a status message.
+                            let mut last_err: Option<gossipsub::PublishError> = None;
+                            for _ in 0..10 {
+                                match mycelium
+                                    .swarm
+                                    .behaviour_mut()
+                                    .gossipsub
+                                    .publish(mycelium.status_topic.clone(), message.data.clone())
+                                {
+                                    Ok(_) => {
+                                        let dt = start.elapsed();
+                                        println!("RELAYED_MS {}", dt.as_millis());
+                                        break;
+                                    }
+                                    Err(e) => {
+                                        last_err = Some(e);
+                                        tokio::time::sleep(Duration::from_millis(50)).await;
+                                    }
+                                }
+                            }
+                            if last_err.is_some() {
+                                return Err(format!("relay publish failed: {:?}", last_err).into());
+                            }
                         }
                     }
+                    _ => {}
                 }
 
                 if announced && !dialed {
