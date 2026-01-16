@@ -1,8 +1,8 @@
 # Hypha Evaluation Analysis
 
-## Executive Summary
+## Summary
 
-The rigorous evaluation suite now demonstrates that **Hypha's Gossip Mesh** provides significant resilience and self-healing capabilities. The system has moved from linear degradation to **sublinear redundancy**, surviving high packet loss and Sybil attacks while adapting to energy stress.
+The evaluation suite demonstrates that Hypha's gossip mesh implements resilience and self-healing under packet loss and Sybil pressure, while adapting behavior under energy stress.
 
 ## Key Findings
 
@@ -12,10 +12,10 @@ The rigorous evaluation suite now demonstrates that **Hypha's Gossip Mesh** prov
 
 | Loss % | Delivery % | Status | Redundancy Multiplier |
 |--------|------------|--------|----------------------|
-| 0%     | 100.0%     | PERFECT | 1.0x |
-| 40%    | 96.0%      | PERFECT | 2.4x (vs 60% fanout) |
-| 60%    | 85.2%      | DEGRADED| 2.1x (vs 40% fanout) |
-| 80%    | 41.1%      | FAILED  | - |
+| 0%     | 100.0%     | ok | 1.0x |
+| 40%    | 96.0%      | ok | 2.4x (vs 60% fanout) |
+| 60%    | 85.2%      | degraded | 2.1x (vs 40% fanout) |
+| 80%    | 41.1%      | failed  | - |
 
 **Implication**: The mesh maintains >90% delivery even when 50% of packets are lost. This confirms the **percolation threshold** is around 75% for our default `D=6` configuration.
 
@@ -45,7 +45,7 @@ The rigorous evaluation suite now demonstrates that **Hypha's Gossip Mesh** prov
 **Observation**: Local phase alignment leads to emergent global synchrony.
 
 - **Result**: Network-wide pulse alignment in <100 ticks.
-- **Mechanism**: **Pulse-Gated Gossip**. Nodes only emit heartbeats at pulse peak (phase > 0.8), creating periodic "waves" of communication that reduce background noise and save battery.
+- **Mechanism**: **Pulse-Gated Gossip**. Nodes only emit heartbeats at pulse peak (phase > 0.8), creating periodic waves of communication that reduce background traffic.
 
 ### 6. Pressure-Aware Flow (New)
 
@@ -67,7 +67,7 @@ The rigorous evaluation suite now demonstrates that **Hypha's Gossip Mesh** prov
 
 ### 1. Emergent Auctioning Integration
 
-Implement task pheromones that propagate through the conductivity-weighted mesh. This will allow tasks to "flow" to the most efficient nodes naturally.
+Implement task reach diffusion that propagates through the conductivity-weighted mesh. This will allow tasks to flow toward capable nodes under local scoring.
 
 ### 2. Turmoil Physical Simulation
 

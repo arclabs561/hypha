@@ -1,6 +1,6 @@
 use ed25519_dalek::SigningKey;
 use fjall::{Database, Keyspace, KeyspaceCreateOptions};
-use libp2p::{futures::StreamExt, gossipsub, swarm::SwarmEvent, PeerId};
+use libp2p::{futures::StreamExt, gossipsub, swarm::SwarmEvent, Multiaddr, PeerId};
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
@@ -15,7 +15,7 @@ pub mod mycelium;
 
 use crate::eval::MetricsCollector;
 use crate::mesh::{MeshConfig, MeshControl, TopicMesh};
-use crate::mycelium::{Mycelium, MyceliumEvent, Spike};
+use crate::mycelium::{Mycelium, MyceliumEvent, NetProfile, Spike};
 // NOTE: UCAN semantics types exist in `capabilities.rs` but aren't wired into
 // runtime validation yet. Keep them local there until used to avoid churn.
 
@@ -374,22 +374,53 @@ impl SporeNode {
         }
     }
 
-    pub async fn start(&mut self) -> Result<(), Box<dyn Error>> {
+    /// Construct a `Mycelium` swarm bound to this node's persisted identity.
+    ///
+    /// This is an "advanced" API intended for integration tests / custom runners.
+    pub fn build_mycelium(&self) -> Result<Mycelium, Box<dyn Error>> {
+        self.build_mycelium_with_profile(NetProfile::default())
+    }
+
+    pub fn build_mycelium_with_profile(&self, profile: NetProfile) -> Result<Mycelium, Box<dyn Error>> {
         let keypair = libp2p::identity::Keypair::ed25519_from_bytes(self.signing_key.to_bytes())?;
         let expected_peer_id = PeerId::from_public_key(&keypair.public());
         debug_assert_eq!(
             expected_peer_id, self.peer_id,
             "persisted peer_id must match swarm identity"
         );
+        Ok(Mycelium::new_with_profile(
+            keypair,
+            self.mesh.clone(),
+            self.metrics.clone(),
+            profile,
+        )?)
+    }
 
-        let mut mycelium = Mycelium::new(keypair, self.mesh.clone(), self.metrics.clone())?;
+    /// Run the networking loop for a bounded amount of time.
+    ///
+    /// This exists so tests can execute real libp2p behavior without an infinite loop.
+    /// Callers can optionally provide a one-shot to learn the first listen address.
+    pub async fn run_for(
+        &mut self,
+        mut mycelium: Mycelium,
+        run_for: Duration,
+        heartbeat_every: Duration,
+        pulse_delta: f32,
+        dynamic_heartbeat: bool,
+        mut on_listen: Option<tokio::sync::oneshot::Sender<Multiaddr>>,
+    ) -> Result<Mycelium, Box<dyn Error>> {
         mycelium.subscribe_all()?;
+        info!(peer_id = %self.peer_id, "Hypha Spore active");
 
-        info!(peer_id = %self.peer_id, "Hypha Spore active (Mycelium Layer separated)");
-
-        let mut heartbeat = tokio::time::interval(self.heartbeat_interval());
+        let deadline = tokio::time::Instant::now() + run_for;
+        let mut heartbeat = tokio::time::interval(heartbeat_every);
+        let mut listen_sent = false;
 
         loop {
+            if tokio::time::Instant::now() >= deadline {
+                return Ok(mycelium);
+            }
+
             tokio::select! {
                 _ = heartbeat.tick() => {
                     // 1. Energy Status Advertisement
@@ -401,7 +432,7 @@ impl SporeNode {
 
                     let phase = {
                         let mut mesh = self.mesh.lock().unwrap();
-                        mesh.tick_pulse(0.05); // Faster pulse for simulation
+                        mesh.tick_pulse(pulse_delta);
                         mesh.pulse_phase
                     };
 
@@ -435,9 +466,19 @@ impl SporeNode {
                     }
 
                     // Adjust local heartbeat dynamically
-                    heartbeat = tokio::time::interval(self.heartbeat_interval());
+                    if dynamic_heartbeat {
+                        heartbeat = tokio::time::interval(self.heartbeat_interval());
+                    }
                 }
                 event = mycelium.swarm.select_next_some() => {
+                    if !listen_sent {
+                        if let SwarmEvent::NewListenAddr { address, .. } = &event {
+                            if let Some(tx) = on_listen.take() {
+                                let _ = tx.send(address.clone());
+                            }
+                            listen_sent = true;
+                        }
+                    }
                     if let SwarmEvent::Behaviour(MyceliumEvent::Gossipsub(gossipsub::Event::Message {
                         propagation_source: source_peer_id,
                         message_id: id,
@@ -490,6 +531,24 @@ impl SporeNode {
                 }
             }
         }
+    }
+
+    /// Default run loop: listen + run forever.
+    pub async fn start(&mut self) -> Result<(), Box<dyn Error>> {
+        let mut mycelium = self.build_mycelium()?;
+        // Default: listen on an ephemeral local port.
+        mycelium.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
+        let _ = self
+            .run_for(
+                mycelium,
+                Duration::from_secs(u64::MAX / 4),
+                self.heartbeat_interval(),
+                0.05,
+                true,
+                None,
+            )
+            .await?;
+        Ok(())
     }
 }
 

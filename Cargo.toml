@@ -12,7 +12,7 @@ anyhow = "1.0.100"
 cid = "0.11.1"
 ed25519-dalek = { version = "2.2.0", features = ["rand_core"] }
 fjall = { version = "3.0.1", features = ["lz4"] }
-libp2p = { version = "0.56.0", features = ["gossipsub", "noise", "tcp", "yamux", "macros", "tokio"] }
+libp2p = { version = "0.56.0", features = ["gossipsub", "noise", "tcp", "yamux", "quic", "macros", "tokio"] }
 rand = "0.8"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_ipld_dagcbor = "0.6.4"

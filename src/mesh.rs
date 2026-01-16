@@ -211,10 +211,14 @@ impl TopicMesh {
 
     /// Update peer's energy score
     pub fn update_peer_score(&mut self, id: &str, energy_score: f32) {
-        if let Some(peer) = self.known_peers.get_mut(id) {
-            peer.energy_score = energy_score;
-            peer.last_seen = Instant::now();
-        }
+        // If we learn about a peer via status gossip before any explicit
+        // mesh membership, we still want to track it as a candidate.
+        let peer = self
+            .known_peers
+            .entry(id.to_string())
+            .or_insert_with(|| MeshPeer::new(id.to_string(), energy_score));
+        peer.energy_score = energy_score;
+        peer.last_seen = Instant::now();
     }
 
     /// Record message from peer (increases their score)

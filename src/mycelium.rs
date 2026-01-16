@@ -5,9 +5,23 @@
 
 use crate::eval::MetricsCollector;
 use crate::mesh::TopicMesh;
-use libp2p::{gossipsub, identity, noise, swarm::NetworkBehaviour, tcp, yamux, Swarm};
+use libp2p::{gossipsub, identity, noise, swarm::NetworkBehaviour, tcp, yamux, Multiaddr, Swarm};
 use std::error::Error;
 use std::sync::{Arc, Mutex};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NetProfile {
+    /// TCP + Noise + Yamux
+    Tcp,
+    /// TCP + Noise + Yamux, plus QUIC (UDP-based).
+    TcpQuic,
+}
+
+impl Default for NetProfile {
+    fn default() -> Self {
+        Self::Tcp
+    }
+}
 
 #[derive(NetworkBehaviour)]
 #[behaviour(to_swarm = "MyceliumEvent")]
@@ -50,28 +64,64 @@ impl Mycelium {
         mesh: Arc<Mutex<TopicMesh>>,
         metrics: Arc<Mutex<MetricsCollector>>,
     ) -> Result<Self, Box<dyn Error>> {
+        Self::new_with_profile(keypair, mesh, metrics, NetProfile::default())
+    }
+
+    pub fn new_with_profile(
+        keypair: identity::Keypair,
+        mesh: Arc<Mutex<TopicMesh>>,
+        metrics: Arc<Mutex<MetricsCollector>>,
+        profile: NetProfile,
+    ) -> Result<Self, Box<dyn Error>> {
         // IMPORTANT: Use the caller-provided identity, so network PeerId matches
         // the persisted "node_identity_key" in `SporeNode`.
-        let swarm = libp2p::SwarmBuilder::with_existing_identity(keypair)
-            .with_tokio()
-            .with_tcp(
-                tcp::Config::default(),
-                noise::Config::new,
-                yamux::Config::default,
-            )?
-            .with_behaviour(|key| {
-                let gossipsub_config = gossipsub::ConfigBuilder::default()
-                    .validation_mode(gossipsub::ValidationMode::Strict)
-                    .build()?;
+        let swarm = match profile {
+            NetProfile::Tcp => {
+                libp2p::SwarmBuilder::with_existing_identity(keypair)
+                    .with_tokio()
+                    .with_tcp(
+                        tcp::Config::default(),
+                        noise::Config::new,
+                        yamux::Config::default,
+                    )?
+                    .with_behaviour(|key| {
+                        let gossipsub_config = gossipsub::ConfigBuilder::default()
+                            .validation_mode(gossipsub::ValidationMode::Strict)
+                            .build()?;
 
-                Ok(MyceliumBehaviour {
-                    gossipsub: gossipsub::Behaviour::new(
-                        gossipsub::MessageAuthenticity::Signed(key.clone()),
-                        gossipsub_config,
-                    )?,
-                })
-            })?
-            .build();
+                        Ok(MyceliumBehaviour {
+                            gossipsub: gossipsub::Behaviour::new(
+                                gossipsub::MessageAuthenticity::Signed(key.clone()),
+                                gossipsub_config,
+                            )?,
+                        })
+                    })?
+                    .build()
+            }
+            NetProfile::TcpQuic => {
+                libp2p::SwarmBuilder::with_existing_identity(keypair)
+                    .with_tokio()
+                    .with_tcp(
+                        tcp::Config::default(),
+                        noise::Config::new,
+                        yamux::Config::default,
+                    )?
+                    .with_quic()
+                    .with_behaviour(|key| {
+                        let gossipsub_config = gossipsub::ConfigBuilder::default()
+                            .validation_mode(gossipsub::ValidationMode::Strict)
+                            .build()?;
+
+                        Ok(MyceliumBehaviour {
+                            gossipsub: gossipsub::Behaviour::new(
+                                gossipsub::MessageAuthenticity::Signed(key.clone()),
+                                gossipsub_config,
+                            )?,
+                        })
+                    })?
+                    .build()
+            }
+        };
 
         let status_topic = gossipsub::IdentTopic::new("hypha_energy_status");
         let control_topic = gossipsub::IdentTopic::new("hypha_mesh_control");
@@ -106,6 +156,16 @@ impl Mycelium {
             .behaviour_mut()
             .gossipsub
             .subscribe(&self.spike_topic)?;
+        Ok(())
+    }
+
+    pub fn listen_on(&mut self, addr: Multiaddr) -> Result<(), Box<dyn Error>> {
+        self.swarm.listen_on(addr)?;
+        Ok(())
+    }
+
+    pub fn dial(&mut self, addr: Multiaddr) -> Result<(), Box<dyn Error>> {
+        self.swarm.dial(addr)?;
         Ok(())
     }
 }
