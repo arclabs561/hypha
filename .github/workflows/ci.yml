@@ -19,7 +19,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.85 # Match rust-version
+          toolchain: 1.91 # Match rust-version
           components: rustfmt, clippy
 
       - name: Rust cache
@@ -46,7 +46,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.85
+          toolchain: 1.91
 
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
