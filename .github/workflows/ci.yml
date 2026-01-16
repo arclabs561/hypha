@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: ["main"]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -39,6 +43,7 @@ jobs:
 
   netem:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -55,6 +60,7 @@ jobs:
         run: cargo build --example netem_node
 
       - name: Netns + tc netem (TCP)
+        timeout-minutes: 6
         shell: bash
         run: |
           set -euo pipefail
@@ -86,7 +92,7 @@ jobs:
           rm -f "$OUTFILE"
 
           sudo ip netns exec hypha_sub env RUST_LOG=info \
-            ./target/debug/examples/netem_node sub tcp 10.10.0.2 /tmp/hypha_sub_tcp "$OUTFILE" &
+            timeout 45s ./target/debug/examples/netem_node sub tcp 10.10.0.2 /tmp/hypha_sub_tcp "$OUTFILE" &
           SUB_PID=$!
 
           # Wait for subscriber to write listen addr.
@@ -106,11 +112,12 @@ jobs:
           echo "Dialing: $PEER_ADDR"
 
           sudo ip netns exec hypha_pub env RUST_LOG=info \
-            ./target/debug/examples/netem_node pub tcp 10.10.0.1 /tmp/hypha_pub_tcp "$PEER_ADDR"
+            timeout 30s ./target/debug/examples/netem_node pub tcp 10.10.0.1 /tmp/hypha_pub_tcp "$PEER_ADDR"
 
           wait "$SUB_PID"
 
       - name: Netns + tc netem (QUIC)
+        timeout-minutes: 6
         shell: bash
         run: |
           set -euo pipefail
@@ -142,7 +149,7 @@ jobs:
           rm -f "$OUTFILE"
 
           sudo ip netns exec hypha_sub env RUST_LOG=info \
-            ./target/debug/examples/netem_node sub quic 10.20.0.2 /tmp/hypha_sub_quic "$OUTFILE" &
+            timeout 45s ./target/debug/examples/netem_node sub quic 10.20.0.2 /tmp/hypha_sub_quic "$OUTFILE" &
           SUB_PID=$!
 
           for _ in $(seq 1 50); do
@@ -161,11 +168,12 @@ jobs:
           echo "Dialing: $PEER_ADDR"
 
           sudo ip netns exec hypha_pub env RUST_LOG=info \
-            ./target/debug/examples/netem_node pub quic 10.20.0.1 /tmp/hypha_pub_quic "$PEER_ADDR"
+            timeout 30s ./target/debug/examples/netem_node pub quic 10.20.0.1 /tmp/hypha_pub_quic "$PEER_ADDR"
 
           wait "$SUB_PID"
 
       - name: Netns line topology (TCP) pub→relay→sub
+        timeout-minutes: 6
         shell: bash
         run: |
           set -euo pipefail
@@ -221,7 +229,7 @@ jobs:
           rm -f "$SUB_OUT" "$RELAY_OUT"
 
           sudo ip netns exec hypha_sub env RUST_LOG=info \
-            ./target/debug/examples/netem_node sub tcp 10.30.0.3 /tmp/hypha_line_sub_tcp "$SUB_OUT" &
+            timeout 60s ./target/debug/examples/netem_node sub tcp 10.30.0.3 /tmp/hypha_line_sub_tcp "$SUB_OUT" &
           SUB_PID=$!
 
           # Wait for sub addr.
@@ -237,7 +245,7 @@ jobs:
           SUB_ADDR="$(<"$SUB_OUT")"
 
           sudo ip netns exec hypha_relay env RUST_LOG=info \
-            ./target/debug/examples/netem_node relay tcp 10.30.0.2 /tmp/hypha_line_relay_tcp "$RELAY_OUT" "$SUB_ADDR" 6000 &
+            timeout 60s ./target/debug/examples/netem_node relay tcp 10.30.0.2 /tmp/hypha_line_relay_tcp "$RELAY_OUT" "$SUB_ADDR" 6000 &
           RELAY_PID=$!
 
           # Wait for relay addr.
@@ -254,12 +262,13 @@ jobs:
           RELAY_ADDR="$(<"$RELAY_OUT")"
 
           sudo ip netns exec hypha_pub env RUST_LOG=info \
-            ./target/debug/examples/netem_node pub tcp 10.30.0.1 /tmp/hypha_line_pub_tcp "$RELAY_ADDR"
+            timeout 30s ./target/debug/examples/netem_node pub tcp 10.30.0.1 /tmp/hypha_line_pub_tcp "$RELAY_ADDR"
 
           wait "$SUB_PID"
           wait "$RELAY_PID"
 
       - name: Netns line topology (QUIC) pub→relay→sub
+        timeout-minutes: 6
         shell: bash
         run: |
           set -euo pipefail
@@ -315,7 +324,7 @@ jobs:
           rm -f "$SUB_OUT" "$RELAY_OUT"
 
           sudo ip netns exec hypha_sub env RUST_LOG=info \
-            ./target/debug/examples/netem_node sub quic 10.40.0.3 /tmp/hypha_line_sub_quic "$SUB_OUT" &
+            timeout 60s ./target/debug/examples/netem_node sub quic 10.40.0.3 /tmp/hypha_line_sub_quic "$SUB_OUT" &
           SUB_PID=$!
 
           for _ in $(seq 1 50); do
@@ -330,7 +339,7 @@ jobs:
           SUB_ADDR="$(<"$SUB_OUT")"
 
           sudo ip netns exec hypha_relay env RUST_LOG=info \
-            ./target/debug/examples/netem_node relay quic 10.40.0.2 /tmp/hypha_line_relay_quic "$RELAY_OUT" "$SUB_ADDR" 6000 &
+            timeout 60s ./target/debug/examples/netem_node relay quic 10.40.0.2 /tmp/hypha_line_relay_quic "$RELAY_OUT" "$SUB_ADDR" 6000 &
           RELAY_PID=$!
 
           for _ in $(seq 1 50); do
@@ -346,7 +355,7 @@ jobs:
           RELAY_ADDR="$(<"$RELAY_OUT")"
 
           sudo ip netns exec hypha_pub env RUST_LOG=info \
-            ./target/debug/examples/netem_node pub quic 10.40.0.1 /tmp/hypha_line_pub_quic "$RELAY_ADDR"
+            timeout 30s ./target/debug/examples/netem_node pub quic 10.40.0.1 /tmp/hypha_line_pub_quic "$RELAY_ADDR"
 
           wait "$SUB_PID"
           wait "$RELAY_PID"
