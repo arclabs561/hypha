@@ -36,7 +36,7 @@ impl SporeNode {
         let peer_id = PeerId::random();
         
         let storage = Database::builder(storage_path).open()?;
-        let db = storage.keyspace("vire_state", KeyspaceCreateOptions::default)?;
+        let db = storage.keyspace("hypha_state", KeyspaceCreateOptions::default)?;
         
         let signing_key = SigningKey::generate(&mut OsRng);
 

@@ -1,10 +1,10 @@
-# vire
+# hypha
 
-`vire` (Viral + Wire) is a Rust-based agentic P2P coordination layer designed for high-write resilience and power efficiency.
+`hypha` (Viral + Wire) is a Rust-based agentic P2P coordination layer designed for high-write resilience and power efficiency.
 
 ## Architecture: The Spore Model
 
-Nodes in `vire` are modeled as "Spores"—self-contained units of persistence, networking, and agency.
+Nodes in `hypha` are modeled as "Spores"—self-contained units of persistence, networking, and agency.
 
 - **Mycelial Memory (`fjall`)**: Uses a Log-Structured Merge-tree (LSM) for local state persistence. This is critical for Raspberry Pi setups where frequent small writes can degrade SD cards. `fjall` provides high write throughput for gossip metadata.
 - **Viral Networking (`libp2p`)**: Implements `gossipsub` for epidemic message propagation.
@@ -21,7 +21,7 @@ We use **`turmoil`** for Deterministic Simulation Testing (DST). This allows us 
 ## Getting Started
 
 ```rust
-use vire::{SporeNode, PowerMode};
+use hypha::{SporeNode, PowerMode};
 use tempfile::tempdir;
 
 #[tokio::main]

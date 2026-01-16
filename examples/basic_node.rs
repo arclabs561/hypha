@@ -1,4 +1,4 @@
-use vire::{SporeNode, PowerMode};
+use hypha::{SporeNode, PowerMode};
 use tracing_subscriber;
 
 #[tokio::main]
