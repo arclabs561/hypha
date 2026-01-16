@@ -35,7 +35,8 @@ async fn run_line(profile: hypha::mycelium::NetProfile, listen0: &str, listen1: 
     let mut a0: Option<Multiaddr> = None;
     let mut a1: Option<Multiaddr> = None;
     let mut a2: Option<Multiaddr> = None;
-    let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(800);
+    // Libp2p emits listen events quickly, but give ourselves margin under load/CI.
+    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(2);
     while (a0.is_none() || a1.is_none() || a2.is_none()) && tokio::time::Instant::now() < deadline {
         tokio::select! {
             ev = m0.swarm.select_next_some() => { if let SwarmEvent::NewListenAddr{address, ..} = ev { a0.get_or_insert(address); } }
@@ -44,15 +45,44 @@ async fn run_line(profile: hypha::mycelium::NetProfile, listen0: &str, listen1: 
             _ = tokio::time::sleep(std::time::Duration::from_millis(10)) => {}
         }
     }
-    let a0 = a0.ok_or("n0 no listen addr")?;
+    let _a0 = a0.ok_or("n0 no listen addr")?;
     let a1 = a1.ok_or("n1 no listen addr")?;
     let a2 = a2.ok_or("n2 no listen addr")?;
 
     // Connect in a line: n0<->n1<->n2.
     m0.swarm.dial(DialOpts::peer_id(peer1).addresses(vec![a1.clone()]).build())?;
-    m2.swarm.dial(DialOpts::peer_id(peer1).addresses(vec![a1.clone()]).build())?;
-    m1.swarm.dial(DialOpts::peer_id(peer0).addresses(vec![a0.clone()]).build())?;
     m1.swarm.dial(DialOpts::peer_id(peer2).addresses(vec![a2.clone()]).build())?;
+
+    // Wait for connections to be established in the intended line topology.
+    // Gossipsub mesh formation relies on the libp2p heartbeat, so publishing
+    // "too early" is a common source of flakiness in sparse topologies.
+    let mut m0_up = false;
+    let mut m2_up = false;
+    let mut m1_to_0 = false;
+    let mut m1_to_2 = false;
+    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(3);
+    while !(m0_up && m2_up && m1_to_0 && m1_to_2) && tokio::time::Instant::now() < deadline {
+        tokio::select! {
+            ev = m0.swarm.select_next_some() => {
+                if let SwarmEvent::ConnectionEstablished { peer_id, .. } = ev {
+                    if peer_id == peer1 { m0_up = true; }
+                }
+            }
+            ev = m1.swarm.select_next_some() => {
+                if let SwarmEvent::ConnectionEstablished { peer_id, .. } = ev {
+                    if peer_id == peer0 { m1_to_0 = true; }
+                    if peer_id == peer2 { m1_to_2 = true; }
+                }
+            }
+            ev = m2.swarm.select_next_some() => {
+                if let SwarmEvent::ConnectionEstablished { peer_id, .. } = ev {
+                    if peer_id == peer1 { m2_up = true; }
+                }
+            }
+            _ = tokio::time::sleep(std::time::Duration::from_millis(10)) => {}
+        }
+    }
+    assert!(m0_up && m2_up && m1_to_0 && m1_to_2, "line did not connect in time");
 
     // Encourage forwarding: make peers explicit.
     for (sw, peers) in [
@@ -66,7 +96,8 @@ async fn run_line(profile: hypha::mycelium::NetProfile, listen0: &str, listen1: 
     }
 
     // Let subscriptions propagate.
-    let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(800);
+    // Default gossipsub heartbeat is 1s; wait long enough to avoid timing luck.
+    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(2);
     while tokio::time::Instant::now() < deadline {
         tokio::select! {
             _ = m0.swarm.select_next_some() => {}
@@ -88,7 +119,7 @@ async fn run_line(profile: hypha::mycelium::NetProfile, listen0: &str, listen1: 
     // or suppress traffic based on local policy (energy/pressure, etc.).
     let mut relayed = false;
     let mut received = false;
-    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(3);
+    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(6);
     while !received && tokio::time::Instant::now() < deadline {
         tokio::select! {
             _ = m0.swarm.select_next_some() => {}
@@ -125,7 +156,7 @@ async fn run_line(profile: hypha::mycelium::NetProfile, listen0: &str, listen1: 
     Ok(())
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_line_tcp() -> Result<(), Box<dyn std::error::Error>> {
     run_line(
         hypha::mycelium::NetProfile::Tcp,
@@ -136,7 +167,7 @@ async fn test_line_tcp() -> Result<(), Box<dyn std::error::Error>> {
     .await
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_line_quic() -> Result<(), Box<dyn std::error::Error>> {
     run_line(
         hypha::mycelium::NetProfile::TcpQuic,

@@ -9,18 +9,13 @@ use libp2p::{gossipsub, identity, noise, swarm::NetworkBehaviour, tcp, yamux, Mu
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum NetProfile {
     /// TCP + Noise + Yamux
+    #[default]
     Tcp,
     /// TCP + Noise + Yamux, plus QUIC (UDP-based).
     TcpQuic,
-}
-
-impl Default for NetProfile {
-    fn default() -> Self {
-        Self::Tcp
-    }
 }
 
 #[derive(NetworkBehaviour)]

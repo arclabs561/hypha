@@ -261,7 +261,7 @@ impl TopicMesh {
         // Avoid panics on NaN by using total ordering.
         scores.sort_by(|a, b| a.total_cmp(b));
         let mid = scores.len() / 2;
-        if scores.len().is_multiple_of(2) {
+        if scores.len() % 2 == 0 {
             (scores[mid - 1] + scores[mid]) / 2.0
         } else {
             scores[mid]

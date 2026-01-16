@@ -388,12 +388,12 @@ impl SporeNode {
             expected_peer_id, self.peer_id,
             "persisted peer_id must match swarm identity"
         );
-        Ok(Mycelium::new_with_profile(
+        Mycelium::new_with_profile(
             keypair,
             self.mesh.clone(),
             self.metrics.clone(),
             profile,
-        )?)
+        )
     }
 
     /// Run the networking loop for a bounded amount of time.
