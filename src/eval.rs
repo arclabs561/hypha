@@ -138,8 +138,11 @@ pub struct ConsistencyMetrics {
     pub reconciliation_rounds: u32,
     /// Maximum state divergence observed (e.g., missing messages)
     pub max_divergence: usize,
-    /// Shannon entropy of state distribution at end (0 = all same, higher = more divergent)
-    pub final_entropy: f64,
+    /// Log-scaled divergence at end (0 if converged; otherwise \(\ln(\text{divergence})\)).
+    ///
+    /// Note: This is *not* Shannon entropy. We don't have enough information in
+    /// `MetricsCollector` (only scalar divergence samples) to compute a true state entropy.
+    pub final_divergence_ln: f64,
 }
 
 impl ConsistencyMetrics {
@@ -147,21 +150,26 @@ impl ConsistencyMetrics {
         self.convergence_time.is_some()
     }
 
-    /// Calculate Shannon Entropy of message distribution across nodes
-    pub fn calculate_entropy(node_message_counts: &[usize], total_messages: usize) -> f64 {
-        if total_messages == 0 || node_message_counts.is_empty() {
+    /// Shannon entropy of the **histogram of node state sizes**.
+    ///
+    /// If all nodes have the same state size, entropy is 0.
+    /// If nodes are spread across many different sizes, entropy increases.
+    pub fn state_size_entropy(node_message_counts: &[usize]) -> f64 {
+        use std::collections::HashMap;
+        if node_message_counts.is_empty() {
             return 0.0;
+        }
+
+        let mut freq: HashMap<usize, usize> = HashMap::new();
+        for &c in node_message_counts {
+            *freq.entry(c).or_insert(0) += 1;
         }
 
         let n = node_message_counts.len() as f64;
         let mut entropy = 0.0;
-
-        for &count in node_message_counts {
-            // Probability that a randomly chosen message-node pair is this node
-            let p = count as f64 / (total_messages as f64 * n);
-            if p > 0.0 {
-                entropy -= p * p.log2();
-            }
+        for &count in freq.values() {
+            let p = count as f64 / n;
+            entropy -= p * p.log2();
         }
         entropy
     }
@@ -366,8 +374,8 @@ impl MetricsCollector {
             .find(|(_, div)| *div == 0)
             .map(|(t, _)| *t);
 
-        // Calculate final entropy
-        let final_entropy = if let Some((_, last_div)) = self.consistency_samples.last() {
+        // Calculate final log-divergence (0 if converged)
+        let final_divergence_ln = if let Some((_, last_div)) = self.consistency_samples.last() {
             if *last_div == 0 {
                 0.0
             } else {
@@ -397,7 +405,7 @@ impl MetricsCollector {
                     .map(|(_, d)| *d)
                     .max()
                     .unwrap_or(0),
-                final_entropy,
+                final_divergence_ln,
             },
             fault_events: self.fault_events,
         }

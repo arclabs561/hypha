@@ -58,7 +58,7 @@ pub struct Task {
     /// Bio-inspired pheromone intensity (diffuses through mesh)
     pub pheromone_intensity: f32,
     pub source_id: String,
-    /// UCAN Authorization Token (JWT)
+    /// UCAN Authorization token (not a JWT).
     pub auth_token: Option<String>,
 }
 
@@ -309,11 +309,12 @@ impl SporeNode {
     /// Validate UCAN token for a task
     pub fn validate_ucan(&self, token: &str, _required_cap: &Capability) -> bool {
         // In a real implementation:
-        // 1. Parse token using Ucan::try_from(token)
+        // 1. Parse token using `ucan` crate APIs
         // 2. Validate signature against issuer DID
         // 3. Check capabilities against required_cap
         //
-        // For prototype, we just check if it's a non-empty string and log
+        // For prototype: THIS IS NOT SECURITY. It's a placeholder to keep
+        // the call sites honest about where auth checks belong.
         if token.is_empty() {
             return false;
         }
@@ -374,7 +375,14 @@ impl SporeNode {
     }
 
     pub async fn start(&mut self) -> Result<(), Box<dyn Error>> {
-        let mut mycelium = Mycelium::new(self.peer_id, self.mesh.clone(), self.metrics.clone())?;
+        let keypair = libp2p::identity::Keypair::ed25519_from_bytes(self.signing_key.to_bytes())?;
+        let expected_peer_id = PeerId::from_public_key(&keypair.public());
+        debug_assert_eq!(
+            expected_peer_id, self.peer_id,
+            "persisted peer_id must match swarm identity"
+        );
+
+        let mut mycelium = Mycelium::new(keypair, self.mesh.clone(), self.metrics.clone())?;
         mycelium.subscribe_all()?;
 
         info!(peer_id = %self.peer_id, "Hypha Spore active (Mycelium Layer separated)");

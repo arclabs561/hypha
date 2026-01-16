@@ -226,7 +226,7 @@ impl TopicMesh {
             // Pressure-Aware Path Thickening:
             // Delta D = |P_self - P_peer| * Flow
             let pressure_grad = (self.local_pressure - peer.pressure).abs().max(0.1);
-            peer.conductivity += 0.1 * pressure_grad;
+            peer.conductivity = (peer.conductivity + 0.1 * pressure_grad).min(10.0);
         }
 
         if self.message_cache.contains(msg_id) {
@@ -254,7 +254,8 @@ impl TopicMesh {
             return 0.0;
         }
 
-        scores.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        // Avoid panics on NaN by using total ordering.
+        scores.sort_by(|a, b| a.total_cmp(b));
         let mid = scores.len() / 2;
         if scores.len().is_multiple_of(2) {
             (scores[mid - 1] + scores[mid]) / 2.0
@@ -293,6 +294,9 @@ impl TopicMesh {
 
         for id in to_prune {
             self.mesh_peers.remove(&id);
+            if let Some(peer) = self.known_peers.get_mut(&id) {
+                peer.in_mesh = false;
+            }
             controls.push((
                 id.clone(),
                 MeshControl::Prune {
@@ -314,6 +318,9 @@ impl TopicMesh {
 
             if let Some((id, _)) = lowest {
                 self.mesh_peers.remove(&id);
+                if let Some(peer) = self.known_peers.get_mut(&id) {
+                    peer.in_mesh = false;
+                }
                 controls.push((
                     id.clone(),
                     MeshControl::Prune {
@@ -321,6 +328,7 @@ impl TopicMesh {
                         backoff: Duration::from_secs(60),
                     },
                 ));
+                self.backoff.insert(id, now + Duration::from_secs(60));
             } else {
                 break;
             }
@@ -361,7 +369,7 @@ impl TopicMesh {
         if median < self.config.opportunistic_graft_threshold
             && self.mesh_peers.len() < self.config.d_high
         {
-            let candidates: Vec<_> = self
+            let mut candidates: Vec<_> = self
                 .known_peers
                 .iter()
                 .filter(|(id, peer)| {
@@ -369,11 +377,11 @@ impl TopicMesh {
                         && !self.backoff.contains_key(*id)
                         && peer.score() > median
                 })
-                .take(2)
-                .map(|(id, _)| id.clone())
+                .map(|(id, peer)| (id.clone(), peer.score()))
                 .collect();
+            candidates.sort_by(|a, b| b.1.total_cmp(&a.1));
 
-            for id in candidates {
+            for (id, _) in candidates.into_iter().take(2) {
                 if self.mesh_peers.len() >= self.config.d_high {
                     break;
                 }
@@ -413,6 +421,9 @@ impl TopicMesh {
                     let best_id = best_id.clone();
                     // Prune weakest
                     self.mesh_peers.remove(&weak_id);
+                    if let Some(peer) = self.known_peers.get_mut(&weak_id) {
+                        peer.in_mesh = false;
+                    }
                     controls.push((
                         weak_id.clone(),
                         MeshControl::Prune {
@@ -420,6 +431,8 @@ impl TopicMesh {
                             backoff: Duration::from_secs(30),
                         },
                     ));
+                    self.backoff
+                        .insert(weak_id.clone(), now + Duration::from_secs(30));
 
                     // Graft best
                     self.mesh_peers.insert(best_id.clone());
@@ -468,11 +481,17 @@ impl TopicMesh {
 
     /// Handle incoming GRAFT request
     pub fn handle_graft(&mut self, peer_id: &str) -> bool {
+        if self.backoff.contains_key(peer_id) {
+            return false;
+        }
         if let Some(peer) = self.known_peers.get(peer_id) {
             if peer.score() >= self.config.graft_threshold
                 && self.mesh_peers.len() < self.config.d_high
             {
                 self.mesh_peers.insert(peer_id.to_string());
+                if let Some(peer) = self.known_peers.get_mut(peer_id) {
+                    peer.in_mesh = true;
+                }
                 return true;
             }
         }

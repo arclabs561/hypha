@@ -1,6 +1,10 @@
 # hypha
 
-`hypha` (Fungal Branching) is a Rust-based agentic P2P coordination layer designed for high-write resilience, power efficiency, and physical-world interaction.
+`hypha` is a Rust-based P2P coordination prototype focused on:
+
+- persistent node identity + local state
+- mesh maintenance experiments (graft/prune, scoring, backoff)
+- power-aware behavior hooks (heartbeat pacing, bidding heuristics)
 
 ## Core Architecture: The Spore Model
 
@@ -12,7 +16,7 @@ Uses an LSM-tree for local state persistence. This is critical for Raspberry Pi/
 ### 2. Agentic Capabilities
 Nodes register what they can do (Compute, Storage, Sensing). 
 - **Power-Aware Bidding**: Nodes evaluate tasks and only bid if they have the required energy (mAh) and voltage stability.
-- **Sovereign Agency**: Every delegation is cryptographically signed using Ed25519 keys, creating a serverless "Provenance of Trust."
+- **Sovereign Agency (prototype)**: UCAN/capability types exist, but task authorization is currently a stub and **not security**.
 
 ### 3. Virtual Sensors
 A trait-based sensor system allows nodes to treat gossip messages from neighbors as local "Virtual Sensors." This enables privacy-preserving sensor fusion (e.g., mmWave + Audio) across the mesh.
@@ -22,9 +26,10 @@ Heartbeat intervals stretch dynamically from **1s to 60s** based on real-time `P
 
 ## Testing: High-Fidelity Simulation
 
-We use **`turmoil`** for Deterministic Simulation Testing (DST).
-- **Physical Force Modeling**: We simulate voltage drops and energy consumption to observe how the network pulse adapts.
-- **Reconciliation Testing**: Verify that "dormant" nodes can sync their memories using Delta-State reconciliation after long sleep cycles.
+We use **`turmoil`** for deterministic test harnesses around timing/power logic.
+
+- `tests/mycelium_world.rs`: basic heartbeat pacing under simulated voltage drain
+- `tests/viral_sim.rs`: sanity checks for power-mode driven heartbeat changes
 
 ## Getting Started
 
@@ -48,5 +53,6 @@ async fn main() {
 ## Running Simulations
 
 ```bash
-cargo test test_mycelium_energy_drain_simulation
+cargo test --test mycelium_world
+cargo test --test viral_sim
 ```

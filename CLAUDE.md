@@ -6,8 +6,8 @@
 - **Spore Model**: Every node is a "Spore" with persistence (`fjall`), identity (`ed25519`), and physical state modeling.
 - **Mycelial Memory**: LSM-tree based persistence ensures durability on SD cards/Flash with minimal wear.
 - **Adaptive Pulse**: Heartbeat intervals are a function of `EnergyScore` (Voltage + mAh).
-- **Delta-State Reconciliation**: Nodes compare state-vectors and only exchange deltas.
-- **Sovereign Agency**: UCAN-signed delegations for serverless task allocation.
+- **Delta-State Reconciliation (planned)**: There are helpers for message IDs, but no wire protocol is implemented yet.
+- **Sovereign Agency (prototype)**: UCAN capability types exist; task authorization is currently a stub and **not security**.
 
 ## Bio-Inspired Decisions
 - **Energy Pheromones**: Nodes gossip their energy levels to create a gradient. Low-power nodes gravitate toward "MainsHubs" for offloading.

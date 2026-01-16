@@ -5,7 +5,7 @@
 
 use crate::eval::MetricsCollector;
 use crate::mesh::TopicMesh;
-use libp2p::{gossipsub, noise, swarm::NetworkBehaviour, tcp, yamux, PeerId, Swarm};
+use libp2p::{gossipsub, identity, noise, swarm::NetworkBehaviour, tcp, yamux, Swarm};
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 
@@ -46,11 +46,13 @@ pub struct Mycelium {
 
 impl Mycelium {
     pub fn new(
-        _peer_id: PeerId,
+        keypair: identity::Keypair,
         mesh: Arc<Mutex<TopicMesh>>,
         metrics: Arc<Mutex<MetricsCollector>>,
     ) -> Result<Self, Box<dyn Error>> {
-        let swarm = libp2p::SwarmBuilder::with_new_identity()
+        // IMPORTANT: Use the caller-provided identity, so network PeerId matches
+        // the persisted "soul" key in `SporeNode`.
+        let swarm = libp2p::SwarmBuilder::with_existing_identity(keypair)
             .with_tokio()
             .with_tcp(
                 tcp::Config::default(),
