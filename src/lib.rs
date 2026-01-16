@@ -154,30 +154,41 @@ mod tests {
     }
 
     #[test]
-    fn test_simulation_power_drain_viral_death() {
+    fn test_simulation_reboot_durability() {
         let mut sim = turmoil::Builder::new().build();
         let tmp = tempdir().unwrap();
         let storage_path = tmp.path().to_path_buf();
 
-        sim.host("node-a", move || {
+        // Phase 1: Node starts and writes state
+        sim.host("node-1", {
             let path = storage_path.clone();
-            async move {
-                let mut node = SporeNode::new(&path).unwrap();
-                
-                // Simulate time passing and power draining
-                tokio::time::sleep(Duration::from_secs(10)).await;
-                node.set_power_mode(PowerMode::LowBattery);
-                
-                tokio::time::sleep(Duration::from_secs(50)).await;
-                node.set_power_mode(PowerMode::Critical);
-                
-                Ok(())
+            move || {
+                let path = path.clone();
+                async move {
+                    let mut node = SporeNode::new(&path).unwrap();
+                    node.set_power_mode(PowerMode::Critical);
+                    Ok(())
+                }
             }
         });
+        sim.run().unwrap();
 
-        // Review: Turmoil allows us to observe how the node's heartbeat
-        // would theoretically slow down if we had the swarm integrated
-        // into the host task.
+        // Phase 2: Node "reboots" and should see its critical state
+        let mut sim = turmoil::Builder::new().build();
+        sim.host("node-1", {
+            let path = storage_path.clone();
+            move || {
+                let path = path.clone();
+                async move {
+                    let node = SporeNode::new(&path).unwrap();
+                    // Fjall 3.x partition should have the persisted mode
+                    let stored_mode = node.db.get("power_mode").unwrap().unwrap();
+                    let mode: PowerMode = serde_json::from_slice(&stored_mode).unwrap();
+                    assert_eq!(mode, PowerMode::Critical);
+                    Ok(())
+                }
+            }
+        });
         sim.run().unwrap();
     }
 }

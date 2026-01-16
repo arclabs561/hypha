@@ -1,11 +1,13 @@
 use hypha::{SporeNode, PowerMode};
 use tracing_subscriber;
+use tempfile::tempdir;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
-    let mut node = SporeNode::new();
+    let tmp = tempdir()?;
+    let mut node = SporeNode::new(tmp.path())?;
     node.set_power_mode(PowerMode::Normal);
     
     // In a real app, you might listen for battery events
