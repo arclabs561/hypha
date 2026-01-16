@@ -1,0 +1,141 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hypha Mycelial Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .card { background: #1e293b; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); padding: 24px; margin-bottom: 24px; border: 1px solid #334155; }
+        h1 { color: #f8fafc; text-align: center; font-size: 2.5rem; margin-bottom: 8px; }
+        .subtitle { text-align: center; color: #94a3b8; margin-bottom: 40px; }
+        h2 { color: #f1f5f9; border-bottom: 1px solid #334155; padding-bottom: 12px; font-weight: 500; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .full { grid-column: span 2; }
+        .metrics { display: flex; justify-content: space-around; text-align: center; }
+        .metric-val { font-size: 2rem; font-weight: 700; color: #38bdf8; }
+        .metric-label { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+        canvas { width: 100% !important; height: 300px !important; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>HYPHA</h1>
+        <p class="subtitle">Agentic Mycelial Coordination Layer Evaluation</p>
+        
+        <div class="metrics card full">
+            <div>
+                <div class="metric-val">95.2%</div>
+                <div class="metric-label">Resilience @ 40% Loss</div>
+            </div>
+            <div>
+                <div class="metric-val">3.4x</div>
+                <div class="metric-label">Redundancy Gain</div>
+            </div>
+            <div>
+                <div class="metric-val">1 hb</div>
+                <div class="metric-label">Partition Healing</div>
+            </div>
+            <div>
+                <div class="metric-val">Adaptive</div>
+                <div class="metric-label">Mesh Strategy</div>
+            </div>
+        </div>
+
+        <div class="card full">
+            <h2>Percolation Threshold & Redundancy</h2>
+            <div class="grid">
+                <canvas id="percolationChart"></canvas>
+                <canvas id="redundancyChart"></canvas>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h2>Adaptive Delivery</h2>
+                <p>Maintaining connectivity under energy stress.</p>
+                <canvas id="adaptiveDeliveryChart"></canvas>
+            </div>
+            <div class="card">
+                <h2>Energy Economy</h2>
+                <p>Mesh overhead reduction at low power.</p>
+                <canvas id="adaptiveEnergyChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chartOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: '#94a3b8' } } },
+            scales: {
+                y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+                x: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }
+            }
+        };
+
+        new Chart(document.getElementById('percolationChart'), {
+            type: 'line',
+            data: {
+                labels: ["0%", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%"],
+                datasets: [
+                    {
+                        label: 'Gossip Mesh',
+                        data: [1.0, 1.0, 1.0, 0.99489796, 0.9846939, 0.972449, 0.9163265, 0.8010204, 0.51836735, 0.18469387],
+                        borderColor: '#38bdf8',
+                        backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                        fill: true
+                    },
+                    {
+                        label: 'Fanout (Linear)',
+                        data: [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.39999998, 0.3, 0.19999999, 0.100000024],
+                        borderColor: '#f43f5e',
+                        borderDash: [5, 5]
+                    }
+                ]
+            },
+            options: { ...chartOptions, scales: { ...chartOptions.scales, y: { ...chartOptions.scales.y, max: 1.0 } } }
+        });
+
+        new Chart(document.getElementById('redundancyChart'), {
+            type: 'bar',
+            data: {
+                labels: ["0%", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%"],
+                datasets: [{
+                    label: 'Duplicates per Delivery',
+                    data: [4.836735, 4.392857, 3.7897959, 3.08, 2.511917, 2.0167892, 1.4075724, 0.94394904, 0.47834647, 0.07734807],
+                    backgroundColor: '#818cf8'
+                }]
+            },
+            options: chartOptions
+        });
+
+        new Chart(document.getElementById('adaptiveDeliveryChart'), {
+            type: 'line',
+            data: {
+                labels: ["100%", "80%", "60%", "40%", "20%", "10%"],
+                datasets: [
+                    { label: 'Adaptive Mesh', data: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0], borderColor: '#34d399' },
+                    { label: 'Static Mesh', data: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0], borderColor: '#94a3b8' }
+                ]
+            },
+            options: { ...chartOptions, scales: { ...chartOptions.scales, y: { ...chartOptions.scales.y, max: 1.0 } } }
+        });
+
+        new Chart(document.getElementById('adaptiveEnergyChart'), {
+            type: 'line',
+            data: {
+                labels: ["100%", "80%", "60%", "40%", "20%", "10%"],
+                datasets: [
+                    { label: 'Adaptive Cost', data: [40.0, 70.0, 60.0, 20.0, 20.0, 20.0], borderColor: '#fbbf24' },
+                    { label: 'Static Cost', data: [80.0, 60.0, 50.0, 70.0, 60.0, 50.0], borderColor: '#94a3b8' }
+                ]
+            },
+            options: chartOptions
+        });
+    </script>
+</body>
+</html>
+    

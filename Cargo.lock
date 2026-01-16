@@ -370,6 +370,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dda4398f387cc6395a3e93b3867cd9abda914c97a0b344d1eefb2e5c51785fca"
 
 [[package]]
+name = "cbor4ii"
+version = "0.2.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b544cf8c89359205f4f990d0e6f3828db42df85b5dac95d09157a250eb0749c4"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "cc"
 version = "1.2.52"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -448,6 +457,20 @@ dependencies = [
  "serde",
  "serde_bytes",
  "unsigned-varint 0.7.2",
+]
+
+[[package]]
+name = "cid"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3147d8272e8fa0ccd29ce51194dd98f79ddfb8191ba9e3409884e751798acf3a"
+dependencies = [
+ "core2",
+ "multibase",
+ "multihash 0.19.3",
+ "serde",
+ "serde_bytes",
+ "unsigned-varint 0.8.0",
 ]
 
 [[package]]
@@ -1269,12 +1292,15 @@ dependencies = [
 name = "hypha"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "chitchat",
+ "cid 0.11.1",
  "ed25519-dalek",
  "fjall",
  "libp2p",
  "rand 0.8.5",
  "serde",
+ "serde_ipld_dagcbor",
  "serde_json",
  "tempfile",
  "tokio",
@@ -1282,6 +1308,7 @@ dependencies = [
  "tracing-subscriber",
  "turmoil",
  "ucan",
+ "url",
  "yrs",
 ]
 
@@ -1494,6 +1521,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ipld-core"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "104718b1cc124d92a6d01ca9c9258a7df311405debb3408c445a36452f9bf8db"
+dependencies = [
+ "cid 0.11.1",
+ "serde",
+ "serde_bytes",
+]
+
+[[package]]
 name = "ipnet"
 version = "2.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1562,7 +1600,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5acd707e8d8b092e967b2af978ed84709eaded82b75effe6cb6f6cc797ef8158"
 dependencies = [
  "anyhow",
- "cid",
+ "cid 0.10.1",
  "core2",
  "multibase",
  "multihash 0.18.1",
@@ -2098,6 +2136,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6b430e7953c29dd6a09afc29ff0bb69c6e306329ee6794700aee27b76a1aea8d"
 dependencies = [
  "core2",
+ "serde",
  "unsigned-varint 0.8.0",
 ]
 
@@ -2955,6 +2994,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_ipld_dagcbor"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "46182f4f08349a02b45c998ba3215d3f9de826246ba02bb9dddfe9a2a2100778"
+dependencies = [
+ "cbor4ii",
+ "ipld-core",
+ "scopeguard",
+ "serde",
+]
+
+[[package]]
 name = "serde_json"
 version = "1.0.149"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3506,7 +3557,7 @@ dependencies = [
  "async-trait",
  "base64 0.21.7",
  "bs58",
- "cid",
+ "cid 0.10.1",
  "futures",
  "getrandom 0.2.17",
  "instant",
