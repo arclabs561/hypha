@@ -56,4 +56,3 @@ fn test_prune_excess_prefers_removing_low_score() {
         "expected very low-score peer to be pruned"
     );
 }
-

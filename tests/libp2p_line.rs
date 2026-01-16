@@ -3,7 +3,12 @@ use libp2p::futures::StreamExt;
 use libp2p::{gossipsub, swarm::dial_opts::DialOpts, swarm::SwarmEvent, Multiaddr, PeerId};
 use tempfile::tempdir;
 
-async fn run_line(profile: hypha::mycelium::NetProfile, listen0: &str, listen1: &str, listen2: &str) -> Result<(), Box<dyn std::error::Error>> {
+async fn run_line(
+    profile: hypha::mycelium::NetProfile,
+    listen0: &str,
+    listen1: &str,
+    listen2: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
     let tmp = tempdir()?;
     let p0 = tmp.path().join("n0");
     let p1 = tmp.path().join("n1");
@@ -50,8 +55,10 @@ async fn run_line(profile: hypha::mycelium::NetProfile, listen0: &str, listen1: 
     let a2 = a2.ok_or("n2 no listen addr")?;
 
     // Connect in a line: n0<->n1<->n2.
-    m0.swarm.dial(DialOpts::peer_id(peer1).addresses(vec![a1.clone()]).build())?;
-    m1.swarm.dial(DialOpts::peer_id(peer2).addresses(vec![a2.clone()]).build())?;
+    m0.swarm
+        .dial(DialOpts::peer_id(peer1).addresses(vec![a1.clone()]).build())?;
+    m1.swarm
+        .dial(DialOpts::peer_id(peer2).addresses(vec![a2.clone()]).build())?;
 
     // Wait for connections to be established in the intended line topology.
     // Gossipsub mesh formation relies on the libp2p heartbeat, so publishing
@@ -82,7 +89,10 @@ async fn run_line(profile: hypha::mycelium::NetProfile, listen0: &str, listen1: 
             _ = tokio::time::sleep(std::time::Duration::from_millis(10)) => {}
         }
     }
-    assert!(m0_up && m2_up && m1_to_0 && m1_to_2, "line did not connect in time");
+    assert!(
+        m0_up && m2_up && m1_to_0 && m1_to_2,
+        "line did not connect in time"
+    );
 
     // Encourage forwarding: make peers explicit.
     for (sw, peers) in [
@@ -108,9 +118,16 @@ async fn run_line(profile: hypha::mycelium::NetProfile, listen0: &str, listen1: 
     }
 
     // Publish from n0.
-    let status = EnergyStatus { source_id: "n0".to_string(), energy_score: 0.9 };
+    let status = EnergyStatus {
+        source_id: "n0".to_string(),
+        energy_score: 0.9,
+    };
     let bytes = serde_json::to_vec(&status)?;
-    let pub_res = m0.swarm.behaviour_mut().gossipsub.publish(m0.status_topic.clone(), bytes);
+    let pub_res = m0
+        .swarm
+        .behaviour_mut()
+        .gossipsub
+        .publish(m0.status_topic.clone(), bytes);
     assert!(pub_res.is_ok(), "publish failed: {:?}", pub_res);
 
     // Wait for n2 to receive. If n1 sees the message first, explicitly relay it.
@@ -177,4 +194,3 @@ async fn test_line_quic() -> Result<(), Box<dyn std::error::Error>> {
     )
     .await
 }
-

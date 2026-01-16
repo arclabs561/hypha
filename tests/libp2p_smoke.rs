@@ -56,11 +56,8 @@ async fn test_status_gossip_adds_peer() -> Result<(), Box<dyn std::error::Error>
     let a1 = a1.ok_or("node1 did not obtain listen addr")?;
 
     // Dial using explicit peer_id + address. This avoids multiaddr parsing edge cases.
-    m0.swarm.dial(
-        DialOpts::peer_id(peer1)
-            .addresses(vec![a1.clone()])
-            .build(),
-    )?;
+    m0.swarm
+        .dial(DialOpts::peer_id(peer1).addresses(vec![a1.clone()]).build())?;
     // One direction is sufficient for a connection.
 
     // Wait for connection establishment on both sides.
@@ -94,14 +91,8 @@ async fn test_status_gossip_adds_peer() -> Result<(), Box<dyn std::error::Error>
     );
 
     // Ensure gossipsub considers peers for direct publishing.
-    m0.swarm
-        .behaviour_mut()
-        .gossipsub
-        .add_explicit_peer(&peer1);
-    m1.swarm
-        .behaviour_mut()
-        .gossipsub
-        .add_explicit_peer(&peer0);
+    m0.swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer1);
+    m1.swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer0);
 
     // Allow subscription gossip to propagate before publishing.
     let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(500);
@@ -205,11 +196,8 @@ async fn test_status_gossip_over_quic() -> Result<(), Box<dyn std::error::Error>
     let a1 = a1.ok_or("node1 did not obtain QUIC listen addr")?;
 
     // Dial node1.
-    m0.swarm.dial(
-        DialOpts::peer_id(peer1)
-            .addresses(vec![a1.clone()])
-            .build(),
-    )?;
+    m0.swarm
+        .dial(DialOpts::peer_id(peer1).addresses(vec![a1.clone()]).build())?;
 
     // Give the swarms time to exchange subscriptions; otherwise publish can yield NoPeersSubscribedToTopic.
     let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(500);
@@ -221,9 +209,16 @@ async fn test_status_gossip_over_quic() -> Result<(), Box<dyn std::error::Error>
         }
     }
 
-    let status = EnergyStatus { source_id: "node0".to_string(), energy_score: 0.9 };
+    let status = EnergyStatus {
+        source_id: "node0".to_string(),
+        energy_score: 0.9,
+    };
     let bytes = serde_json::to_vec(&status)?;
-    let pub_res = m0.swarm.behaviour_mut().gossipsub.publish(m0.status_topic.clone(), bytes);
+    let pub_res = m0
+        .swarm
+        .behaviour_mut()
+        .gossipsub
+        .publish(m0.status_topic.clone(), bytes);
     assert!(pub_res.is_ok(), "publish failed: {:?}", pub_res);
 
     let mut received = false;
@@ -250,4 +245,3 @@ async fn test_status_gossip_over_quic() -> Result<(), Box<dyn std::error::Error>
     assert!(mesh.known_peers.contains_key(&sender_peer));
     Ok(())
 }
-

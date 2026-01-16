@@ -381,19 +381,17 @@ impl SporeNode {
         self.build_mycelium_with_profile(NetProfile::default())
     }
 
-    pub fn build_mycelium_with_profile(&self, profile: NetProfile) -> Result<Mycelium, Box<dyn Error>> {
+    pub fn build_mycelium_with_profile(
+        &self,
+        profile: NetProfile,
+    ) -> Result<Mycelium, Box<dyn Error>> {
         let keypair = libp2p::identity::Keypair::ed25519_from_bytes(self.signing_key.to_bytes())?;
         let expected_peer_id = PeerId::from_public_key(&keypair.public());
         debug_assert_eq!(
             expected_peer_id, self.peer_id,
             "persisted peer_id must match swarm identity"
         );
-        Mycelium::new_with_profile(
-            keypair,
-            self.mesh.clone(),
-            self.metrics.clone(),
-            profile,
-        )
+        Mycelium::new_with_profile(keypair, self.mesh.clone(), self.metrics.clone(), profile)
     }
 
     /// Run the networking loop for a bounded amount of time.
