@@ -1,6 +1,6 @@
-use ucan::capability::{Ability, CapabilitySemantics, Scope};
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use ucan::capability::{Ability, CapabilitySemantics, Scope};
 use url::Url;
 
 /// Hypha Resource Scope
@@ -30,10 +30,13 @@ impl TryFrom<Url> for HyphaScope {
         if value.scheme() != "hypha" {
             return Err(anyhow::anyhow!("Invalid scheme"));
         }
-        
-        let origin = value.host_str().ok_or_else(|| anyhow::anyhow!("Missing host"))?.to_string();
+
+        let origin = value
+            .host_str()
+            .ok_or_else(|| anyhow::anyhow!("Missing host"))?
+            .to_string();
         let path = value.path().trim_start_matches('/').to_string();
-        
+
         Ok(HyphaScope {
             origin_node: origin,
             resource_type: path,

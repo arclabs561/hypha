@@ -6,14 +6,14 @@
 //! - Fault injection (degradation, partition)
 //! - Convergence metrics
 
-use hypha::{SporeNode, Capability};
-use hypha::eval::{EvalScenario, EvalRun, MetricsCollector, FaultType};
-use std::time::Duration;
-use tempfile::tempdir;
+use hypha::eval::{EvalRun, EvalScenario, FaultType, MetricsCollector};
+use hypha::{Capability, SporeNode};
+use rand::Rng;
 use serde_json::json;
 use std::fs::File;
 use std::io::Write;
-use rand::Rng;
+use std::time::Duration;
+use tempfile::tempdir;
 
 /// Simulates message propagation through the network.
 /// Returns (delivery_count, latencies_us)
@@ -26,7 +26,7 @@ fn simulate_propagation(
     let mut rng = rand::thread_rng();
     let mut delivered = 0u64;
     let mut latencies = Vec::new();
-    
+
     // Simulate gossip propagation with hop-based latency
     // Each hop adds ~10-50ms latency
     for (i, node) in nodes.iter().enumerate() {
@@ -34,28 +34,28 @@ fn simulate_propagation(
         if node.is_exhausted() {
             continue;
         }
-        
+
         // Apply drop probability (degradation attack)
         if rng.gen::<f32>() < drop_probability {
             continue;
         }
-        
+
         // Simulate hop-based latency (1-3 hops typical)
         let hops = (i % 3) + 1;
         let base_latency_us = hops as u64 * 15_000; // 15ms per hop
         let jitter_us = rng.gen_range(0..5_000); // 0-5ms jitter
         let latency_us = base_latency_us + jitter_us;
-        
+
         // Deliver message
         if node.simulate_receive(message_id, payload).is_ok() {
             delivered += 1;
             latencies.push(latency_us);
-            
+
             // Consume energy for receive operation
             node.consume_energy(0.1); // 0.1 mAh per message receive
         }
     }
-    
+
     (delivered, latencies)
 }
 
@@ -65,15 +65,16 @@ fn run_scenario(scenario: &EvalScenario) -> Result<EvalRun, Box<dyn std::error::
     let mut collector = MetricsCollector::new();
     let mut nodes = Vec::new();
     let mut rng = rand::thread_rng();
-    
+
     // Create nodes
-    let low_energy_count = (scenario.node_count as f32 * scenario.low_energy_percentage / 100.0) as usize;
-    
+    let low_energy_count =
+        (scenario.node_count as f32 * scenario.low_energy_percentage / 100.0) as usize;
+
     for i in 0..scenario.node_count {
         let path = tmp.path().join(format!("node_{}", i));
         std::fs::create_dir(&path)?;
         let mut node = SporeNode::new(&path)?;
-        
+
         // Configure low-energy nodes
         if i < low_energy_count {
             let mut state = node.physical_state.lock().unwrap();
@@ -82,17 +83,17 @@ fn run_scenario(scenario: &EvalScenario) -> Result<EvalRun, Box<dyn std::error::
         } else {
             node.add_capability(Capability::Compute(100));
         }
-        
+
         nodes.push(node);
     }
-    
+
     // Track initial energy
     let initial_energy: f32 = nodes.iter().map(|n| n.mah_remaining()).sum();
-    
+
     // Process fault schedule
     let mut current_drop_prob = 0.0f32;
     let mut partitioned = false;
-    
+
     for fault_event in &scenario.fault_schedule {
         match &fault_event.fault {
             FaultType::Degradation { drop_probability } => {
@@ -110,54 +111,50 @@ fn run_scenario(scenario: &EvalScenario) -> Result<EvalRun, Box<dyn std::error::
             _ => {}
         }
     }
-    
+
     // Simulate message publishing
     let message_count = (scenario.duration.as_secs_f32() * scenario.message_rate_per_sec) as usize;
     let payload = vec![0u8; scenario.message_size_bytes];
-    
+
     for msg_idx in 0..message_count {
         let msg_id = format!("{}-{}", scenario.name, msg_idx);
         collector.record_publish(nodes.len());
-        
+
         // Simulate propagation
-        let effective_drop = if partitioned { 
+        let effective_drop = if partitioned {
             0.5_f32.max(current_drop_prob) // Partition causes ~50% drop
-        } else { 
-            current_drop_prob 
+        } else {
+            current_drop_prob
         };
-        
-        let (delivered, latencies) = simulate_propagation(
-            &nodes, 
-            &msg_id, 
-            &payload, 
-            effective_drop
-        );
-        
+
+        let (_delivered, latencies) =
+            simulate_propagation(&nodes, &msg_id, &payload, effective_drop);
+
         for lat_us in latencies {
             collector.record_delivery(Duration::from_micros(lat_us));
         }
-        
+
         // Publishers consume extra energy
         let publisher_idx = msg_idx % scenario.publisher_count;
         if publisher_idx < nodes.len() {
             nodes[publisher_idx].consume_energy(0.5); // 0.5 mAh per publish
         }
     }
-    
+
     // Record final energy state
     let energy_scores: Vec<f32> = nodes.iter().map(|n| n.energy_score()).collect();
     collector.record_energy_snapshot(energy_scores);
-    
+
     // Check consistency (message counts across nodes)
     let message_counts: Vec<usize> = nodes.iter().map(|n| n.message_count()).collect();
     let max_count = message_counts.iter().max().copied().unwrap_or(0);
     let divergence: usize = message_counts.iter().map(|&c| max_count - c).sum();
     collector.record_consistency(divergence);
-    
+
     // Calculate total energy consumed
     let final_energy: f32 = nodes.iter().map(|n| n.mah_remaining()).sum();
     let mah_consumed = initial_energy - final_energy;
-    
+
     Ok(collector.finalize(scenario, mah_consumed))
 }
 
@@ -165,9 +162,9 @@ fn run_scenario(scenario: &EvalScenario) -> Result<EvalRun, Box<dyn std::error::
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Hypha Rigorous Evaluation Suite");
     println!("================================\n");
-    
+
     let mut all_runs: Vec<EvalRun> = Vec::new();
-    
+
     // 1. Baseline (no faults)
     println!("Running: Baseline scenarios...");
     let baseline = EvalScenario {
@@ -179,10 +176,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ..Default::default()
     };
     let run = run_scenario(&baseline)?;
-    println!("  Delivery rate: {:.2}%", run.delivery.delivery_rate() * 100.0);
+    println!(
+        "  Delivery rate: {:.2}%",
+        run.delivery.delivery_rate() * 100.0
+    );
     println!("  p99 latency: {:?}", run.delivery.p99());
     all_runs.push(run);
-    
+
     // 2. Percolation threshold sweep
     println!("\nRunning: Percolation threshold sweep...");
     for pct in [0, 20, 40, 60, 80, 90] {
@@ -197,14 +197,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         };
         let run = run_scenario(&scenario)?;
         println!(
-            "  {}% dead: delivery={:.1}%, exhausted={}", 
+            "  {}% dead: delivery={:.1}%, exhausted={}",
             pct,
             run.delivery.delivery_rate() * 100.0,
             run.energy.nodes_exhausted
         );
         all_runs.push(run);
     }
-    
+
     // 3. Degradation attacks (like Gossipsub report)
     println!("\nRunning: Degradation attack scenarios...");
     for drop_pct in [10, 30, 50, 70, 90] {
@@ -216,20 +216,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             duration: Duration::from_secs(2),
             fault_schedule: vec![hypha::eval::FaultEvent {
                 time: Duration::ZERO,
-                fault: FaultType::Degradation { drop_probability: drop_pct as f32 / 100.0 },
+                fault: FaultType::Degradation {
+                    drop_probability: drop_pct as f32 / 100.0,
+                },
             }],
             ..Default::default()
         };
         let run = run_scenario(&scenario)?;
         println!(
-            "  {}% drop: delivery={:.1}%, p99={:?}", 
+            "  {}% drop: delivery={:.1}%, p99={:?}",
             drop_pct,
             run.delivery.delivery_rate() * 100.0,
             run.delivery.p99()
         );
         all_runs.push(run);
     }
-    
+
     // 4. Network partition
     println!("\nRunning: Network partition scenario...");
     let partition_scenario = EvalScenario {
@@ -249,12 +251,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     let run = run_scenario(&partition_scenario)?;
     println!(
-        "  Partition: delivery={:.1}%, p99={:?}", 
+        "  Partition: delivery={:.1}%, p99={:?}",
         run.delivery.delivery_rate() * 100.0,
         run.delivery.p99()
     );
     all_runs.push(run);
-    
+
     // 5. Combined stress test (partition + degradation + low energy)
     println!("\nRunning: Combined stress test...");
     let stress_scenario = EvalScenario {
@@ -267,7 +269,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         fault_schedule: vec![
             hypha::eval::FaultEvent {
                 time: Duration::ZERO,
-                fault: FaultType::Degradation { drop_probability: 0.2 },
+                fault: FaultType::Degradation {
+                    drop_probability: 0.2,
+                },
             },
             hypha::eval::FaultEvent {
                 time: Duration::ZERO,
@@ -281,55 +285,62 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     let run = run_scenario(&stress_scenario)?;
     println!(
-        "  Stress: delivery={:.1}%, exhausted={}, p99={:?}", 
+        "  Stress: delivery={:.1}%, exhausted={}, p99={:?}",
         run.delivery.delivery_rate() * 100.0,
         run.energy.nodes_exhausted,
         run.delivery.p99()
     );
     all_runs.push(run);
-    
+
     // Generate summary report
     println!("\n================================");
     println!("EVALUATION SUMMARY");
     println!("================================\n");
-    
-    let report: Vec<serde_json::Value> = all_runs.iter().map(|run| {
-        json!({
-            "scenario": run.scenario,
-            "node_count": run.node_count,
-            "delivery": {
-                "rate": format!("{:.2}%", run.delivery.delivery_rate() * 100.0),
-                "messages_published": run.delivery.messages_published,
-                "messages_delivered": run.delivery.messages_delivered,
-                "p50_ms": run.delivery.p50().map(|d| d.as_millis()),
-                "p90_ms": run.delivery.p90().map(|d| d.as_millis()),
-                "p99_ms": run.delivery.p99().map(|d| d.as_millis()),
-            },
-            "energy": {
-                "total_mah_consumed": format!("{:.2}", run.energy.total_mah_consumed),
-                "mah_per_delivery": format!("{:.4}", run.energy.mah_per_delivery),
-                "nodes_exhausted": run.energy.nodes_exhausted,
-                "gini_coefficient": format!("{:.3}", run.energy.energy_gini()),
-            },
-            "consistency": {
-                "converged": run.consistency.converged(),
-                "max_divergence": run.consistency.max_divergence,
-            },
-            "fault_events": run.fault_events.len(),
+
+    let report: Vec<serde_json::Value> = all_runs
+        .iter()
+        .map(|run| {
+            json!({
+                "scenario": run.scenario,
+                "node_count": run.node_count,
+                "delivery": {
+                    "rate": format!("{:.2}%", run.delivery.delivery_rate() * 100.0),
+                    "messages_published": run.delivery.messages_published,
+                    "messages_delivered": run.delivery.messages_delivered,
+                    "p50_ms": run.delivery.p50().map(|d| d.as_millis()),
+                    "p90_ms": run.delivery.p90().map(|d| d.as_millis()),
+                    "p99_ms": run.delivery.p99().map(|d| d.as_millis()),
+                },
+                "energy": {
+                    "total_mah_consumed": format!("{:.2}", run.energy.total_mah_consumed),
+                    "mah_per_delivery": format!("{:.4}", run.energy.mah_per_delivery),
+                    "nodes_exhausted": run.energy.nodes_exhausted,
+                    "gini_coefficient": format!("{:.3}", run.energy.energy_gini()),
+                },
+                "consistency": {
+                    "converged": run.consistency.converged(),
+                    "max_divergence": run.consistency.max_divergence,
+                },
+                "fault_events": run.fault_events.len(),
+            })
         })
-    }).collect();
-    
+        .collect();
+
     // Print summary table
-    println!("{:<25} {:>10} {:>10} {:>10} {:>10}", 
-             "Scenario", "Delivery%", "p99(ms)", "Exhausted", "mAh/msg");
+    println!(
+        "{:<25} {:>10} {:>10} {:>10} {:>10}",
+        "Scenario", "Delivery%", "p99(ms)", "Exhausted", "mAh/msg"
+    );
     println!("{}", "-".repeat(70));
-    
+
     for run in &all_runs {
-        let p99_str = run.delivery.p99()
+        let p99_str = run
+            .delivery
+            .p99()
             .map(|d| format!("{:.1}", d.as_millis()))
             .unwrap_or("-".to_string());
         println!(
-            "{:<25} {:>10.1} {:>10} {:>10} {:>10.4}", 
+            "{:<25} {:>10.1} {:>10} {:>10} {:>10.4}",
             run.scenario,
             run.delivery.delivery_rate() * 100.0,
             p99_str,
@@ -337,44 +348,58 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             run.energy.mah_per_delivery
         );
     }
-    
+
     // Write detailed report
     let report_path = "hypha_rigorous_eval.json";
     let mut file = File::create(report_path)?;
     file.write_all(serde_json::to_string_pretty(&report)?.as_bytes())?;
     println!("\nDetailed report written to: {}", report_path);
-    
+
     // Critical analysis
     println!("\n================================");
     println!("CRITICAL ANALYSIS");
     println!("================================\n");
-    
+
     // Find scenarios that failed to meet targets
-    let failed_scenarios: Vec<_> = all_runs.iter()
+    let failed_scenarios: Vec<_> = all_runs
+        .iter()
         .filter(|r| r.delivery.delivery_rate() < 0.95)
         .collect();
-    
+
     if failed_scenarios.is_empty() {
         println!("All scenarios achieved >95% delivery rate.");
     } else {
-        println!("WARNING: {} scenarios below 95% delivery threshold:", failed_scenarios.len());
+        println!(
+            "WARNING: {} scenarios below 95% delivery threshold:",
+            failed_scenarios.len()
+        );
         for run in failed_scenarios {
-            println!("  - {}: {:.1}%", run.scenario, run.delivery.delivery_rate() * 100.0);
+            println!(
+                "  - {}: {:.1}%",
+                run.scenario,
+                run.delivery.delivery_rate() * 100.0
+            );
         }
     }
-    
+
     // Energy efficiency analysis
-    let high_energy_scenarios: Vec<_> = all_runs.iter()
+    let high_energy_scenarios: Vec<_> = all_runs
+        .iter()
         .filter(|r| r.energy.mah_per_delivery > 0.5)
         .collect();
-    
+
     if !high_energy_scenarios.is_empty() {
-        println!("\nWARNING: {} scenarios with high energy cost (>0.5 mAh/msg):", 
-                 high_energy_scenarios.len());
+        println!(
+            "\nWARNING: {} scenarios with high energy cost (>0.5 mAh/msg):",
+            high_energy_scenarios.len()
+        );
         for run in high_energy_scenarios {
-            println!("  - {}: {:.3} mAh/msg", run.scenario, run.energy.mah_per_delivery);
+            println!(
+                "  - {}: {:.3} mAh/msg",
+                run.scenario, run.energy.mah_per_delivery
+            );
         }
     }
-    
+
     Ok(())
 }

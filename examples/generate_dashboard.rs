@@ -3,24 +3,10 @@
 //! Runs all evaluation scenarios and generates a beautiful HTML dashboard
 //! with interactive charts.
 
-use hypha::mesh::{MeshConfig, TopicMesh, MeshControl};
-use serde::Serialize;
+use hypha::mesh::{MeshConfig, TopicMesh};
 use rand::prelude::*;
 use std::fs::File;
 use std::io::Write;
-
-#[derive(Serialize)]
-struct ChartData {
-    labels: Vec<String>,
-    datasets: Vec<Dataset>,
-}
-
-#[derive(Serialize)]
-struct Dataset {
-    label: String,
-    data: Vec<f32>,
-    color: String,
-}
 
 /// Simulate message propagation through mesh
 fn simulate_mesh_propagation(
@@ -33,16 +19,17 @@ fn simulate_mesh_propagation(
     let mut delivered = 0u32;
     let mut duplicates = 0u32;
     let node_count = meshes.len();
-    
+
     let targets = meshes[publisher_idx].get_forward_targets(true);
     let mut received: Vec<bool> = vec![false; node_count];
     received[publisher_idx] = true;
-    
-    let mut current_wave: Vec<usize> = targets.iter()
+
+    let mut current_wave: Vec<usize> = targets
+        .iter()
         .filter_map(|id| id.strip_prefix("node-").and_then(|s| s.parse().ok()))
         .filter(|&i| i < node_count)
         .collect();
-    
+
     let mut hop = 1;
     while !current_wave.is_empty() && hop < 10 {
         let mut next_wave = Vec::new();
@@ -50,18 +37,21 @@ fn simulate_mesh_propagation(
             if rng.gen::<f32>() < drop_prob {
                 continue;
             }
-            
+
             if received[idx] {
                 duplicates += 1;
                 continue;
             }
-            
+
             received[idx] = true;
             delivered += 1;
             meshes[idx].record_message(&format!("node-{}", publisher_idx), msg_id);
             let forwards = meshes[idx].get_forward_targets(false);
             for fwd in forwards {
-                if let Some(fwd_idx) = fwd.strip_prefix("node-").and_then(|s| s.parse::<usize>().ok()) {
+                if let Some(fwd_idx) = fwd
+                    .strip_prefix("node-")
+                    .and_then(|s| s.parse::<usize>().ok())
+                {
                     if fwd_idx < node_count {
                         next_wave.push(fwd_idx);
                     }
@@ -79,9 +69,13 @@ fn run_heartbeats(meshes: &mut [TopicMesh], count: u32) {
         for i in 0..meshes.len() {
             let controls = meshes[i].heartbeat();
             for (target_id, ctrl) in controls {
-                if let Some(target_idx) = target_id.strip_prefix("node-").and_then(|s| s.parse::<usize>().ok()) {
+                if let Some(target_idx) = target_id
+                    .strip_prefix("node-")
+                    .and_then(|s| s.parse::<usize>().ok())
+                {
                     if target_idx < meshes.len() {
-                        let response = meshes[target_idx].handle_control(&format!("node-{}", i), ctrl);
+                        let response =
+                            meshes[target_idx].handle_control(&format!("node-{}", i), ctrl);
                         if let Some(resp) = response {
                             meshes[i].handle_control(&target_id, resp);
                         }
@@ -104,16 +98,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for loss in [0, 10, 20, 30, 40, 50, 60, 70, 80, 90] {
         let loss_rate = loss as f32 / 100.0;
         percolation_labels.push(format!("{}%", loss));
-        
+
         percolation_fanout.push(1.0 - loss_rate);
 
         let node_count = 50;
         let mut meshes: Vec<TopicMesh> = (0..node_count)
             .map(|_| TopicMesh::new("hypha".to_string(), MeshConfig::default()))
             .collect();
-        for i in 0..node_count {
+        for (i, mesh) in meshes.iter_mut().enumerate() {
             for j in 0..node_count {
-                if i != j { meshes[i].add_peer(format!("node-{}", j), 0.8); }
+                if i != j {
+                    mesh.add_peer(format!("node-{}", j), 0.8);
+                }
             }
         }
         run_heartbeats(&mut meshes, 5);
@@ -121,11 +117,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut total_duplicates = 0u32;
         let msg_count = 20;
         for m in 0..msg_count {
-            let (d, dup) = simulate_mesh_propagation(&mut meshes, &format!("m-{}", m), 0, loss_rate);
+            let (d, dup) =
+                simulate_mesh_propagation(&mut meshes, &format!("m-{}", m), 0, loss_rate);
             total_delivered += d;
             total_duplicates += dup;
         }
-        percolation_gossip.push(total_delivered as f32 / (msg_count as f32 * (node_count - 1) as f32));
+        percolation_gossip
+            .push(total_delivered as f32 / (msg_count as f32 * (node_count - 1) as f32));
         redundancy_ratio.push(total_duplicates as f32 / total_delivered.max(1) as f32);
     }
 
@@ -139,16 +137,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for energy in [100, 80, 60, 40, 20, 10] {
         let energy_score = energy as f32 / 100.0;
         adaptive_labels.push(format!("{}%", energy));
-        
+
         let node_count = 30;
-        
+
         // Static
         let mut static_meshes: Vec<TopicMesh> = (0..node_count)
             .map(|_| TopicMesh::new("hypha".to_string(), MeshConfig::default()))
             .collect();
-        for i in 0..node_count {
+        for (i, mesh) in static_meshes.iter_mut().enumerate() {
             for j in 0..node_count {
-                if i != j { static_meshes[i].add_peer(format!("node-{}", j), energy_score); }
+                if i != j {
+                    mesh.add_peer(format!("node-{}", j), energy_score);
+                }
             }
         }
         run_heartbeats(&mut static_meshes, 5);
@@ -160,9 +160,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut adaptive_meshes: Vec<TopicMesh> = (0..node_count)
             .map(|_| TopicMesh::new("hypha".to_string(), MeshConfig::adaptive(energy_score)))
             .collect();
-        for i in 0..node_count {
+        for (i, mesh) in adaptive_meshes.iter_mut().enumerate() {
             for j in 0..node_count {
-                if i != j { adaptive_meshes[i].add_peer(format!("node-{}", j), energy_score); }
+                if i != j {
+                    mesh.add_peer(format!("node-{}", j), energy_score);
+                }
             }
         }
         run_heartbeats(&mut adaptive_meshes, 5);
@@ -171,7 +173,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         adaptive_energy.push(adaptive_meshes[0].mesh_size() as f32 * 10.0);
     }
 
-    let html = format!(r#"
+    let html = format!(
+        r#"
 <!DOCTYPE html>
 <html>
 <head>
@@ -311,16 +314,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     </script>
 </body>
 </html>
-    "#, 
-    percolation_labels = percolation_labels,
-    percolation_gossip = percolation_gossip,
-    percolation_fanout = percolation_fanout,
-    redundancy_ratio = redundancy_ratio,
-    adaptive_labels = adaptive_labels,
-    adaptive_delivery = adaptive_delivery,
-    static_delivery = static_delivery,
-    adaptive_energy = adaptive_energy,
-    static_energy = static_energy,
+    "#,
+        percolation_labels = percolation_labels,
+        percolation_gossip = percolation_gossip,
+        percolation_fanout = percolation_fanout,
+        redundancy_ratio = redundancy_ratio,
+        adaptive_labels = adaptive_labels,
+        adaptive_delivery = adaptive_delivery,
+        static_delivery = static_delivery,
+        adaptive_energy = adaptive_energy,
+        static_energy = static_energy,
     );
 
     let mut file = File::create("hypha_dashboard.html")?;

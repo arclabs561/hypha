@@ -1,6 +1,5 @@
-use hypha::{SporeNode, PowerMode};
+use hypha::SporeNode;
 use std::time::Duration;
-use turmoil;
 use tempfile::tempdir;
 
 #[test]
@@ -26,12 +25,12 @@ fn test_hypha_mycelium_world() {
     sim.host("spore-b", move || {
         let path = path_b.clone();
         async move {
-            let mut node = SporeNode::new(&path).unwrap();
-            
+            let node = SporeNode::new(&path).unwrap();
+
             // Artificial drain
             {
                 let mut state = node.physical_state.lock().unwrap();
-                state.voltage = 3.2; 
+                state.voltage = 3.2;
             }
 
             // Should be in Critical pulse

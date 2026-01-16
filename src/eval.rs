@@ -7,8 +7,8 @@
 //! - Energy Efficiency: mAh consumed per successful message delivery
 //! - Recovery Time: time to recover from fault injection
 
-use std::time::{Duration, Instant};
 use serde::{Deserialize, Serialize};
+use std::time::{Duration, Instant};
 
 /// Collected during a single evaluation run
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -53,10 +53,18 @@ impl DeliveryMetrics {
         Some(Duration::from_micros(sorted[idx]))
     }
 
-    pub fn p50(&self) -> Option<Duration> { self.percentile(50.0) }
-    pub fn p90(&self) -> Option<Duration> { self.percentile(90.0) }
-    pub fn p99(&self) -> Option<Duration> { self.percentile(99.0) }
-    pub fn p999(&self) -> Option<Duration> { self.percentile(99.9) }
+    pub fn p50(&self) -> Option<Duration> {
+        self.percentile(50.0)
+    }
+    pub fn p90(&self) -> Option<Duration> {
+        self.percentile(90.0)
+    }
+    pub fn p99(&self) -> Option<Duration> {
+        self.percentile(99.0)
+    }
+    pub fn p999(&self) -> Option<Duration> {
+        self.percentile(99.9)
+    }
 
     /// CDF: returns (latency_bucket_us, cumulative_fraction) pairs
     pub fn cdf(&self, buckets: usize) -> Vec<(u64, f64)> {
@@ -67,10 +75,10 @@ impl DeliveryMetrics {
         sorted.sort_unstable();
         let max = *sorted.last().unwrap();
         let step = (max / buckets as u64).max(1);
-        
+
         let mut result = Vec::with_capacity(buckets);
         let n = sorted.len() as f64;
-        
+
         for i in 0..buckets {
             let threshold = (i as u64 + 1) * step;
             let count = sorted.iter().filter(|&&x| x <= threshold).count();
@@ -111,7 +119,7 @@ impl EnergyMetrics {
         if mean == 0.0 {
             return 0.0;
         }
-        
+
         let mut sum_diff = 0.0;
         for &xi in &self.final_energy_scores {
             for &xj in &self.final_energy_scores {
@@ -144,10 +152,10 @@ impl ConsistencyMetrics {
         if total_messages == 0 || node_message_counts.is_empty() {
             return 0.0;
         }
-        
+
         let n = node_message_counts.len() as f64;
         let mut entropy = 0.0;
-        
+
         for &count in node_message_counts {
             // Probability that a randomly chosen message-node pair is this node
             let p = count as f64 / (total_messages as f64 * n);
@@ -162,7 +170,10 @@ impl ConsistencyMetrics {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum FaultType {
     /// Network partition between two groups
-    Partition { group_a: Vec<String>, group_b: Vec<String> },
+    Partition {
+        group_a: Vec<String>,
+        group_b: Vec<String>,
+    },
     /// Node crashes (stops responding)
     NodeCrash { node_ids: Vec<String> },
     /// Message degradation (drop probability)
@@ -302,8 +313,7 @@ impl MetricsCollector {
 
     /// Set expected deliveries based on message count and node count
     pub fn set_expected_deliveries(&mut self, node_count: usize) {
-        self.delivery.expected_deliveries = 
-            self.delivery.messages_published * node_count as u64;
+        self.delivery.expected_deliveries = self.delivery.messages_published * node_count as u64;
     }
 
     pub fn record_publish(&mut self, node_count: usize) {
@@ -328,16 +338,21 @@ impl MetricsCollector {
 
     pub fn record_fault(&mut self, fault: FaultType) {
         let elapsed = self.start_time.map(|s| s.elapsed()).unwrap_or_default();
-        self.fault_events.push(FaultEvent { time: elapsed, fault });
+        self.fault_events.push(FaultEvent {
+            time: elapsed,
+            fault,
+        });
     }
 
     pub fn finalize(self, scenario: &EvalScenario, mah_consumed: f32) -> EvalRun {
-        let final_scores = self.energy_samples.last()
+        let final_scores = self
+            .energy_samples
+            .last()
             .map(|(_, s)| s.clone())
             .unwrap_or_default();
-        
+
         let nodes_exhausted = final_scores.iter().filter(|&&s| s < 0.1).count();
-        
+
         let mah_per_delivery = if self.delivery.messages_delivered > 0 {
             mah_consumed / self.delivery.messages_delivered as f32
         } else {
@@ -345,13 +360,19 @@ impl MetricsCollector {
         };
 
         // Find convergence time (first time divergence hit 0)
-        let convergence_time = self.consistency_samples.iter()
+        let convergence_time = self
+            .consistency_samples
+            .iter()
             .find(|(_, div)| *div == 0)
             .map(|(t, _)| *t);
 
         // Calculate final entropy
         let final_entropy = if let Some((_, last_div)) = self.consistency_samples.last() {
-            if *last_div == 0 { 0.0 } else { (*last_div as f64).ln() }
+            if *last_div == 0 {
+                0.0
+            } else {
+                (*last_div as f64).ln()
+            }
         } else {
             0.0
         };
@@ -370,7 +391,12 @@ impl MetricsCollector {
             consistency: ConsistencyMetrics {
                 convergence_time,
                 reconciliation_rounds: self.consistency_samples.len() as u32,
-                max_divergence: self.consistency_samples.iter().map(|(_, d)| *d).max().unwrap_or(0),
+                max_divergence: self
+                    .consistency_samples
+                    .iter()
+                    .map(|(_, d)| *d)
+                    .max()
+                    .unwrap_or(0),
                 final_entropy,
             },
             fault_events: self.fault_events,
@@ -402,27 +428,33 @@ impl EvalSummary {
 
         let delivery_rates: Vec<f64> = runs.iter().map(|r| r.delivery.delivery_rate()).collect();
         let delivery_rate_mean = delivery_rates.iter().sum::<f64>() / n;
-        let delivery_rate_std = (delivery_rates.iter()
+        let delivery_rate_std = (delivery_rates
+            .iter()
             .map(|r| (r - delivery_rate_mean).powi(2))
-            .sum::<f64>() / n)
+            .sum::<f64>()
+            / n)
             .sqrt();
 
-        let p99s: Vec<f64> = runs.iter()
+        let p99s: Vec<f64> = runs
+            .iter()
             .filter_map(|r| r.delivery.p99())
             .map(|d| d.as_micros() as f64)
             .collect();
-        let p99_latency_mean_us = if p99s.is_empty() { 0.0 } else {
+        let p99_latency_mean_us = if p99s.is_empty() {
+            0.0
+        } else {
             p99s.iter().sum::<f64>() / p99s.len() as f64
         };
 
-        let convergence_rate = runs.iter()
-            .filter(|r| r.consistency.converged())
-            .count() as f64 / n;
+        let convergence_rate = runs.iter().filter(|r| r.consistency.converged()).count() as f64 / n;
 
         let efficiencies: Vec<f32> = runs.iter().map(|r| r.energy.efficiency_ratio()).collect();
         let energy_efficiency_mean = efficiencies.iter().sum::<f32>() / n as f32;
 
-        let exhausted: Vec<f64> = runs.iter().map(|r| r.energy.nodes_exhausted as f64).collect();
+        let exhausted: Vec<f64> = runs
+            .iter()
+            .map(|r| r.energy.nodes_exhausted as f64)
+            .collect();
         let nodes_exhausted_mean = exhausted.iter().sum::<f64>() / n;
 
         Some(Self {
@@ -444,39 +476,44 @@ mod tests {
 
     #[test]
     fn test_percentile_calculation() {
-        let mut metrics = DeliveryMetrics::default();
         // 100 samples from 1000us to 100000us
-        metrics.latencies_us = (1..=100).map(|i| i * 1000).collect();
-        
+        let metrics = DeliveryMetrics {
+            latencies_us: (1..=100).map(|i| i * 1000).collect(),
+            ..Default::default()
+        };
+
         // p50 is at index 50, which is 51000 (1-indexed values)
         let p50 = metrics.p50().unwrap().as_micros();
-        assert!(p50 >= 49000 && p50 <= 52000, "p50 was {}", p50);
-        
+        assert!((49_000..=52_000).contains(&p50), "p50 was {}", p50);
+
         let p90 = metrics.p90().unwrap().as_micros();
-        assert!(p90 >= 89000 && p90 <= 92000, "p90 was {}", p90);
-        
+        assert!((89_000..=92_000).contains(&p90), "p90 was {}", p90);
+
         let p99 = metrics.p99().unwrap().as_micros();
-        assert!(p99 >= 98000 && p99 <= 100000, "p99 was {}", p99);
+        assert!((98_000..=100_000).contains(&p99), "p99 was {}", p99);
     }
 
     #[test]
     fn test_delivery_rate() {
-        let mut metrics = DeliveryMetrics::default();
-        metrics.expected_deliveries = 100;  // Must set expected deliveries
-        metrics.messages_delivered = 95;
-        
+        let metrics = DeliveryMetrics {
+            expected_deliveries: 100, // Must set expected deliveries
+            messages_delivered: 95,
+            ..Default::default()
+        };
+
         let rate = metrics.delivery_rate();
         assert!((rate - 0.95).abs() < 0.001, "rate was {}", rate);
     }
 
     #[test]
     fn test_energy_gini() {
-        let mut metrics = EnergyMetrics::default();
-        
         // Perfect equality
-        metrics.final_energy_scores = vec![0.5, 0.5, 0.5, 0.5];
+        let mut metrics = EnergyMetrics {
+            final_energy_scores: vec![0.5, 0.5, 0.5, 0.5],
+            ..Default::default()
+        };
         assert!(metrics.energy_gini() < 0.01);
-        
+
         // Maximum inequality (one node has everything)
         metrics.final_energy_scores = vec![0.0, 0.0, 0.0, 1.0];
         assert!(metrics.energy_gini() > 0.5);

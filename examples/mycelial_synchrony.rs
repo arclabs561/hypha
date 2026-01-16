@@ -1,3 +1,5 @@
+#![allow(clippy::needless_range_loop)]
+
 //! Mycelial Synchrony & Pressure-Aware Routing Experiment
 //!
 //! Tests:
@@ -48,19 +50,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // 1. Synchrony: Nodes align pulse with neighbors
         for i in 0..node_count {
             meshes[i].tick_pulse(0.01); // Global time advancement
-            
+
             // Collect neighbor phases
-            let neighbors: Vec<(f32, f32)> = meshes[i].known_peers.iter()
+            let neighbors: Vec<(f32, f32)> = meshes[i]
+                .known_peers
+                .iter()
                 .filter_map(|(id, _)| {
-                    let idx = id.strip_prefix("node-").and_then(|s| s.parse::<usize>().ok())?;
+                    let idx = id
+                        .strip_prefix("node-")
+                        .and_then(|s| s.parse::<usize>().ok())?;
                     if idx < node_count {
-                        Some((meshes[idx].pulse_phase, meshes[idx].known_peers.get(&format!("node-{}", i))?.energy_score))
+                        Some((
+                            meshes[idx].pulse_phase,
+                            meshes[idx]
+                                .known_peers
+                                .get(&format!("node-{}", i))?
+                                .energy_score,
+                        ))
                     } else {
                         None
                     }
                 })
                 .collect();
-            
+
             for (phase, energy) in neighbors {
                 // Align more strongly with high-energy neighbors
                 meshes[i].align_pulse(phase, 0.1 * energy);
@@ -79,9 +91,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         for i in 0..node_count {
             let current_pressure = meshes[i].local_pressure;
             // Pressure increases with backlog, decreases with processing
-            let new_pressure = (current_pressure * 0.9 + (meshes[i].message_cache.len() as f32 * 0.01)).min(10.0);
+            let new_pressure =
+                (current_pressure * 0.9 + (meshes[i].message_cache.len() as f32 * 0.01)).min(10.0);
             meshes[i].set_pressure(new_pressure);
-            
+
             // Share pressure with neighbors
             let my_id = format!("node-{}", i);
             for j in 0..node_count {
@@ -101,8 +114,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Metrics
         let phases: Vec<f32> = meshes.iter().map(|m| m.pulse_phase).collect();
         let avg_phase = phases.iter().sum::<f32>() / node_count as f32;
-        let phase_variance = phases.iter().map(|&p| (p - avg_phase).powi(2)).sum::<f32>() / node_count as f32;
-        let avg_conductivity = meshes[0].known_peers.values().map(|p| p.conductivity).sum::<f32>() / meshes[0].known_peers.len() as f32;
+        let phase_variance =
+            phases.iter().map(|&p| (p - avg_phase).powi(2)).sum::<f32>() / node_count as f32;
+        let avg_conductivity = meshes[0]
+            .known_peers
+            .values()
+            .map(|p| p.conductivity)
+            .sum::<f32>()
+            / meshes[0].known_peers.len() as f32;
         let avg_pressure = meshes.iter().map(|m| m.local_pressure).sum::<f32>() / node_count as f32;
 
         history.push(SynchronyResult {
@@ -111,11 +130,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             phase_variance,
             avg_conductivity,
             avg_pressure,
-            delivery_rate: total_delivered as f32 / (messages_published.max(1) as usize * (node_count - 1)) as f32,
+            delivery_rate: total_delivered as f32
+                / (messages_published.max(1) as usize * (node_count - 1)) as f32,
         });
 
         if tick % 50 == 0 {
-            println!("Tick {}: Variance={:.4}, Avg Pressure={:.4}", tick, phase_variance, avg_pressure);
+            println!(
+                "Tick {}: Variance={:.4}, Avg Pressure={:.4}",
+                tick, phase_variance, avg_pressure
+            );
         }
     }
 
@@ -142,15 +165,25 @@ fn simulate_sync_propagation(meshes: &mut [TopicMesh], msg_id: &str, publisher_i
         let mut next_wave = Vec::new();
         for &idx in &current_wave {
             // Get all neighbors
-            let neighbors: Vec<usize> = meshes[idx].known_peers.keys()
-                .filter_map(|id| id.strip_prefix("node-").and_then(|s| s.parse::<usize>().ok()))
+            let neighbors: Vec<usize> = meshes[idx]
+                .known_peers
+                .keys()
+                .filter_map(|id| {
+                    id.strip_prefix("node-")
+                        .and_then(|s| s.parse::<usize>().ok())
+                })
                 .filter(|&i| i < node_count && !received[i])
                 .collect();
-            
+
             // Choose targets with bias toward low pressure
             let mut targets = neighbors;
-            targets.sort_by(|&a, &b| meshes[a].local_pressure.partial_cmp(&meshes[b].local_pressure).unwrap());
-            
+            targets.sort_by(|&a, &b| {
+                meshes[a]
+                    .local_pressure
+                    .partial_cmp(&meshes[b].local_pressure)
+                    .unwrap()
+            });
+
             // Forward to top 3 best neighbors
             for &t in targets.iter().take(3) {
                 received[t] = true;
@@ -160,7 +193,9 @@ fn simulate_sync_propagation(meshes: &mut [TopicMesh], msg_id: &str, publisher_i
             }
         }
         current_wave = next_wave;
-        if current_wave.is_empty() { break; }
+        if current_wave.is_empty() {
+            break;
+        }
     }
     delivered
 }
@@ -171,7 +206,8 @@ fn generate_sync_dashboard(history: &[SynchronyResult]) -> Result<(), Box<dyn st
     let pressures: Vec<f32> = history.iter().map(|r| r.avg_pressure).collect();
     let conductivities: Vec<f32> = history.iter().map(|r| r.avg_conductivity).collect();
 
-    let html = format!(r#"
+    let html = format!(
+        r#"
 <!DOCTYPE html>
 <html>
 <head>
@@ -238,10 +274,10 @@ fn generate_sync_dashboard(history: &[SynchronyResult]) -> Result<(), Box<dyn st
 </body>
 </html>
     "#,
-    ticks = ticks,
-    variances = variances,
-    pressures = pressures,
-    conductivities = conductivities,
+        ticks = ticks,
+        variances = variances,
+        pressures = pressures,
+        conductivities = conductivities,
     );
 
     let mut file = File::create("hypha_sync_dashboard.html")?;

@@ -1,27 +1,23 @@
-use libp2p::{
-    futures::StreamExt,
-    gossipsub, noise, swarm::NetworkBehaviour, swarm::SwarmEvent, tcp, yamux, PeerId,
-};
+use ed25519_dalek::SigningKey;
+use fjall::{Database, Keyspace, KeyspaceCreateOptions};
+use libp2p::{futures::StreamExt, gossipsub, swarm::SwarmEvent, PeerId};
+use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tracing::info;
-use fjall::{Database, Keyspace, KeyspaceCreateOptions};
-use rand::rngs::OsRng;
-use ed25519_dalek::SigningKey;
-use std::sync::{Arc, Mutex};
 
+pub mod capabilities;
 pub mod eval;
 pub mod mesh;
 pub mod mycelium;
-pub mod capabilities;
 
-use crate::mesh::{TopicMesh, MeshConfig, MeshControl};
 use crate::eval::MetricsCollector;
+use crate::mesh::{MeshConfig, MeshControl, TopicMesh};
 use crate::mycelium::{Mycelium, MyceliumEvent, Spike};
-use crate::capabilities::{HyphaScope, HyphaAbility, HyphaSemantics};
-use ucan::Ucan;
-use std::str::FromStr;
+// NOTE: UCAN semantics types exist in `capabilities.rs` but aren't wired into
+// runtime validation yet. Keep them local there until used to avoid churn.
 
 /// The physical state of a node in the simulated world
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -42,9 +38,9 @@ pub enum PowerMode {
 /// High-level capability of a spore (The agentic layer)
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum Capability {
-    Compute(u32),    
-    Storage(u64),    
-    Sensing(String), 
+    Compute(u32),
+    Storage(u64),
+    Sensing(String),
 }
 
 /// A "Virtual Pheromone" used for bio-inspired energy gradients
@@ -87,7 +83,11 @@ impl Task {
     pub fn diffuse(&self, conductivity: f32, neighbor_energy: f32, neighbor_pressure: f32) -> f32 {
         let pressure_factor = 1.0 - (neighbor_pressure.min(10.0) / 10.0);
         // More liberal diffusion to ensure reach
-        self.pheromone_intensity * conductivity.min(3.0) * (neighbor_energy + 0.2).min(1.0) * (pressure_factor + 0.1).min(1.0) * 0.9
+        self.pheromone_intensity
+            * conductivity.min(3.0)
+            * (neighbor_energy + 0.2).min(1.0)
+            * (pressure_factor + 0.1).min(1.0)
+            * 0.9
     }
 }
 
@@ -111,9 +111,15 @@ pub struct BasicSensor {
 }
 
 impl VirtualSensor for BasicSensor {
-    fn name(&self) -> &str { &self.name }
-    fn read(&self) -> f32 { self.last_value }
-    fn update_from_mesh(&mut self, value: f32) { self.last_value = value; }
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn read(&self) -> f32 {
+        self.last_value
+    }
+    fn update_from_mesh(&mut self, value: f32) {
+        self.last_value = value;
+    }
 }
 
 pub struct SporeNode {
@@ -134,7 +140,7 @@ impl SporeNode {
     pub fn new(storage_path: &std::path::Path) -> Result<Self, Box<dyn Error>> {
         let storage = Database::builder(storage_path).open()?;
         let db = storage.keyspace("hypha_state", KeyspaceCreateOptions::default)?;
-        
+
         // Recover "Soul" (Identity) from LSM-tree
         let signing_key = if let Some(bytes) = db.get("spore_soul")? {
             SigningKey::from_bytes(bytes.as_ref().try_into()?)
@@ -144,16 +150,21 @@ impl SporeNode {
             key
         };
 
-        let peer_id = PeerId::from_public_key(&libp2p::identity::Keypair::ed25519_from_bytes(signing_key.to_bytes())?.public());
+        let peer_id = PeerId::from_public_key(
+            &libp2p::identity::Keypair::ed25519_from_bytes(signing_key.to_bytes())?.public(),
+        );
 
         let physical_state = Arc::new(Mutex::new(PhysicalState {
-            voltage: 4.2, 
+            voltage: 4.2,
             mah_remaining: 2500.0,
             temp_celsius: 25.0,
             is_mains_powered: false,
         }));
 
-        let mesh = Arc::new(Mutex::new(TopicMesh::new("hypha".to_string(), MeshConfig::default())));
+        let mesh = Arc::new(Mutex::new(TopicMesh::new(
+            "hypha".to_string(),
+            MeshConfig::default(),
+        )));
         let metrics = Arc::new(Mutex::new(MetricsCollector::new()));
 
         Ok(Self {
@@ -214,13 +225,14 @@ impl SporeNode {
     /// Quorum-Sensing Auction: Only bid if energy is abundant or few others are bidding
     pub fn evaluate_task(&self, task: &Task, known_bids: usize) -> Option<Bid> {
         let score = self.energy_score();
-        
+
         // Quorum Logic: If 3+ healthy nodes are already bidding, small spores stay silent
         if known_bids >= 3 && score < 0.8 {
             return None;
         }
 
-        if score < 0.2 { // Critical threshold
+        if score < 0.2 {
+            // Critical threshold
             return None;
         }
 
@@ -239,11 +251,11 @@ impl SporeNode {
     pub fn heartbeat_interval(&self) -> Duration {
         let score = self.energy_score();
         if score < 0.2 {
-            Duration::from_secs(60) 
+            Duration::from_secs(60)
         } else if score < 0.5 {
-            Duration::from_secs(10) 
+            Duration::from_secs(10)
         } else {
-            Duration::from_secs(1)  
+            Duration::from_secs(1)
         }
     }
 
@@ -277,9 +289,12 @@ impl SporeNode {
 
     /// Get all message IDs (for delta computation)
     pub fn message_ids(&self) -> Vec<String> {
-        self.db.prefix("msg_")
+        self.db
+            .prefix("msg_")
             .filter_map(|item| {
-                item.key().ok().map(|k| String::from_utf8_lossy(&k).to_string())
+                item.key()
+                    .ok()
+                    .map(|k| String::from_utf8_lossy(&k).to_string())
             })
             .collect()
     }
@@ -292,7 +307,7 @@ impl SporeNode {
     }
 
     /// Validate UCAN token for a task
-    pub fn validate_ucan(&self, token: &str, required_cap: &Capability) -> bool {
+    pub fn validate_ucan(&self, token: &str, _required_cap: &Capability) -> bool {
         // In a real implementation:
         // 1. Parse token using Ucan::try_from(token)
         // 2. Validate signature against issuer DID
@@ -302,12 +317,12 @@ impl SporeNode {
         if token.is_empty() {
             return false;
         }
-        
+
         // Mock validation: "auth-valid" token is always valid
         if token.contains("auth-valid") {
             return true;
         }
-        
+
         false
     }
 
@@ -328,7 +343,8 @@ impl SporeNode {
         }
 
         // CBBA-inspired: Only bid if our score beats the current best known bid
-        let best_bid = known_bids.iter()
+        let best_bid = known_bids
+            .iter()
             .filter(|b| b.task_id == task.id)
             .max_by(|a, b| a.energy_score.partial_cmp(&b.energy_score).unwrap());
 
@@ -374,7 +390,7 @@ impl SporeNode {
                         source_id: self.peer_id.to_string(),
                         energy_score: energy,
                     };
-                    
+
                     let phase = {
                         let mut mesh = self.mesh.lock().unwrap();
                         mesh.tick_pulse(0.05); // Faster pulse for simulation
@@ -387,7 +403,7 @@ impl SporeNode {
                             mycelium.pheromone_topic.clone(),
                             serde_json::to_vec(&p)?,
                         );
-                        
+
                         // 2. Mesh Heartbeat & Adaptation
                         let (controls, _stats) = {
                             let mut mesh = self.mesh.lock().unwrap();
@@ -402,7 +418,7 @@ impl SporeNode {
                             );
                         }
                     }
-                    
+
                     // Update pressure based on local stats
                     {
                         let mut mesh = self.mesh.lock().unwrap();
@@ -413,20 +429,20 @@ impl SporeNode {
                     // Adjust local heartbeat dynamically
                     heartbeat = tokio::time::interval(self.heartbeat_interval());
                 }
-                event = mycelium.swarm.select_next_some() => match event {
-                    SwarmEvent::Behaviour(MyceliumEvent::Gossipsub(gossipsub::Event::Message {
+                event = mycelium.swarm.select_next_some() => {
+                    if let SwarmEvent::Behaviour(MyceliumEvent::Gossipsub(gossipsub::Event::Message {
                         propagation_source: source_peer_id,
                         message_id: id,
                         message,
-                    })) => {
+                    })) = event {
                         let energy = self.energy_score();
-                        self.metrics.lock().unwrap().record_delivery(Duration::from_millis(50)); 
+                        self.metrics.lock().unwrap().record_delivery(Duration::from_millis(50));
 
                         if message.topic == mycelium.pheromone_topic.hash() {
                             let p: EnergyPheromone = serde_json::from_slice(&message.data)?;
                             let mut mesh = self.mesh.lock().unwrap();
                             mesh.update_peer_score(&source_peer_id.to_string(), p.energy_score);
-                            
+
                             if p.energy_score > energy + 0.3 {
                                 info!(peer_id = %self.peer_id, "Sensing high-energy neighbor {}, moving to passive sync", p.source_id);
                             }
@@ -456,14 +472,13 @@ impl SporeNode {
                         } else {
                             let key = format!("msg_{}", id);
                             let _ = self.db.insert(key, &message.data);
-                            
+
                             let mut mesh = self.mesh.lock().unwrap();
                             mesh.record_message(&source_peer_id.to_string(), &id.to_string());
-                            
+
                             info!(%source_peer_id, %id, "Message integrated into Mycelial memory");
                         }
                     }
-                    _ => {}
                 }
             }
         }
@@ -473,7 +488,6 @@ impl SporeNode {
 #[cfg(test)]
 mod eval_suite {
     use super::*;
-    use turmoil;
     use tempfile::tempdir;
 
     #[test]
@@ -498,7 +512,10 @@ mod eval_suite {
         let mut state = node.physical_state.lock().unwrap();
         state.voltage = 3.6; // Low battery
         drop(state);
-        
-        assert!(node.evaluate_task(&task, 5).is_none(), "Should stay silent due to quorum");
+
+        assert!(
+            node.evaluate_task(&task, 5).is_none(),
+            "Should stay silent due to quorum"
+        );
     }
 }

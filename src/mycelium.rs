@@ -1,14 +1,13 @@
 //! Mycelium Layer: The bio-inspired networking fabric of Hypha.
 //!
-//! Separates the network behavior (GossipSub, bio-inspired mesh) from the 
+//! Separates the network behavior (GossipSub, bio-inspired mesh) from the
 //! agentic Spore logic.
 
+use crate::eval::MetricsCollector;
+use crate::mesh::TopicMesh;
 use libp2p::{gossipsub, noise, swarm::NetworkBehaviour, tcp, yamux, PeerId, Swarm};
 use std::error::Error;
 use std::sync::{Arc, Mutex};
-use crate::mesh::{TopicMesh, MeshConfig, MeshControl};
-use crate::eval::MetricsCollector;
-use tracing::info;
 
 #[derive(NetworkBehaviour)]
 #[behaviour(to_swarm = "MyceliumEvent")]
@@ -31,7 +30,7 @@ impl From<gossipsub::Event> for MyceliumEvent {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Spike {
     pub source: String,
-    pub intensity: u8, // 0-255
+    pub intensity: u8,  // 0-255
     pub pattern_id: u8, // vocabulary index
 }
 
@@ -47,9 +46,9 @@ pub struct Mycelium {
 
 impl Mycelium {
     pub fn new(
-        peer_id: PeerId, 
-        mesh: Arc<Mutex<TopicMesh>>, 
-        metrics: Arc<Mutex<MetricsCollector>>
+        _peer_id: PeerId,
+        mesh: Arc<Mutex<TopicMesh>>,
+        metrics: Arc<Mutex<MetricsCollector>>,
     ) -> Result<Self, Box<dyn Error>> {
         let swarm = libp2p::SwarmBuilder::with_new_identity()
             .with_tokio()
@@ -89,10 +88,22 @@ impl Mycelium {
     }
 
     pub fn subscribe_all(&mut self) -> Result<(), Box<dyn Error>> {
-        self.swarm.behaviour_mut().gossipsub.subscribe(&self.pheromone_topic)?;
-        self.swarm.behaviour_mut().gossipsub.subscribe(&self.control_topic)?;
-        self.swarm.behaviour_mut().gossipsub.subscribe(&self.task_topic)?;
-        self.swarm.behaviour_mut().gossipsub.subscribe(&self.spike_topic)?;
+        self.swarm
+            .behaviour_mut()
+            .gossipsub
+            .subscribe(&self.pheromone_topic)?;
+        self.swarm
+            .behaviour_mut()
+            .gossipsub
+            .subscribe(&self.control_topic)?;
+        self.swarm
+            .behaviour_mut()
+            .gossipsub
+            .subscribe(&self.task_topic)?;
+        self.swarm
+            .behaviour_mut()
+            .gossipsub
+            .subscribe(&self.spike_topic)?;
         Ok(())
     }
 }

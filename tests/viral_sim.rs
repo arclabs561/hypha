@@ -1,6 +1,5 @@
-use hypha::{SporeNode, PowerMode};
+use hypha::{PowerMode, SporeNode};
 use std::time::Duration;
-use turmoil;
 use tempfile::tempdir;
 
 #[test]
@@ -16,13 +15,12 @@ fn test_viral_propagation_under_drain() {
         paths.push(p);
     }
 
-    for i in 0..num_nodes {
-        let path = paths[i].clone();
+    for (i, path) in paths.iter().cloned().enumerate() {
         sim.host(format!("node-{}", i), move || {
             let path = path.clone();
             async move {
                 let mut node = SporeNode::new(&path).unwrap();
-                
+
                 // Simulation: Node 0 starts with Normal power, Node 4 starts with Critical
                 if i == 4 {
                     node.set_power_mode(PowerMode::Critical);
