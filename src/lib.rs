@@ -43,9 +43,9 @@ pub enum Capability {
     Sensing(String),
 }
 
-/// A "Virtual Pheromone" used for bio-inspired energy gradients
+/// Energy status advertisement for gradient-based routing
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EnergyPheromone {
+pub struct EnergyStatus {
     pub source_id: String,
     pub energy_score: f32, // 0.0 (dead) to 1.0 (mains/full)
 }
@@ -55,8 +55,8 @@ pub struct Task {
     pub id: String,
     pub required_capability: Capability,
     pub priority: u8,
-    /// Bio-inspired pheromone intensity (diffuses through mesh)
-    pub pheromone_intensity: f32,
+    /// Reach intensity (diffuses through mesh)
+    pub reach_intensity: f32,
     pub source_id: String,
     /// UCAN Authorization token (not a JWT).
     pub auth_token: Option<String>,
@@ -68,7 +68,7 @@ impl Task {
             id,
             required_capability: cap,
             priority,
-            pheromone_intensity: 1.0,
+            reach_intensity: 1.0,
             source_id,
             auth_token: None,
         }
@@ -79,11 +79,11 @@ impl Task {
         self
     }
 
-    /// Diffuse pheromone to a neighbor
+    /// Diffuse reach to a neighbor
     pub fn diffuse(&self, conductivity: f32, neighbor_energy: f32, neighbor_pressure: f32) -> f32 {
         let pressure_factor = 1.0 - (neighbor_pressure.min(10.0) / 10.0);
         // More liberal diffusion to ensure reach
-        self.pheromone_intensity
+        self.reach_intensity
             * conductivity.min(3.0)
             * (neighbor_energy + 0.2).min(1.0)
             * (pressure_factor + 0.1).min(1.0)
@@ -141,12 +141,12 @@ impl SporeNode {
         let storage = Database::builder(storage_path).open()?;
         let db = storage.keyspace("hypha_state", KeyspaceCreateOptions::default)?;
 
-        // Recover "Soul" (Identity) from LSM-tree
-        let signing_key = if let Some(bytes) = db.get("spore_soul")? {
+        // Recover Node Identity from storage
+        let signing_key = if let Some(bytes) = db.get("node_identity_key")? {
             SigningKey::from_bytes(bytes.as_ref().try_into()?)
         } else {
             let key = SigningKey::generate(&mut OsRng);
-            db.insert("spore_soul", key.to_bytes())?;
+            db.insert("node_identity_key", key.to_bytes())?;
             key
         };
 
@@ -327,7 +327,7 @@ impl SporeNode {
         false
     }
 
-    /// Bio-inspired Emergent Auctioning: Uses pheromone diffusion and local consensus
+    /// Bio-inspired Emergent Auctioning: Uses reach diffusion and local consensus
     pub fn process_task_bundle(&self, task: &Task, known_bids: &mut Vec<Bid>) -> Option<Bid> {
         let score = self.energy_score();
         let my_id = self.peer_id.to_string();
@@ -355,8 +355,8 @@ impl SporeNode {
             }
         }
 
-        // Nutrient Reach Check: If pheromone intensity is too low, we can't "see" the task
-        if task.pheromone_intensity < 0.1 {
+        // Nutrient Reach Check: If reach intensity is too low, we can't "see" the task
+        if task.reach_intensity < 0.1 {
             return None;
         }
 
@@ -364,7 +364,7 @@ impl SporeNode {
             let bid = Bid {
                 task_id: task.id.clone(),
                 bidder_id: my_id,
-                energy_score: score * task.pheromone_intensity,
+                energy_score: score * task.reach_intensity,
                 cost_mah: 50.0,
             };
             known_bids.push(bid.clone());
@@ -392,9 +392,9 @@ impl SporeNode {
         loop {
             tokio::select! {
                 _ = heartbeat.tick() => {
-                    // 1. Bio-inspired Energy Pulse
+                    // 1. Energy Status Advertisement
                     let energy = self.energy_score();
-                    let p = EnergyPheromone {
+                    let p = EnergyStatus {
                         source_id: self.peer_id.to_string(),
                         energy_score: energy,
                     };
@@ -405,10 +405,10 @@ impl SporeNode {
                         mesh.pulse_phase
                     };
 
-                    // Pulse-Gating: Only publish pheromones/heartbeats at pulse peak
+                    // Pulse-Gating: Only publish status/heartbeats at pulse peak
                     if phase > 0.8 {
                         let _ = mycelium.swarm.behaviour_mut().gossipsub.publish(
-                            mycelium.pheromone_topic.clone(),
+                            mycelium.status_topic.clone(),
                             serde_json::to_vec(&p)?,
                         );
 
@@ -446,8 +446,8 @@ impl SporeNode {
                         let energy = self.energy_score();
                         self.metrics.lock().unwrap().record_delivery(Duration::from_millis(50));
 
-                        if message.topic == mycelium.pheromone_topic.hash() {
-                            let p: EnergyPheromone = serde_json::from_slice(&message.data)?;
+                        if message.topic == mycelium.status_topic.hash() {
+                            let p: EnergyStatus = serde_json::from_slice(&message.data)?;
                             let mut mesh = self.mesh.lock().unwrap();
                             mesh.update_peer_score(&source_peer_id.to_string(), p.energy_score);
 
@@ -467,9 +467,9 @@ impl SporeNode {
                             }
                         } else if message.topic == mycelium.task_topic.hash() {
                             let task: Task = serde_json::from_slice(&message.data)?;
-                            info!(%id, task_id = %task.id, "Nutrient (Task) detected in mycelium");
+                            info!(%id, task_id = %task.id, "Task detected in network");
                         } else if message.topic == mycelium.spike_topic.hash() {
-                            // Fungal Spiking: High-speed alert system
+                            // High-speed alert system
                             if let Ok(spike) = serde_json::from_slice::<Spike>(&message.data) {
                                 if spike.intensity > 200 {
                                     info!(peer_id = %self.peer_id, "RECEIVED DANGER SPIKE from {}", spike.source);
@@ -484,7 +484,7 @@ impl SporeNode {
                             let mut mesh = self.mesh.lock().unwrap();
                             mesh.record_message(&source_peer_id.to_string(), &id.to_string());
 
-                            info!(%source_peer_id, %id, "Message integrated into Mycelial memory");
+                            info!(%source_peer_id, %id, "Message persisted");
                         }
                     }
                 }
@@ -508,7 +508,7 @@ mod eval_suite {
             id: "compute-task".to_string(),
             required_capability: Capability::Compute(100),
             priority: 1,
-            pheromone_intensity: 1.0,
+            reach_intensity: 1.0,
             source_id: "test-source".to_string(),
             auth_token: None,
         };

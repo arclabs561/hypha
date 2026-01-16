@@ -2,9 +2,9 @@ name: ci
 
 on:
   push:
-    branches: ["master"]
+    branches: ["main"]
   pull_request:
-    branches: ["master"]
+    branches: ["main"]
 
 permissions:
   contents: read
@@ -19,17 +19,20 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
+          toolchain: 1.80 # Match rust-version
           components: rustfmt, clippy
 
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
 
-      - name: fmt
+      - name: Check
+        run: cargo check --all-targets
+
+      - name: Fmt
         run: cargo fmt --check
 
-      - name: clippy
+      - name: Clippy
         run: cargo clippy --all-targets -- -D warnings
 
-      - name: test
+      - name: Test
         run: cargo test --all-targets
-

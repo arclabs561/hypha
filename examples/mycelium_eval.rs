@@ -44,7 +44,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             id: "viral-task".to_string(),
             required_capability: Capability::Compute(100),
             priority: 1,
-            pheromone_intensity: 1.0,
+            reach_intensity: 1.0,
             source_id: "test-source".to_string(),
             auth_token: None,
         };

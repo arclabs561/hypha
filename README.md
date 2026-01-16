@@ -2,36 +2,36 @@
 
 `hypha` is a Rust-based P2P coordination prototype focused on:
 
-- persistent node identity + local state
-- mesh maintenance experiments (graft/prune, scoring, backoff)
-- power-aware behavior hooks (heartbeat pacing, bidding heuristics)
+- Persistent node identity + local state (LSM-tree)
+- Power-aware mesh maintenance (graft/prune, scoring, backoff)
+- Adaptive heartbeat pacing and bidding heuristics
 
-## Core Architecture: The Spore Model
+## Architecture
 
 Nodes in `hypha` are "Spores"—autonomous units of persistence, networking, and agency.
 
-### 1. Mycelial Memory (`fjall`)
-Uses an LSM-tree for local state persistence. This is critical for Raspberry Pi/DIY hardware to minimize SD card wear during high-frequency gossip updates.
+### 1. Persistence (`fjall`)
+Uses an LSM-tree for local state persistence. Critical for Raspberry Pi/DIY hardware to minimize SD card wear during high-frequency gossip updates.
 
-### 2. Agentic Capabilities
-Nodes register what they can do (Compute, Storage, Sensing). 
+### 2. Capabilities & Power
+Nodes register capabilities (Compute, Storage, Sensing).
 - **Power-Aware Bidding**: Nodes evaluate tasks and only bid if they have the required energy (mAh) and voltage stability.
-- **Sovereign Agency (prototype)**: UCAN/capability types exist, but task authorization is currently a stub and **not security**.
+- **Agency**: UCAN/capability types exist (prototype).
 
 ### 3. Virtual Sensors
-A trait-based sensor system allows nodes to treat gossip messages from neighbors as local "Virtual Sensors." This enables privacy-preserving sensor fusion (e.g., mmWave + Audio) across the mesh.
+A trait-based sensor system allows nodes to treat gossip messages from neighbors as local "Virtual Sensors." Enables sensor fusion (e.g., mmWave + Audio) across the mesh.
 
 ### 4. Adaptive Pulse
-Heartbeat intervals stretch dynamically from **1s to 60s** based on real-time `PhysicalState` modeling.
+Heartbeat intervals stretch dynamically from **1s to 60s** based on real-time `PhysicalState` modeling (voltage, drain).
 
-## Testing: High-Fidelity Simulation
+## Testing
 
-We use **`turmoil`** for deterministic test harnesses around timing/power logic.
+Uses **`turmoil`** for deterministic simulation.
 
-- `tests/mycelium_world.rs`: basic heartbeat pacing under simulated voltage drain
-- `tests/viral_sim.rs`: sanity checks for power-mode driven heartbeat changes
+- `tests/mycelium_world.rs`: Basic heartbeat pacing under simulated voltage drain.
+- `tests/viral_sim.rs`: Sanity checks for power-mode driven changes.
 
-## Getting Started
+## Usage
 
 ```rust
 use hypha::{SporeNode, PowerMode, Capability};
@@ -48,11 +48,4 @@ async fn main() {
     // The node will automatically adjust its pulse based on voltage
     node.start().await.unwrap();
 }
-```
-
-## Running Simulations
-
-```bash
-cargo test --test mycelium_world
-cargo test --test viral_sim
 ```

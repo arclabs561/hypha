@@ -38,7 +38,7 @@ pub struct Mycelium {
     pub swarm: Swarm<MyceliumBehaviour>,
     pub mesh: Arc<Mutex<TopicMesh>>,
     pub metrics: Arc<Mutex<MetricsCollector>>,
-    pub pheromone_topic: gossipsub::IdentTopic,
+    pub status_topic: gossipsub::IdentTopic,
     pub control_topic: gossipsub::IdentTopic,
     pub task_topic: gossipsub::IdentTopic,
     pub spike_topic: gossipsub::IdentTopic,
@@ -51,7 +51,7 @@ impl Mycelium {
         metrics: Arc<Mutex<MetricsCollector>>,
     ) -> Result<Self, Box<dyn Error>> {
         // IMPORTANT: Use the caller-provided identity, so network PeerId matches
-        // the persisted "soul" key in `SporeNode`.
+        // the persisted "node_identity_key" in `SporeNode`.
         let swarm = libp2p::SwarmBuilder::with_existing_identity(keypair)
             .with_tokio()
             .with_tcp(
@@ -73,7 +73,7 @@ impl Mycelium {
             })?
             .build();
 
-        let pheromone_topic = gossipsub::IdentTopic::new("hypha_energy_pulse");
+        let status_topic = gossipsub::IdentTopic::new("hypha_energy_status");
         let control_topic = gossipsub::IdentTopic::new("hypha_mesh_control");
         let task_topic = gossipsub::IdentTopic::new("hypha_task_stream");
         let spike_topic = gossipsub::IdentTopic::new("hypha_spikes");
@@ -82,7 +82,7 @@ impl Mycelium {
             swarm,
             mesh,
             metrics,
-            pheromone_topic,
+            status_topic,
             control_topic,
             task_topic,
             spike_topic,
@@ -93,7 +93,7 @@ impl Mycelium {
         self.swarm
             .behaviour_mut()
             .gossipsub
-            .subscribe(&self.pheromone_topic)?;
+            .subscribe(&self.status_topic)?;
         self.swarm
             .behaviour_mut()
             .gossipsub

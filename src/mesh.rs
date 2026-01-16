@@ -78,7 +78,7 @@ impl Default for MeshConfig {
 pub struct MeshPeer {
     pub id: String,
     pub energy_score: f32,
-    /// Bio-inspired conductivity (thickens/thins based on flow)
+    /// Path conductivity (thickens/thins based on flow)
     pub conductivity: f32,
     /// Local pressure (e.g. message backlog)
     pub pressure: f32,
@@ -138,7 +138,7 @@ pub struct TopicMesh {
     pub config: MeshConfig,
     /// Local pressure (message backlog)
     pub local_pressure: f32,
-    /// Current phase of mycelial pulse (0.0 to 1.0)
+    /// Current phase of sync pulse (0.0 to 1.0)
     pub pulse_phase: f32,
     /// Peers currently in the mesh
     pub mesh_peers: HashSet<String>,
@@ -172,7 +172,7 @@ impl TopicMesh {
         self.local_pressure = pressure;
     }
 
-    /// Advance pulse phase
+    /// Advance sync pulse
     pub fn tick_pulse(&mut self, delta: f32) {
         self.pulse_phase = (self.pulse_phase + delta) % 1.0;
     }
@@ -398,7 +398,7 @@ impl TopicMesh {
             }
         }
 
-        // Bio-inspired Rebalancing: try to replace weak links with better ones
+        // Score-based Rebalancing: try to replace weak links with better ones
         if self.mesh_peers.len() >= self.config.d_low {
             let weakest = self
                 .mesh_peers
