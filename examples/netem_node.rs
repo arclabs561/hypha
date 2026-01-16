@@ -203,6 +203,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 {
                     Ok(_) => {
                         println!("PUBLISHED");
+                        // IMPORTANT: publish() enqueues; the swarm still needs to be
+                        // polled to actually drive IO. Give it a short flush window
+                        // so CI harnesses that run this process briefly are reliable.
+                        let flush_deadline =
+                            tokio::time::Instant::now() + Duration::from_millis(800);
+                        while tokio::time::Instant::now() < flush_deadline {
+                            tokio::select! {
+                                _ = mycelium.swarm.select_next_some() => {}
+                                _ = tokio::time::sleep(Duration::from_millis(10)) => {}
+                            }
+                        }
                         return Ok(());
                     }
                     Err(e) => {
