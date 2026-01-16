@@ -26,6 +26,49 @@ pub enum PowerMode {
     Critical,
 }
 
+/// High-level capability of a spore (The agentic layer)
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum Capability {
+    Compute(u32),    // FLOPS available
+    Storage(u64),    // Bytes available
+    Sensing(String), // e.g., "mmWave", "Audio"
+}
+
+/// A task that needs to be performed in the mycelium
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Task {
+    pub id: String,
+    pub required_capability: Capability,
+    pub priority: u8,
+}
+
+/// A bid for a task from a node
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Bid {
+    pub task_id: String,
+    pub bidder_id: String,
+    pub cost_mah: f32, // Estimated energy cost
+    pub confidence: f32,
+}
+
+/// A "Virtual Sensor" that can be driven by physical hardware or gossip messages
+pub trait VirtualSensor: Send + Sync {
+    fn name(&self) -> &str;
+    fn read(&self) -> f32;
+    fn update_from_mesh(&mut self, value: f32);
+}
+
+pub struct BasicSensor {
+    pub name: String,
+    pub last_value: f32,
+}
+
+impl VirtualSensor for BasicSensor {
+    fn name(&self) -> &str { &self.name }
+    fn read(&self) -> f32 { self.last_value }
+    fn update_from_mesh(&mut self, value: f32) { self.last_value = value; }
+}
+
 #[derive(NetworkBehaviour)]
 pub struct SporeBehaviour {
     pub gossipsub: gossipsub::Behaviour,
@@ -38,6 +81,8 @@ pub struct SporeNode {
     pub storage: Database,
     pub db: Keyspace,
     pub signing_key: SigningKey,
+    pub capabilities: Vec<Capability>,
+    pub sensors: Vec<Box<dyn VirtualSensor>>,
 }
 
 impl SporeNode {
@@ -50,7 +95,7 @@ impl SporeNode {
         let signing_key = SigningKey::generate(&mut OsRng);
 
         let physical_state = Arc::new(Mutex::new(PhysicalState {
-            voltage: 4.2, // Fully charged Li-ion
+            voltage: 4.2, 
             mah_remaining: 2500.0,
             temp_celsius: 25.0,
         }));
@@ -62,18 +107,43 @@ impl SporeNode {
             storage,
             db,
             signing_key,
+            capabilities: Vec::new(),
+            sensors: Vec::new(),
         })
     }
 
-    /// The "Adaptive Pulse" logic: heartbeat slows as energy fades
-    pub fn heartbeat_interval(&self) -> Duration {
+    pub fn add_sensor(&mut self, sensor: Box<dyn VirtualSensor>) {
+        info!(peer_id = %self.peer_id, sensor = %sensor.name(), "Added virtual sensor");
+        self.sensors.push(sensor);
+    }
+
+    pub fn add_capability(&mut self, cap: Capability) {
+        info!(peer_id = %self.peer_id, ?cap, "Registered capability");
+        self.capabilities.push(cap);
+    }
+
+    /// Agentic logic: Evaluate if we should bid for a task based on our energy
+    pub fn evaluate_task(&self, task: &Task) -> Option<Bid> {
         let state = self.physical_state.lock().unwrap();
-        if state.voltage < 3.4 || state.mah_remaining < 100.0 {
-            Duration::from_secs(60) // Critical: Once a minute
-        } else if state.voltage < 3.7 {
-            Duration::from_secs(10) // Low: Every 10s
+        
+        if state.voltage < 3.4 || state.mah_remaining < 200.0 {
+            return None;
+        }
+
+        if self.capabilities.contains(&task.required_capability) {
+            let cost = match task.required_capability {
+                Capability::Compute(_) => 50.0,
+                _ => 10.0,
+            };
+
+            Some(Bid {
+                task_id: task.id.clone(),
+                bidder_id: self.peer_id.to_string(),
+                cost_mah: cost,
+                confidence: 0.95,
+            })
         } else {
-            Duration::from_secs(1)  // Normal: Every 1s
+            None
         }
     }
 
@@ -81,6 +151,17 @@ impl SporeNode {
     pub fn create_delegation(&self, audience: &str, capability: &str) -> Vec<u8> {
         let message = format!("DELEGATE:{}:{}:{}", self.peer_id, audience, capability);
         self.signing_key.sign(message.as_bytes()).to_bytes().to_vec()
+    }
+
+    pub fn heartbeat_interval(&self) -> Duration {
+        let state = self.physical_state.lock().unwrap();
+        if state.voltage < 3.4 || state.mah_remaining < 100.0 {
+            Duration::from_secs(60) 
+        } else if state.voltage < 3.7 {
+            Duration::from_secs(10) 
+        } else {
+            Duration::from_secs(1)  
+        }
     }
 
     pub fn set_power_mode(&mut self, mode: PowerMode) {
@@ -102,11 +183,8 @@ impl SporeNode {
         self.power_mode = mode;
     }
 
-    /// Reconcile state with a neighbor by comparing Bloom filters or hashes.
-    /// Quintessential mycelial efficiency: only send what is missing.
     pub fn reconcile_deltas(&self, neighbor_inventory: Vec<String>) -> Vec<(String, Vec<u8>)> {
         let mut deltas = Vec::new();
-        // Use FJALL's prefix search to find all messages we have
         for item in self.db.prefix("msg_") {
             let key = item.key().expect("Storage error");
             let value = self.db.get(&key).unwrap().expect("Value disappeared");
@@ -159,8 +237,6 @@ impl SporeNode {
                         message_id: id,
                         message,
                     })) => {
-                        // Delta-State logic would go here:
-                        // Compare message hash with FJALL metadata before full processing
                         let key = format!("msg_{}", id);
                         self.db.insert(key, &message.data).unwrap();
                         info!(%peer_id, %id, "Mycelial reconciliation complete");
@@ -188,27 +264,18 @@ mod high_fidelity_tests {
             let path = storage_path.clone();
             async move {
                 let node = SporeNode::new(&path).unwrap();
-                
-                // 1. Initial pulse is fast
                 assert_eq!(node.heartbeat_interval(), Duration::from_secs(1));
-
-                // 2. Simulate heavy radio usage draining battery
                 {
                     let mut state = node.physical_state.lock().unwrap();
-                    state.voltage = 3.6; // Drop to LowBattery range
+                    state.voltage = 3.6; 
                     state.mah_remaining = 200.0;
                 }
-
-                // 3. Pulse should automatically stretch
                 assert_eq!(node.heartbeat_interval(), Duration::from_secs(10));
-
-                // 4. Simulate near-death
                 {
                     let mut state = node.physical_state.lock().unwrap();
-                    state.voltage = 3.3; // Critical
+                    state.voltage = 3.3; 
                 }
                 assert_eq!(node.heartbeat_interval(), Duration::from_secs(60));
-
                 Ok(())
             }
         });
@@ -217,12 +284,38 @@ mod high_fidelity_tests {
     }
 
     #[test]
+    fn test_capability_registration() {
+        let tmp = tempdir().unwrap();
+        let mut node = SporeNode::new(tmp.path()).unwrap();
+        node.add_capability(Capability::Compute(1000));
+        assert_eq!(node.capabilities.len(), 1);
+    }
+
+    #[test]
+    fn test_power_aware_bidding() {
+        let tmp = tempdir().unwrap();
+        let mut node = SporeNode::new(tmp.path()).unwrap();
+        node.add_capability(Capability::Compute(1000));
+
+        let task = Task {
+            id: "task-1".to_string(),
+            required_capability: Capability::Compute(1000),
+            priority: 1,
+        };
+
+        let bid = node.evaluate_task(&task);
+        assert!(bid.is_some());
+
+        node.set_power_mode(PowerMode::Critical);
+        let bid = node.evaluate_task(&task);
+        assert!(bid.is_none());
+    }
+
+    #[test]
     fn test_sovereign_agency_signing() {
         let tmp = tempdir().unwrap();
         let node = SporeNode::new(tmp.path()).unwrap();
-        
         let sig = node.create_delegation("neighbor-pi", "compute:low-priority");
-        assert_eq!(sig.len(), 64); // Ed25519 signature length
-        info!("Sovereign delegation signature verified");
+        assert_eq!(sig.len(), 64);
     }
 }
