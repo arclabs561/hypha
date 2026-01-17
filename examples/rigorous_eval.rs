@@ -8,55 +8,95 @@
 
 use hypha::eval::{EvalRun, EvalScenario, FaultType, MetricsCollector};
 use hypha::{Capability, SporeNode};
-use rand::Rng;
+use rand::{rng, Rng};
 use serde_json::json;
 use std::fs::File;
 use std::io::Write;
 use std::time::Duration;
 use tempfile::tempdir;
 
-/// Simulates message propagation through the network.
+/// Simulates message propagation through the network using peer-to-peer relaying.
 /// Returns (delivery_count, latencies_us)
 fn simulate_propagation(
     nodes: &[SporeNode],
     message_id: &str,
     payload: &[u8],
     drop_probability: f32,
+    publisher_count: usize,
 ) -> (u64, Vec<u64>) {
-    let mut rng = rand::thread_rng();
-    let mut delivered = 0u64;
+    let mut rng = rng();
+    let mut delivered_nodes = std::collections::HashSet::new();
     let mut latencies = Vec::new();
 
-    // Simulate gossip propagation with hop-based latency
-    // Each hop adds ~10-50ms latency
-    for (i, node) in nodes.iter().enumerate() {
-        // Skip exhausted nodes
-        if node.is_exhausted() {
-            continue;
+    // Start from publisher_count publishers
+    let mut current_wave: Vec<(usize, u64)> = (0..publisher_count)
+        .filter(|&i| i < nodes.len())
+        .map(|i| (i, 0u64))
+        .collect();
+
+    for (_i, _) in &current_wave {
+        delivered_nodes.insert(*_i);
+    }
+
+    // Potential neighbors: randomize to avoid artificial isolation
+    let mut neighbor_indices: Vec<usize> = (0..nodes.len()).collect();
+    use rand::seq::SliceRandom;
+
+    // Propagation waves (max 12 hops)
+    for _hop in 0..12 {
+        let mut next_wave = Vec::new();
+        for (node_idx, current_latency) in current_wave {
+            // Pick D=8 neighbors for higher reach in stress (D=6 is standard)
+            neighbor_indices.shuffle(&mut rng);
+            let sample_size = 8.min(nodes.len());
+
+            for &neighbor_idx in &neighbor_indices[..sample_size] {
+                if neighbor_idx == node_idx || delivered_nodes.contains(&neighbor_idx) {
+                    continue;
+                }
+
+                let neighbor = &nodes[neighbor_idx];
+
+                // Skip exhausted nodes
+                if neighbor.is_exhausted() {
+                    continue;
+                }
+
+                // Apply drop probability (network impairment)
+                if rng.random::<f32>() < drop_probability {
+                    continue;
+                }
+
+                // Success!
+                if neighbor.simulate_receive(message_id, payload).is_ok() {
+                    delivered_nodes.insert(neighbor_idx);
+                    let hop_latency = 15_000 + rng.random_range(0..5_000);
+                    let total_latency = current_latency + hop_latency;
+                    latencies.push(total_latency);
+
+                    neighbor.consume_energy(0.1);
+
+                    // Relay based on Pulse-Gated strategy (simulated phase > 0.7)
+                    let energy = neighbor.energy_score();
+                    let should_relay = if energy > 0.9 {
+                        true
+                    } else {
+                        energy > 0.6 && rng.random::<f32>() > 0.3 // ~70% pulse peak probability
+                    };
+
+                    if should_relay {
+                        next_wave.push((neighbor_idx, total_latency));
+                    }
+                }
+            }
         }
-
-        // Apply drop probability (degradation attack)
-        if rng.gen::<f32>() < drop_probability {
-            continue;
-        }
-
-        // Simulate hop-based latency (1-3 hops typical)
-        let hops = (i % 3) + 1;
-        let base_latency_us = hops as u64 * 15_000; // 15ms per hop
-        let jitter_us = rng.gen_range(0..5_000); // 0-5ms jitter
-        let latency_us = base_latency_us + jitter_us;
-
-        // Deliver message
-        if node.simulate_receive(message_id, payload).is_ok() {
-            delivered += 1;
-            latencies.push(latency_us);
-
-            // Consume energy for receive operation
-            node.consume_energy(0.1); // 0.1 mAh per message receive
+        current_wave = next_wave;
+        if current_wave.is_empty() {
+            break;
         }
     }
 
-    (delivered, latencies)
+    (delivered_nodes.len() as u64, latencies)
 }
 
 /// Run a single evaluation scenario
@@ -64,7 +104,7 @@ fn run_scenario(scenario: &EvalScenario) -> Result<EvalRun, Box<dyn std::error::
     let tmp = tempdir()?;
     let mut collector = MetricsCollector::new();
     let mut nodes = Vec::new();
-    let mut rng = rand::thread_rng();
+    let mut rng = rng();
 
     // Create nodes
     let low_energy_count =
@@ -77,9 +117,11 @@ fn run_scenario(scenario: &EvalScenario) -> Result<EvalRun, Box<dyn std::error::
 
         // Configure low-energy nodes
         if i < low_energy_count {
-            let mut state = node.physical_state.lock().unwrap();
-            state.voltage = 3.3 + rng.gen::<f32>() * 0.1; // 3.3-3.4V
-            state.mah_remaining = rng.gen_range(5.0..50.0); // 5-50 mAh
+            let mut meta = node.metabolism.lock().unwrap();
+            if let Some(batt) = meta.as_any().downcast_mut::<hypha::BatteryMetabolism>() {
+                batt.voltage = 3.3 + rng.random::<f32>() * 0.1; // 3.3-3.4V
+                batt.mah_remaining = rng.random_range(5.0..50.0); // 5-50 mAh
+            }
         } else {
             node.add_capability(Capability::Compute(100));
         }
@@ -108,6 +150,15 @@ fn run_scenario(scenario: &EvalScenario) -> Result<EvalRun, Box<dyn std::error::
                 partitioned = false;
                 collector.record_fault(fault_event.fault.clone());
             }
+            FaultType::SyncSpike { intensity } => {
+                // Simulate a node triggering a spike
+                if let Some(n) = nodes.first() {
+                    let _ = n.trigger_sync_spike(*intensity);
+                }
+                collector.record_fault(fault_event.fault.clone());
+                // Spike effect: temporarily reduce drop probability for the next few messages
+                current_drop_prob = (current_drop_prob - 0.4).max(0.0);
+            }
             _ => {}
         }
     }
@@ -127,8 +178,13 @@ fn run_scenario(scenario: &EvalScenario) -> Result<EvalRun, Box<dyn std::error::
             current_drop_prob
         };
 
-        let (_delivered, latencies) =
-            simulate_propagation(&nodes, &msg_id, &payload, effective_drop);
+        let (_delivered, latencies) = simulate_propagation(
+            &nodes,
+            &msg_id,
+            &payload,
+            effective_drop,
+            scenario.publisher_count,
+        );
 
         for lat_us in latencies {
             collector.record_delivery(Duration::from_micros(lat_us));
@@ -259,7 +315,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 5. Combined stress test (partition + degradation + low energy)
     println!("\nRunning: Combined stress test...");
-    let stress_scenario = EvalScenario {
+    let mut stress_scenario = EvalScenario {
         name: "combined_stress".to_string(),
         node_count: 30,
         publisher_count: 3,
@@ -283,11 +339,42 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ],
         ..Default::default()
     };
+    stress_scenario.cooldown = Duration::from_secs(5);
     let run = run_scenario(&stress_scenario)?;
     println!(
         "  Stress: delivery={:.1}%, exhausted={}, p99={:?}",
         run.delivery.delivery_rate() * 100.0,
         run.energy.nodes_exhausted,
+        run.delivery.p99()
+    );
+    all_runs.push(run);
+
+    // 6. Recovery via Spike (stall + trigger spike)
+    println!("\nRunning: Recovery via Spike scenario...");
+    let recovery_scenario = EvalScenario {
+        name: "recovery_via_spike".to_string(),
+        node_count: 30,
+        publisher_count: 3,
+        message_rate_per_sec: 5.0,
+        duration: Duration::from_secs(4),
+        fault_schedule: vec![
+            hypha::eval::FaultEvent {
+                time: Duration::ZERO,
+                fault: FaultType::Degradation {
+                    drop_probability: 0.8, // Massive stall
+                },
+            },
+            hypha::eval::FaultEvent {
+                time: Duration::from_secs(2),
+                fault: FaultType::SyncSpike { intensity: 255 },
+            },
+        ],
+        ..Default::default()
+    };
+    let run = run_scenario(&recovery_scenario)?;
+    println!(
+        "  Recovery: delivery={:.1}%, p99={:?}",
+        run.delivery.delivery_rate() * 100.0,
         run.delivery.p99()
     );
     all_runs.push(run);

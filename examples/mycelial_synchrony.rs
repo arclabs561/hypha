@@ -8,7 +8,7 @@
 //! 3. Mycelial Conductivity: How do pressure gradients affect path thickening?
 
 use hypha::mesh::{MeshConfig, TopicMesh};
-use rand::prelude::*;
+use rand::{rng, Rng};
 use serde::Serialize;
 use std::fs::File;
 use std::io::Write;
@@ -32,10 +32,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .collect();
 
     // Initial random connectivity
-    let mut rng = thread_rng();
+    let mut rng = rng();
     for i in 0..node_count {
         for _ in 0..10 {
-            let j = rng.gen_range(0..node_count);
+            let j = rng.random_range(0..node_count);
             if i != j {
                 meshes[i].add_peer(format!("node-{}", j), 0.8);
             }

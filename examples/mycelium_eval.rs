@@ -30,9 +30,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             if i < num_dead {
                 // Simulate a "Dying Spore"
-                let mut state = node.physical_state.lock().unwrap();
-                state.voltage = 3.35;
-                state.mah_remaining = 10.0;
+                let mut meta = node.metabolism.lock().unwrap();
+                if let Some(batt) = meta.as_any().downcast_mut::<hypha::BatteryMetabolism>() {
+                    batt.voltage = 3.35;
+                    batt.mah_remaining = 10.0;
+                }
             } else {
                 node.add_capability(Capability::Compute(100));
             }

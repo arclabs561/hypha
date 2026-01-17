@@ -29,8 +29,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Node 0 is mains powered, others on battery
         if i == 0 {
             node.set_power_mode(PowerMode::Normal);
-            let mut state = node.physical_state.lock().unwrap();
-            state.is_mains_powered = true;
+            let mut meta = node.metabolism.lock().unwrap();
+            if let Some(batt) = meta.as_any().downcast_mut::<hypha::BatteryMetabolism>() {
+                batt.is_mains = true;
+            }
         } else {
             node.set_power_mode(PowerMode::LowBattery);
         }

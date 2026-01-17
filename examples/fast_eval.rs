@@ -3,7 +3,7 @@
 //! Measures delivery rate, latency, and energy metrics without fjall overhead.
 
 use hypha::eval::{ConsistencyMetrics, DeliveryMetrics, EnergyMetrics, EvalRun};
-use rand::Rng;
+use rand::{rng, Rng};
 use serde_json::json;
 use std::fs::File;
 use std::io::Write;
@@ -42,7 +42,7 @@ fn simulate_propagation(
     drop_prob: f32,
     partitioned: bool,
 ) -> Vec<u64> {
-    let mut rng = rand::thread_rng();
+    let mut rng = rng();
     let mut latencies = Vec::new();
     let node_count = nodes.len();
     let half = node_count / 2;
@@ -57,14 +57,14 @@ fn simulate_propagation(
             continue;
         }
 
-        if rng.gen::<f32>() < drop_prob {
+        if rng.random::<f32>() < drop_prob {
             continue;
         }
 
         // Simulate hop-based latency
         let hops = (i % 3) + 1;
         let base_latency = hops as u64 * 15_000;
-        let jitter = rng.gen_range(0..5_000);
+        let jitter = rng.random_range(0..5_000);
         latencies.push(base_latency + jitter);
 
         node.messages_received.push(msg_id.to_string());
@@ -83,7 +83,7 @@ fn run_scenario(
     message_count: usize,
 ) -> EvalRun {
     let start = Instant::now();
-    let mut rng = rand::thread_rng();
+    let mut rng = rng();
 
     let low_energy_count = (node_count as f32 * low_energy_pct / 100.0) as usize;
 
@@ -91,9 +91,9 @@ fn run_scenario(
     let mut nodes: Vec<_> = (0..node_count)
         .map(|i| {
             let energy = if i < low_energy_count {
-                rng.gen_range(0.01..0.05) // Near exhaustion
+                rng.random_range(0.01..0.05) // Near exhaustion
             } else {
-                rng.gen_range(0.7..1.0) // Healthy
+                rng.random_range(0.7..1.0) // Healthy
             };
             LightNode::new(i, energy)
         })

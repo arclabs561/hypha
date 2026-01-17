@@ -4,7 +4,7 @@
 //! with interactive charts.
 
 use hypha::mesh::{MeshConfig, TopicMesh};
-use rand::prelude::*;
+use rand::{rng, Rng};
 use std::fs::File;
 use std::io::Write;
 
@@ -15,7 +15,7 @@ fn simulate_mesh_propagation(
     publisher_idx: usize,
     drop_prob: f32,
 ) -> (u32, u32) {
-    let mut rng = thread_rng();
+    let mut rng = rng();
     let mut delivered = 0u32;
     let mut duplicates = 0u32;
     let node_count = meshes.len();
@@ -34,7 +34,7 @@ fn simulate_mesh_propagation(
     while !current_wave.is_empty() && hop < 10 {
         let mut next_wave = Vec::new();
         for &idx in &current_wave {
-            if rng.gen::<f32>() < drop_prob {
+            if rng.random::<f32>() < drop_prob {
                 continue;
             }
 

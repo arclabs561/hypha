@@ -1,7 +1,8 @@
 use ed25519_dalek::SigningKey;
 use fjall::{Database, Keyspace, KeyspaceCreateOptions};
 use libp2p::{futures::StreamExt, gossipsub, swarm::SwarmEvent, Multiaddr, PeerId};
-use rand::rngs::OsRng;
+use rand::{rng, Rng};
+use rand_core::OsRng;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::sync::{Arc, Mutex};
@@ -12,120 +13,22 @@ pub mod capabilities;
 pub mod eval;
 pub mod mesh;
 pub mod mycelium;
+pub mod sync;
+
+pub use hypha_core::{
+    BasicSensor, BatteryMetabolism, Bid, Capability, EnergyStatus, Metabolism, MockMetabolism,
+    PowerMode, Task, VirtualSensor,
+};
 
 use crate::eval::MetricsCollector;
 use crate::mesh::{MeshConfig, MeshControl, TopicMesh};
 use crate::mycelium::{Mycelium, MyceliumEvent, NetProfile, Spike};
-// NOTE: UCAN semantics types exist in `capabilities.rs` but aren't wired into
-// runtime validation yet. Keep them local there until used to avoid churn.
-
-/// The physical state of a node in the simulated world
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PhysicalState {
-    pub voltage: f32,
-    pub mah_remaining: f32,
-    pub temp_celsius: f32,
-    pub is_mains_powered: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum PowerMode {
-    Normal,
-    LowBattery,
-    Critical,
-}
-
-/// High-level capability of a spore (The agentic layer)
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum Capability {
-    Compute(u32),
-    Storage(u64),
-    Sensing(String),
-}
-
-/// Energy status advertisement for gradient-based routing
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EnergyStatus {
-    pub source_id: String,
-    pub energy_score: f32, // 0.0 (dead) to 1.0 (mains/full)
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Task {
-    pub id: String,
-    pub required_capability: Capability,
-    pub priority: u8,
-    /// Reach intensity (diffuses through mesh)
-    pub reach_intensity: f32,
-    pub source_id: String,
-    /// UCAN Authorization token (not a JWT).
-    pub auth_token: Option<String>,
-}
-
-impl Task {
-    pub fn new(id: String, cap: Capability, priority: u8, source_id: String) -> Self {
-        Self {
-            id,
-            required_capability: cap,
-            priority,
-            reach_intensity: 1.0,
-            source_id,
-            auth_token: None,
-        }
-    }
-
-    pub fn with_auth(mut self, token: String) -> Self {
-        self.auth_token = Some(token);
-        self
-    }
-
-    /// Diffuse reach to a neighbor
-    pub fn diffuse(&self, conductivity: f32, neighbor_energy: f32, neighbor_pressure: f32) -> f32 {
-        let pressure_factor = 1.0 - (neighbor_pressure.min(10.0) / 10.0);
-        // More liberal diffusion to ensure reach
-        self.reach_intensity
-            * conductivity.min(3.0)
-            * (neighbor_energy + 0.2).min(1.0)
-            * (pressure_factor + 0.1).min(1.0)
-            * 0.9
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Bid {
-    pub task_id: String,
-    pub bidder_id: String,
-    pub energy_score: f32,
-    pub cost_mah: f32,
-}
-
-pub trait VirtualSensor: Send + Sync {
-    fn name(&self) -> &str;
-    fn read(&self) -> f32;
-    fn update_from_mesh(&mut self, value: f32);
-}
-
-pub struct BasicSensor {
-    pub name: String,
-    pub last_value: f32,
-}
-
-impl VirtualSensor for BasicSensor {
-    fn name(&self) -> &str {
-        &self.name
-    }
-    fn read(&self) -> f32 {
-        self.last_value
-    }
-    fn update_from_mesh(&mut self, value: f32) {
-        self.last_value = value;
-    }
-}
+use crate::sync::{SharedState, SyncMessage};
 
 pub struct SporeNode {
     pub peer_id: PeerId,
     pub power_mode: PowerMode,
-    pub physical_state: Arc<Mutex<PhysicalState>>,
+    pub metabolism: Arc<Mutex<dyn Metabolism>>,
     pub storage: Database,
     pub db: Keyspace,
     pub signing_key: SigningKey,
@@ -133,11 +36,23 @@ pub struct SporeNode {
     pub sensors: Vec<Box<dyn VirtualSensor>>,
     pub mesh: Arc<Mutex<TopicMesh>>,
     pub metrics: Arc<Mutex<MetricsCollector>>,
+    pub shared_state: Arc<Mutex<SharedState>>,
 }
 
 impl SporeNode {
     /// Quintessential Mycelial Initialization: Recovers identity from storage
     pub fn new(storage_path: &std::path::Path) -> Result<Self, Box<dyn Error>> {
+        Self::new_with_metabolism(
+            storage_path,
+            Arc::new(Mutex::new(BatteryMetabolism::default())),
+        )
+    }
+
+    /// Initialize with a custom metabolism (e.g. for simulation/testing)
+    pub fn new_with_metabolism(
+        storage_path: &std::path::Path,
+        metabolism: Arc<Mutex<dyn Metabolism>>,
+    ) -> Result<Self, Box<dyn Error>> {
         let storage = Database::builder(storage_path).open()?;
         let db = storage.keyspace("hypha_state", KeyspaceCreateOptions::default)?;
 
@@ -145,7 +60,10 @@ impl SporeNode {
         let signing_key = if let Some(bytes) = db.get("node_identity_key")? {
             SigningKey::from_bytes(bytes.as_ref().try_into()?)
         } else {
-            let key = SigningKey::generate(&mut OsRng);
+            // `SigningKey::generate` requires a CSPRNG compatible with `rand_core` 0.6.
+            // `rand 0.9`'s `ThreadRng` is not compatible here (different rand_core major).
+            let mut csprng = OsRng;
+            let key = SigningKey::generate(&mut csprng);
             db.insert("node_identity_key", key.to_bytes())?;
             key
         };
@@ -154,23 +72,17 @@ impl SporeNode {
             &libp2p::identity::Keypair::ed25519_from_bytes(signing_key.to_bytes())?.public(),
         );
 
-        let physical_state = Arc::new(Mutex::new(PhysicalState {
-            voltage: 4.2,
-            mah_remaining: 2500.0,
-            temp_celsius: 25.0,
-            is_mains_powered: false,
-        }));
-
         let mesh = Arc::new(Mutex::new(TopicMesh::new(
             "hypha".to_string(),
             MeshConfig::default(),
         )));
         let metrics = Arc::new(Mutex::new(MetricsCollector::new()));
+        let shared_state = Arc::new(Mutex::new(SharedState::new("hypha_global_state")));
 
         Ok(Self {
             peer_id,
             power_mode: PowerMode::Normal,
-            physical_state,
+            metabolism,
             storage,
             db,
             signing_key,
@@ -178,6 +90,7 @@ impl SporeNode {
             sensors: Vec::new(),
             mesh,
             metrics,
+            shared_state,
         })
     }
 
@@ -192,34 +105,13 @@ impl SporeNode {
     }
 
     pub fn set_power_mode(&mut self, mode: PowerMode) {
-        let mut state = self.physical_state.lock().unwrap();
-        match mode {
-            PowerMode::Normal => {
-                state.voltage = 4.0;
-                state.mah_remaining = 2000.0;
-            }
-            PowerMode::LowBattery => {
-                state.voltage = 3.6;
-                state.mah_remaining = 500.0;
-            }
-            PowerMode::Critical => {
-                state.voltage = 3.3;
-                state.mah_remaining = 50.0;
-            }
-        }
+        self.metabolism.lock().unwrap().set_mode(mode.clone());
         self.power_mode = mode;
     }
 
     /// Bio-inspired Energy Score: 1.0 is a stable mains-powered node
     pub fn energy_score(&self) -> f32 {
-        let state = self.physical_state.lock().unwrap();
-        if state.is_mains_powered {
-            return 1.0;
-        }
-        // Normalize voltage (3.3 to 4.2) and capacity
-        let v_score = (state.voltage - 3.3) / (4.2 - 3.3);
-        let c_score = state.mah_remaining / 2500.0;
-        (v_score * 0.4 + c_score * 0.6).clamp(0.0, 1.0)
+        self.metabolism.lock().unwrap().energy_score()
     }
 
     /// Quorum-Sensing Auction: Only bid if energy is abundant or few others are bidding
@@ -250,31 +142,37 @@ impl SporeNode {
 
     pub fn heartbeat_interval(&self) -> Duration {
         let score = self.energy_score();
-        if score < 0.2 {
-            Duration::from_secs(60)
+        let pressure = {
+            let mesh = self.mesh.lock().unwrap();
+            mesh.local_pressure
+        };
+
+        let base_ms = if score < 0.2 {
+            60_000 // 1 minute
         } else if score < 0.5 {
-            Duration::from_secs(10)
+            10_000 // 10 seconds
         } else {
-            Duration::from_secs(1)
+            1_000 // 1 second
+        };
+
+        // Pressure-Aware Acceleration: high pressure (backlog) accelerates heartbeat
+        // up to 4x to diffuse load faster, provided we have energy.
+        if score > 0.4 && pressure > 5.0 {
+            let factor = (pressure / 5.0).min(4.0);
+            Duration::from_millis((base_ms as f32 / factor) as u64)
+        } else {
+            Duration::from_millis(base_ms)
         }
     }
 
     /// Consume energy for an operation. Returns false if exhausted.
     pub fn consume_energy(&self, mah: f32) -> bool {
-        let mut state = self.physical_state.lock().unwrap();
-        if state.mah_remaining <= 0.0 {
-            return false;
-        }
-        state.mah_remaining = (state.mah_remaining - mah).max(0.0);
-        // Update voltage based on remaining capacity (simple model)
-        let capacity_ratio = state.mah_remaining / 2500.0;
-        state.voltage = 3.3 + (capacity_ratio * 0.9); // 3.3V to 4.2V
-        true
+        self.metabolism.lock().unwrap().consume(mah)
     }
 
     /// Get current mAh remaining
     pub fn mah_remaining(&self) -> f32 {
-        self.physical_state.lock().unwrap().mah_remaining
+        self.metabolism.lock().unwrap().remaining()
     }
 
     /// Check if node is exhausted (cannot participate)
@@ -347,7 +245,8 @@ impl SporeNode {
         let best_bid = known_bids
             .iter()
             .filter(|b| b.task_id == task.id)
-            .max_by(|a, b| a.energy_score.partial_cmp(&b.energy_score).unwrap());
+            // Avoid panics on NaN bids by using a total ordering.
+            .max_by(|a, b| a.energy_score.total_cmp(&b.energy_score));
 
         if let Some(best) = best_bid {
             if score < best.energy_score {
@@ -392,6 +291,20 @@ impl SporeNode {
             "persisted peer_id must match swarm identity"
         );
         Mycelium::new_with_profile(keypair, self.mesh.clone(), self.metrics.clone(), profile)
+    }
+
+    /// Trigger a network-wide synchrony spike to wake up neighbors and force relaying.
+    /// This is used when a node has critical tasks that aren't being picked up.
+    pub fn trigger_sync_spike(&self, intensity: u8) -> Result<(), Box<dyn Error>> {
+        info!(peer_id = %self.peer_id, %intensity, "Triggering synchrony spike");
+        let spike = Spike {
+            source: self.peer_id.to_string(),
+            intensity,
+            pattern_id: 0, // Default emergency pattern
+        };
+        let mut mesh = self.mesh.lock().unwrap();
+        mesh.handle_spike(&spike.source, spike.intensity);
+        Ok(())
     }
 
     /// Run the networking loop for a bounded amount of time.
@@ -441,12 +354,16 @@ impl SporeNode {
                             serde_json::to_vec(&p)?,
                         );
 
-                        // 2. Mesh Heartbeat & Adaptation
-                        let (controls, _stats) = {
-                            let mut mesh = self.mesh.lock().unwrap();
-                            let c = mesh.heartbeat();
-                            (c, mesh.stats())
-                        };
+                    // 2. Mesh Heartbeat & Adaptation
+                    let (controls, _stats) = {
+                        let mut mesh = self.mesh.lock().unwrap();
+
+                        // Adaptive Mesh Configuration: re-calculate based on current energy
+                        mesh.config = MeshConfig::adaptive(energy);
+
+                        let c = mesh.heartbeat();
+                        (c, mesh.stats())
+                    };
 
                         for (target_peer, ctrl) in controls {
                             let _ = mycelium.swarm.behaviour_mut().gossipsub.publish(
@@ -467,6 +384,19 @@ impl SporeNode {
                     if dynamic_heartbeat {
                         heartbeat = tokio::time::interval(self.heartbeat_interval());
                     }
+
+                    // 3. Shared State Anti-Entropy (Probabilistic)
+                    // Every few heartbeats, broadcast a SyncStep1 to pull missing updates.
+                    if rng().random_bool(0.1) {
+                        let state = self.shared_state.lock().unwrap();
+                        let sync_msg = state.create_sync_step_1();
+                        if let Ok(bytes) = serde_json::to_vec(&sync_msg) {
+                            let _ = mycelium.swarm.behaviour_mut().gossipsub.publish(
+                                mycelium.shared_state_topic.clone(),
+                                bytes,
+                            );
+                        }
+                    }
                 }
                 event = mycelium.swarm.select_next_some() => {
                     if !listen_sent {
@@ -486,27 +416,60 @@ impl SporeNode {
                         self.metrics.lock().unwrap().record_delivery(Duration::from_millis(50));
 
                         if message.topic == mycelium.status_topic.hash() {
-                            let p: EnergyStatus = serde_json::from_slice(&message.data)?;
-                            let mut mesh = self.mesh.lock().unwrap();
-                            mesh.update_peer_score(&source_peer_id.to_string(), p.energy_score);
+                            match serde_json::from_slice::<EnergyStatus>(&message.data) {
+                                Ok(p) => {
+                                    let mut mesh = self.mesh.lock().unwrap();
+                                    mesh.update_peer_score(&source_peer_id.to_string(), p.energy_score);
 
-                            if p.energy_score > energy + 0.3 {
-                                info!(peer_id = %self.peer_id, "Sensing high-energy neighbor {}, moving to passive sync", p.source_id);
+                                    if p.energy_score > energy + 0.3 {
+                                        info!(peer_id = %self.peer_id, "Sensing high-energy neighbor {}, moving to passive sync", p.source_id);
+                                    }
+                                }
+                                Err(e) => {
+                                    // Treat malformed status as untrusted input (DoS otherwise).
+                                    tracing::warn!(
+                                        peer_id = %source_peer_id,
+                                        err = %e,
+                                        "Ignoring malformed EnergyStatus"
+                                    );
+                                }
                             }
                         } else if message.topic == mycelium.control_topic.hash() {
-                            let (target_id, ctrl): (String, MeshControl) = serde_json::from_slice(&message.data)?;
-                            if target_id == self.peer_id.to_string() {
-                                let mut mesh = self.mesh.lock().unwrap();
-                                if let Some(response) = mesh.handle_control(&source_peer_id.to_string(), ctrl) {
-                                    let _ = mycelium.swarm.behaviour_mut().gossipsub.publish(
-                                        mycelium.control_topic.clone(),
-                                        serde_json::to_vec(&(source_peer_id.to_string(), response))?,
+                            match serde_json::from_slice::<(String, MeshControl)>(&message.data) {
+                                Ok((target_id, ctrl)) => {
+                                    if target_id == self.peer_id.to_string() {
+                                        let mut mesh = self.mesh.lock().unwrap();
+                                        if let Some(response) =
+                                            mesh.handle_control(&source_peer_id.to_string(), ctrl)
+                                        {
+                                            let _ = mycelium.swarm.behaviour_mut().gossipsub.publish(
+                                                mycelium.control_topic.clone(),
+                                                serde_json::to_vec(&(source_peer_id.to_string(), response))?,
+                                            );
+                                        }
+                                    }
+                                }
+                                Err(e) => {
+                                    tracing::warn!(
+                                        peer_id = %source_peer_id,
+                                        err = %e,
+                                        "Ignoring malformed MeshControl message"
                                     );
                                 }
                             }
                         } else if message.topic == mycelium.task_topic.hash() {
-                            let task: Task = serde_json::from_slice(&message.data)?;
-                            info!(%id, task_id = %task.id, "Task detected in network");
+                            match serde_json::from_slice::<Task>(&message.data) {
+                                Ok(task) => {
+                                    info!(%id, task_id = %task.id, "Task detected in network");
+                                }
+                                Err(e) => {
+                                    tracing::warn!(
+                                        peer_id = %source_peer_id,
+                                        err = %e,
+                                        "Ignoring malformed Task"
+                                    );
+                                }
+                            }
                         } else if message.topic == mycelium.spike_topic.hash() {
                             // High-speed alert system
                             if let Ok(spike) = serde_json::from_slice::<Spike>(&message.data) {
@@ -515,6 +478,41 @@ impl SporeNode {
                                     let mut mesh = self.mesh.lock().unwrap();
                                     mesh.handle_spike(&spike.source, spike.intensity);
                                 }
+                            } else {
+                                tracing::warn!(
+                                    peer_id = %source_peer_id,
+                                    "Ignoring malformed Spike"
+                                );
+                            }
+                        } else if message.topic == mycelium.shared_state_topic.hash() {
+                            // CRDT Sync
+                            match serde_json::from_slice::<SyncMessage>(&message.data) {
+                                Ok(SyncMessage::Update(bytes)) => {
+                                    let state = self.shared_state.lock().unwrap();
+                                    if let Err(e) = state.apply_update(&bytes) {
+                                        tracing::warn!("Failed to apply CRDT update: {}", e);
+                                    } else {
+                                        tracing::info!("Applied CRDT update from {}", source_peer_id);
+                                    }
+                                }
+                                Ok(SyncMessage::SyncStep1(sv_bytes)) => {
+                                    let state = self.shared_state.lock().unwrap();
+                                    if let Ok(reply) = state.handle_sync_step_1(&sv_bytes) {
+                                        let _ = mycelium.swarm.behaviour_mut().gossipsub.publish(
+                                            mycelium.shared_state_topic.clone(),
+                                            serde_json::to_vec(&reply).unwrap(),
+                                        );
+                                    }
+                                }
+                                Ok(SyncMessage::SyncStep2(update_bytes)) => {
+                                    let state = self.shared_state.lock().unwrap();
+                                    if let Err(e) = state.handle_sync_step_2(&update_bytes) {
+                                        tracing::warn!("Failed to apply sync step 2: {}", e);
+                                    }
+                                }
+                                Err(e) => {
+                                    tracing::warn!("Malformed sync message: {}", e);
+                                }
                             }
                         } else {
                             let key = format!("msg_{}", id);
@@ -522,6 +520,31 @@ impl SporeNode {
 
                             let mut mesh = self.mesh.lock().unwrap();
                             mesh.record_message(&source_peer_id.to_string(), &id.to_string());
+
+                            // Emergent Relaying: high-energy nodes relay messages to deepen reach
+                            let energy = self.energy_score();
+                            let (pressure, pulse_phase) = {
+                                let mesh = self.mesh.lock().unwrap();
+                                (mesh.local_pressure, mesh.pulse_phase)
+                            };
+
+                            // Relaying strategy:
+                            // 1. High energy (>0.6)
+                            // 2. Low pressure (<7.0)
+                            // 3. Pulse-gated (peak) OR high-energy mains power
+                            let should_relay = if energy > 0.9 {
+                                true // Mains power relays everything
+                            } else {
+                                energy > 0.6 && pressure < 7.0 && pulse_phase > 0.7
+                            };
+
+                            if should_relay {
+                                let _ = mycelium.swarm.behaviour_mut().gossipsub.publish(
+                                    message.topic.clone(),
+                                    message.data.clone(),
+                                );
+                                info!(%id, "Emergent relay triggered");
+                            }
 
                             info!(%source_peer_id, %id, "Message persisted");
                         }
@@ -558,7 +581,9 @@ mod eval_suite {
     #[test]
     fn test_quorum_sensing_efficiency() {
         let tmp = tempdir().unwrap();
-        let mut node = SporeNode::new(tmp.path()).unwrap();
+        // Use MockMetabolism for deterministic testing
+        let metabolism = Arc::new(Mutex::new(MockMetabolism::new(1.0, false)));
+        let mut node = SporeNode::new_with_metabolism(tmp.path(), metabolism.clone()).unwrap();
         node.add_capability(Capability::Compute(100));
 
         let task = Task {
@@ -570,13 +595,12 @@ mod eval_suite {
             auth_token: None,
         };
 
-        // 1. No other bidders -> Spore bids
+        // 1. No other bidders -> Spore bids (energy 1.0)
         assert!(node.evaluate_task(&task, 0).is_some());
 
         // 2. 5 other bidders already exist -> Spore stays silent to save energy
-        let mut state = node.physical_state.lock().unwrap();
-        state.voltage = 3.6; // Low battery
-        drop(state);
+        // Simulate low battery by modifying mock
+        metabolism.lock().unwrap().energy = 0.3; // Low battery equivalent
 
         assert!(
             node.evaluate_task(&task, 5).is_none(),

@@ -190,6 +190,8 @@ pub enum FaultType {
     PartitionHeal,
     /// Node recovers from crash
     NodeRecover { node_ids: Vec<String> },
+    /// Network-wide synchrony spike
+    SyncSpike { intensity: u8 },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

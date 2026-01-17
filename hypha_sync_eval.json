@@ -1,1600 +1,1600 @@
 [
   {
     "tick": 0,
-    "avg_phase": 0.61118287,
-    "phase_variance": 0.062538974,
+    "avg_phase": 0.41999114,
+    "phase_variance": 0.081708394,
     "avg_conductivity": 0.9499999,
     "avg_pressure": 0.009799996,
     "delivery_rate": 1.0
   },
   {
     "tick": 1,
-    "avg_phase": 0.620846,
-    "phase_variance": 0.06059754,
+    "avg_phase": 0.4090519,
+    "phase_variance": 0.07662876,
     "avg_conductivity": 0.9499999,
     "avg_pressure": 0.018619996,
     "delivery_rate": 1.0
   },
   {
     "tick": 2,
-    "avg_phase": 0.6104594,
-    "phase_variance": 0.064297765,
+    "avg_phase": 0.3981134,
+    "phase_variance": 0.07168016,
     "avg_conductivity": 0.9499999,
     "avg_pressure": 0.026558,
     "delivery_rate": 1.0
   },
   {
     "tick": 3,
-    "avg_phase": 0.62005025,
-    "phase_variance": 0.06251141,
+    "avg_phase": 0.3871814,
+    "phase_variance": 0.06713298,
     "avg_conductivity": 0.9499999,
     "avg_pressure": 0.033702184,
     "delivery_rate": 1.0
   },
   {
     "tick": 4,
-    "avg_phase": 0.5696314,
-    "phase_variance": 0.071617894,
+    "avg_phase": 0.39625755,
+    "phase_variance": 0.06696411,
     "avg_conductivity": 0.9499999,
     "avg_pressure": 0.04013199,
     "delivery_rate": 1.0
   },
   {
     "tick": 5,
-    "avg_phase": 0.5392087,
-    "phase_variance": 0.07414364,
+    "avg_phase": 0.40534183,
+    "phase_variance": 0.06705616,
     "avg_conductivity": 0.9499999,
     "avg_pressure": 0.055718794,
     "delivery_rate": 1.0
   },
   {
     "tick": 6,
-    "avg_phase": 0.5487846,
-    "phase_variance": 0.07237032,
+    "avg_phase": 0.41443294,
+    "phase_variance": 0.067319624,
     "avg_conductivity": 0.9499999,
     "avg_pressure": 0.06974692,
     "delivery_rate": 1.0
   },
   {
     "tick": 7,
-    "avg_phase": 0.5383599,
-    "phase_variance": 0.072381854,
+    "avg_phase": 0.42353034,
+    "phase_variance": 0.067700155,
     "avg_conductivity": 0.9499999,
     "avg_pressure": 0.08237221,
     "delivery_rate": 1.0
   },
   {
     "tick": 8,
-    "avg_phase": 0.5479345,
-    "phase_variance": 0.070735365,
+    "avg_phase": 0.41263252,
+    "phase_variance": 0.064932615,
     "avg_conductivity": 0.9499999,
     "avg_pressure": 0.09373501,
     "delivery_rate": 1.0
   },
   {
     "tick": 9,
-    "avg_phase": 0.55750805,
-    "phase_variance": 0.06931983,
+    "avg_phase": 0.42173886,
+    "phase_variance": 0.06541942,
     "avg_conductivity": 0.9499999,
     "avg_pressure": 0.103961445,
     "delivery_rate": 1.0
   },
   {
     "tick": 10,
-    "avg_phase": 0.54708046,
-    "phase_variance": 0.06979785,
+    "avg_phase": 0.41084847,
+    "phase_variance": 0.062482625,
     "avg_conductivity": 0.90250003,
     "avg_pressure": 0.122965395,
     "delivery_rate": 1.0
   },
   {
     "tick": 11,
-    "avg_phase": 0.5566515,
-    "phase_variance": 0.0685118,
+    "avg_phase": 0.39996096,
+    "phase_variance": 0.05945042,
     "avg_conductivity": 0.90250003,
     "avg_pressure": 0.14006875,
     "delivery_rate": 1.0
   },
   {
     "tick": 12,
-    "avg_phase": 0.5662209,
-    "phase_variance": 0.067374766,
+    "avg_phase": 0.38907582,
+    "phase_variance": 0.055158563,
     "avg_conductivity": 0.90250003,
     "avg_pressure": 0.15546197,
     "delivery_rate": 1.0
   },
   {
     "tick": 13,
-    "avg_phase": 0.57578856,
-    "phase_variance": 0.06636653,
+    "avg_phase": 0.3781926,
+    "phase_variance": 0.050278883,
     "avg_conductivity": 0.90250003,
     "avg_pressure": 0.16931568,
     "delivery_rate": 1.0
   },
   {
     "tick": 14,
-    "avg_phase": 0.58535457,
-    "phase_variance": 0.06547036,
+    "avg_phase": 0.38731122,
+    "phase_variance": 0.050096005,
     "avg_conductivity": 0.90250003,
     "avg_pressure": 0.18178415,
     "delivery_rate": 1.0
   },
   {
     "tick": 15,
-    "avg_phase": 0.5749189,
-    "phase_variance": 0.06770007,
+    "avg_phase": 0.37643155,
+    "phase_variance": 0.045371078,
     "avg_conductivity": 0.90250003,
     "avg_pressure": 0.20280565,
     "delivery_rate": 1.0
   },
   {
     "tick": 16,
-    "avg_phase": 0.58448166,
-    "phase_variance": 0.06697084,
+    "avg_phase": 0.38555327,
+    "phase_variance": 0.044998318,
     "avg_conductivity": 0.90250003,
     "avg_pressure": 0.22172503,
     "delivery_rate": 1.0
   },
   {
     "tick": 17,
-    "avg_phase": 0.5940426,
-    "phase_variance": 0.066317774,
+    "avg_phase": 0.39467636,
+    "phase_variance": 0.044665765,
     "avg_conductivity": 0.90250003,
     "avg_pressure": 0.2387525,
     "delivery_rate": 1.0
   },
   {
     "tick": 18,
-    "avg_phase": 0.60360223,
-    "phase_variance": 0.065732256,
+    "avg_phase": 0.40380087,
+    "phase_variance": 0.044368744,
     "avg_conductivity": 0.90250003,
     "avg_pressure": 0.2540775,
     "delivery_rate": 1.0
   },
   {
     "tick": 19,
-    "avg_phase": 0.6131606,
-    "phase_variance": 0.065206796,
+    "avg_phase": 0.41292664,
+    "phase_variance": 0.044103283,
     "avg_conductivity": 0.90250003,
     "avg_pressure": 0.26786965,
     "delivery_rate": 1.0
   },
   {
     "tick": 20,
-    "avg_phase": 0.6027176,
-    "phase_variance": 0.06886591,
+    "avg_phase": 0.42205364,
+    "phase_variance": 0.043865938,
     "avg_conductivity": 0.857375,
     "avg_pressure": 0.29008254,
     "delivery_rate": 1.0
   },
   {
     "tick": 21,
-    "avg_phase": 0.59227335,
-    "phase_variance": 0.07213857,
+    "avg_phase": 0.43118194,
+    "phase_variance": 0.043653682,
     "avg_conductivity": 0.857375,
     "avg_pressure": 0.3100744,
     "delivery_rate": 1.0
   },
   {
     "tick": 22,
-    "avg_phase": 0.60182816,
-    "phase_variance": 0.071697935,
+    "avg_phase": 0.42031124,
+    "phase_variance": 0.040627193,
     "avg_conductivity": 0.857375,
     "avg_pressure": 0.3280671,
     "delivery_rate": 1.0
   },
   {
     "tick": 23,
-    "avg_phase": 0.5513817,
-    "phase_variance": 0.08049395,
+    "avg_phase": 0.42944187,
+    "phase_variance": 0.040576305,
     "avg_conductivity": 0.857375,
     "avg_pressure": 0.34426022,
     "delivery_rate": 1.0
   },
   {
     "tick": 24,
-    "avg_phase": 0.56093454,
-    "phase_variance": 0.080000564,
+    "avg_phase": 0.41857377,
+    "phase_variance": 0.037398666,
     "avg_conductivity": 0.857375,
     "avg_pressure": 0.3588343,
     "delivery_rate": 1.0
   },
   {
     "tick": 25,
-    "avg_phase": 0.5704866,
-    "phase_variance": 0.079547554,
+    "avg_phase": 0.42770663,
+    "phase_variance": 0.03734051,
     "avg_conductivity": 0.857375,
     "avg_pressure": 0.3817508,
     "delivery_rate": 1.0
   },
   {
     "tick": 26,
-    "avg_phase": 0.5800378,
-    "phase_variance": 0.079131834,
+    "avg_phase": 0.4368406,
+    "phase_variance": 0.03729414,
     "avg_conductivity": 0.857375,
     "avg_pressure": 0.4023756,
     "delivery_rate": 1.0
   },
   {
     "tick": 27,
-    "avg_phase": 0.58958846,
-    "phase_variance": 0.07875051,
+    "avg_phase": 0.44597584,
+    "phase_variance": 0.037258442,
     "avg_conductivity": 0.857375,
     "avg_pressure": 0.4209384,
     "delivery_rate": 1.0
   },
   {
     "tick": 28,
-    "avg_phase": 0.5991385,
-    "phase_variance": 0.078401,
+    "avg_phase": 0.4551121,
+    "phase_variance": 0.03723242,
     "avg_conductivity": 0.857375,
     "avg_pressure": 0.43764418,
     "delivery_rate": 1.0
   },
   {
     "tick": 29,
-    "avg_phase": 0.58868814,
-    "phase_variance": 0.081929274,
+    "avg_phase": 0.4642495,
+    "phase_variance": 0.037215155,
     "avg_conductivity": 0.857375,
     "avg_pressure": 0.45267966,
     "delivery_rate": 1.0
   },
   {
     "tick": 30,
-    "avg_phase": 0.5982372,
-    "phase_variance": 0.081581965,
+    "avg_phase": 0.4733879,
+    "phase_variance": 0.037205845,
     "avg_conductivity": 0.8145062,
     "avg_pressure": 0.47601214,
     "delivery_rate": 1.0
   },
   {
     "tick": 31,
-    "avg_phase": 0.5877859,
-    "phase_variance": 0.08489888,
+    "avg_phase": 0.48252758,
+    "phase_variance": 0.037203744,
     "avg_conductivity": 0.8145062,
     "avg_pressure": 0.4970108,
     "delivery_rate": 1.0
   },
   {
     "tick": 32,
-    "avg_phase": 0.5973344,
-    "phase_variance": 0.08456168,
+    "avg_phase": 0.49166813,
+    "phase_variance": 0.037208192,
     "avg_conductivity": 0.8145062,
     "avg_pressure": 0.51590943,
     "delivery_rate": 1.0
   },
   {
     "tick": 33,
-    "avg_phase": 0.5868824,
-    "phase_variance": 0.08780656,
+    "avg_phase": 0.5008098,
+    "phase_variance": 0.037218608,
     "avg_conductivity": 0.8145062,
     "avg_pressure": 0.5329187,
     "delivery_rate": 1.0
   },
   {
     "tick": 34,
-    "avg_phase": 0.57643026,
-    "phase_variance": 0.09055604,
+    "avg_phase": 0.5099526,
+    "phase_variance": 0.03723442,
     "avg_conductivity": 0.8145062,
     "avg_pressure": 0.548227,
     "delivery_rate": 1.0
   },
   {
     "tick": 35,
-    "avg_phase": 0.58597803,
-    "phase_variance": 0.09016136,
+    "avg_phase": 0.49909633,
+    "phase_variance": 0.03761185,
     "avg_conductivity": 0.8145062,
     "avg_pressure": 0.57180387,
     "delivery_rate": 1.0
   },
   {
     "tick": 36,
-    "avg_phase": 0.5555257,
-    "phase_variance": 0.095661834,
+    "avg_phase": 0.5082411,
+    "phase_variance": 0.037602793,
     "avg_conductivity": 0.8145062,
     "avg_pressure": 0.59302336,
     "delivery_rate": 1.0
   },
   {
     "tick": 37,
-    "avg_phase": 0.5650732,
-    "phase_variance": 0.095275946,
+    "avg_phase": 0.5173871,
+    "phase_variance": 0.037597824,
     "avg_conductivity": 0.8145062,
     "avg_pressure": 0.612121,
     "delivery_rate": 1.0
   },
   {
     "tick": 38,
-    "avg_phase": 0.57462066,
-    "phase_variance": 0.09491235,
+    "avg_phase": 0.5265338,
+    "phase_variance": 0.03759654,
     "avg_conductivity": 0.8145062,
     "avg_pressure": 0.62930936,
     "delivery_rate": 1.0
   },
   {
     "tick": 39,
-    "avg_phase": 0.58416796,
-    "phase_variance": 0.09456983,
+    "avg_phase": 0.5356814,
+    "phase_variance": 0.037598614,
     "avg_conductivity": 0.8145062,
     "avg_pressure": 0.64477783,
     "delivery_rate": 1.0
   },
   {
     "tick": 40,
-    "avg_phase": 0.5937154,
-    "phase_variance": 0.09424727,
+    "avg_phase": 0.5448302,
+    "phase_variance": 0.037603706,
     "avg_conductivity": 0.7737809,
     "avg_pressure": 0.6684999,
     "delivery_rate": 1.0
   },
   {
     "tick": 41,
-    "avg_phase": 0.5632629,
-    "phase_variance": 0.10012639,
+    "avg_phase": 0.5539799,
+    "phase_variance": 0.03761154,
     "avg_conductivity": 0.7737809,
     "avg_pressure": 0.68985003,
     "delivery_rate": 1.0
   },
   {
     "tick": 42,
-    "avg_phase": 0.5728104,
-    "phase_variance": 0.099825084,
+    "avg_phase": 0.56313056,
+    "phase_variance": 0.03762186,
     "avg_conductivity": 0.7737809,
     "avg_pressure": 0.7090651,
     "delivery_rate": 1.0
   },
   {
     "tick": 43,
-    "avg_phase": 0.5823579,
-    "phase_variance": 0.09954236,
+    "avg_phase": 0.572282,
+    "phase_variance": 0.037634395,
     "avg_conductivity": 0.7737809,
     "avg_pressure": 0.7263584,
     "delivery_rate": 1.0
   },
   {
     "tick": 44,
-    "avg_phase": 0.57190573,
-    "phase_variance": 0.1024263,
+    "avg_phase": 0.5614345,
+    "phase_variance": 0.040481243,
     "avg_conductivity": 0.7737809,
     "avg_pressure": 0.74192315,
     "delivery_rate": 1.0
   },
   {
     "tick": 45,
-    "avg_phase": 0.56145346,
-    "phase_variance": 0.1047191,
+    "avg_phase": 0.5505878,
+    "phase_variance": 0.042868696,
     "avg_conductivity": 0.7737809,
     "avg_pressure": 0.7657301,
     "delivery_rate": 1.0
   },
   {
     "tick": 46,
-    "avg_phase": 0.5510015,
-    "phase_variance": 0.10672936,
+    "avg_phase": 0.55974185,
+    "phase_variance": 0.042817593,
     "avg_conductivity": 0.7737809,
     "avg_pressure": 0.78715783,
     "delivery_rate": 1.0
   },
   {
     "tick": 47,
-    "avg_phase": 0.56054956,
-    "phase_variance": 0.106552,
+    "avg_phase": 0.56889707,
+    "phase_variance": 0.04277411,
     "avg_conductivity": 0.7737809,
     "avg_pressure": 0.8064412,
     "delivery_rate": 1.0
   },
   {
     "tick": 48,
-    "avg_phase": 0.5300979,
-    "phase_variance": 0.11024701,
+    "avg_phase": 0.57805294,
+    "phase_variance": 0.042737838,
     "avg_conductivity": 0.7737809,
     "avg_pressure": 0.82379717,
     "delivery_rate": 1.0
   },
   {
     "tick": 49,
-    "avg_phase": 0.5396463,
-    "phase_variance": 0.11019809,
+    "avg_phase": 0.5872097,
+    "phase_variance": 0.04270836,
     "avg_conductivity": 0.7737809,
     "avg_pressure": 0.8394174,
     "delivery_rate": 1.0
   },
   {
     "tick": 50,
-    "avg_phase": 0.54919493,
-    "phase_variance": 0.11015731,
+    "avg_phase": 0.59636706,
+    "phase_variance": 0.042685285,
     "avg_conductivity": 0.73509175,
     "avg_pressure": 0.86327577,
     "delivery_rate": 1.0
   },
   {
     "tick": 51,
-    "avg_phase": 0.55874383,
-    "phase_variance": 0.110124186,
+    "avg_phase": 0.60552543,
+    "phase_variance": 0.042668235,
     "avg_conductivity": 0.73509175,
     "avg_pressure": 0.88474816,
     "delivery_rate": 1.0
   },
   {
     "tick": 52,
-    "avg_phase": 0.568293,
-    "phase_variance": 0.11009822,
+    "avg_phase": 0.61468476,
+    "phase_variance": 0.0426569,
     "avg_conductivity": 0.73509175,
     "avg_pressure": 0.9040731,
     "delivery_rate": 1.0
   },
   {
     "tick": 53,
-    "avg_phase": 0.55784225,
-    "phase_variance": 0.11277056,
+    "avg_phase": 0.6238445,
+    "phase_variance": 0.042650934,
     "avg_conductivity": 0.73509175,
     "avg_pressure": 0.9214665,
     "delivery_rate": 1.0
   },
   {
     "tick": 54,
-    "avg_phase": 0.52739185,
-    "phase_variance": 0.11601656,
+    "avg_phase": 0.6330052,
+    "phase_variance": 0.042650048,
     "avg_conductivity": 0.73509175,
     "avg_pressure": 0.93711954,
     "delivery_rate": 1.0
   },
   {
     "tick": 55,
-    "avg_phase": 0.5169414,
-    "phase_variance": 0.11696753,
+    "avg_phase": 0.6421665,
+    "phase_variance": 0.04265394,
     "avg_conductivity": 0.73509175,
     "avg_pressure": 0.9610078,
     "delivery_rate": 1.0
   },
   {
     "tick": 56,
-    "avg_phase": 0.5064916,
-    "phase_variance": 0.11755474,
+    "avg_phase": 0.65132874,
+    "phase_variance": 0.042662352,
     "avg_conductivity": 0.73509175,
     "avg_pressure": 0.98250735,
     "delivery_rate": 1.0
   },
   {
     "tick": 57,
-    "avg_phase": 0.51604193,
-    "phase_variance": 0.11761589,
+    "avg_phase": 0.66049147,
+    "phase_variance": 0.04267502,
     "avg_conductivity": 0.73509175,
     "avg_pressure": 1.0018557,
     "delivery_rate": 1.0
   },
   {
     "tick": 58,
-    "avg_phase": 0.5255925,
-    "phase_variance": 0.11767912,
+    "avg_phase": 0.649655,
+    "phase_variance": 0.04900621,
     "avg_conductivity": 0.73509175,
     "avg_pressure": 1.0192708,
     "delivery_rate": 1.0
   },
   {
     "tick": 59,
-    "avg_phase": 0.49514332,
-    "phase_variance": 0.11832884,
+    "avg_phase": 0.63881934,
+    "phase_variance": 0.05492361,
     "avg_conductivity": 0.73509175,
     "avg_pressure": 1.0349432,
     "delivery_rate": 1.0
   },
   {
     "tick": 60,
-    "avg_phase": 0.50469434,
-    "phase_variance": 0.11837888,
+    "avg_phase": 0.64798415,
+    "phase_variance": 0.05489166,
     "avg_conductivity": 0.69833714,
     "avg_pressure": 1.0588493,
     "delivery_rate": 1.0
   },
   {
     "tick": 61,
-    "avg_phase": 0.49424568,
-    "phase_variance": 0.118373334,
+    "avg_phase": 0.65714973,
+    "phase_variance": 0.05486522,
     "avg_conductivity": 0.69833714,
     "avg_pressure": 1.0803641,
     "delivery_rate": 1.0
   },
   {
     "tick": 62,
-    "avg_phase": 0.46379733,
-    "phase_variance": 0.11651185,
+    "avg_phase": 0.6663158,
+    "phase_variance": 0.054844085,
     "avg_conductivity": 0.69833714,
     "avg_pressure": 1.0997272,
     "delivery_rate": 1.0
   },
   {
     "tick": 63,
-    "avg_phase": 0.41334915,
-    "phase_variance": 0.109152906,
+    "avg_phase": 0.6754827,
+    "phase_variance": 0.05482801,
     "avg_conductivity": 0.69833714,
     "avg_pressure": 1.1171546,
     "delivery_rate": 1.0
   },
   {
     "tick": 64,
-    "avg_phase": 0.3829013,
-    "phase_variance": 0.10107636,
+    "avg_phase": 0.6846501,
+    "phase_variance": 0.054816775,
     "avg_conductivity": 0.69833714,
     "avg_pressure": 1.1328399,
     "delivery_rate": 1.0
   },
   {
     "tick": 65,
-    "avg_phase": 0.37245378,
-    "phase_variance": 0.09597911,
+    "avg_phase": 0.6938182,
+    "phase_variance": 0.054810222,
     "avg_conductivity": 0.69833714,
     "avg_pressure": 1.1567553,
     "delivery_rate": 1.0
   },
   {
     "tick": 66,
-    "avg_phase": 0.38200647,
-    "phase_variance": 0.095964916,
+    "avg_phase": 0.7029869,
+    "phase_variance": 0.05480813,
     "avg_conductivity": 0.69833714,
     "avg_pressure": 1.1782802,
     "delivery_rate": 1.0
   },
   {
     "tick": 67,
-    "avg_phase": 0.39155933,
-    "phase_variance": 0.09595099,
+    "avg_phase": 0.6721561,
+    "phase_variance": 0.0698102,
     "avg_conductivity": 0.69833714,
     "avg_pressure": 1.1976509,
     "delivery_rate": 1.0
   },
   {
     "tick": 68,
-    "avg_phase": 0.4011126,
-    "phase_variance": 0.09593739,
+    "avg_phase": 0.6813259,
+    "phase_variance": 0.069861315,
     "avg_conductivity": 0.69833714,
     "avg_pressure": 1.215086,
     "delivery_rate": 1.0
   },
   {
     "tick": 69,
-    "avg_phase": 0.39066613,
-    "phase_variance": 0.09167903,
+    "avg_phase": 0.6704963,
+    "phase_variance": 0.07708831,
     "avg_conductivity": 0.69833714,
     "avg_pressure": 1.2307787,
     "delivery_rate": 1.0
   },
   {
     "tick": 70,
-    "avg_phase": 0.36021984,
-    "phase_variance": 0.081541784,
+    "avg_phase": 0.65966713,
+    "phase_variance": 0.08370964,
     "avg_conductivity": 0.66342026,
     "avg_pressure": 1.2547007,
     "delivery_rate": 1.0
   },
   {
     "tick": 71,
-    "avg_phase": 0.36977383,
-    "phase_variance": 0.0815957,
+    "avg_phase": 0.6488385,
+    "phase_variance": 0.089948304,
     "avg_conductivity": 0.66342026,
     "avg_pressure": 1.2762303,
     "delivery_rate": 1.0
   },
   {
     "tick": 72,
-    "avg_phase": 0.37932816,
-    "phase_variance": 0.08164814,
+    "avg_phase": 0.6380106,
+    "phase_variance": 0.09585623,
     "avg_conductivity": 0.66342026,
     "avg_pressure": 1.2956071,
     "delivery_rate": 1.0
   },
   {
     "tick": 73,
-    "avg_phase": 0.3888826,
-    "phase_variance": 0.08169916,
+    "avg_phase": 0.62718314,
+    "phase_variance": 0.10113555,
     "avg_conductivity": 0.66342026,
     "avg_pressure": 1.3130466,
     "delivery_rate": 1.0
   },
   {
     "tick": 74,
-    "avg_phase": 0.3784375,
-    "phase_variance": 0.07687871,
+    "avg_phase": 0.6363561,
+    "phase_variance": 0.10117827,
     "avg_conductivity": 0.66342026,
     "avg_pressure": 1.328741,
     "delivery_rate": 1.0
   },
   {
     "tick": 75,
-    "avg_phase": 0.38799247,
-    "phase_variance": 0.07687819,
+    "avg_phase": 0.6255297,
+    "phase_variance": 0.10650855,
     "avg_conductivity": 0.66342026,
     "avg_pressure": 1.3526667,
     "delivery_rate": 1.0
   },
   {
     "tick": 76,
-    "avg_phase": 0.3775478,
-    "phase_variance": 0.07212344,
+    "avg_phase": 0.6347037,
+    "phase_variance": 0.10655382,
     "avg_conductivity": 0.66342026,
     "avg_pressure": 1.3742,
     "delivery_rate": 1.0
   },
   {
     "tick": 77,
-    "avg_phase": 0.38710332,
-    "phase_variance": 0.072055645,
+    "avg_phase": 0.64387804,
+    "phase_variance": 0.106603295,
     "avg_conductivity": 0.66342026,
     "avg_pressure": 1.3935798,
     "delivery_rate": 1.0
   },
   {
     "tick": 78,
-    "avg_phase": 0.37665915,
-    "phase_variance": 0.067130916,
+    "avg_phase": 0.6330531,
+    "phase_variance": 0.11234483,
     "avg_conductivity": 0.66342026,
     "avg_pressure": 1.4110227,
     "delivery_rate": 1.0
   },
   {
     "tick": 79,
-    "avg_phase": 0.38621524,
-    "phase_variance": 0.067092,
+    "avg_phase": 0.6422285,
+    "phase_variance": 0.11243133,
     "avg_conductivity": 0.66342026,
     "avg_pressure": 1.42672,
     "delivery_rate": 1.0
   },
   {
     "tick": 80,
-    "avg_phase": 0.35577136,
-    "phase_variance": 0.05688838,
+    "avg_phase": 0.6314044,
+    "phase_variance": 0.11787687,
     "avg_conductivity": 0.6302493,
     "avg_pressure": 1.4506475,
     "delivery_rate": 1.0
   },
   {
     "tick": 81,
-    "avg_phase": 0.36532795,
-    "phase_variance": 0.056869213,
+    "avg_phase": 0.6205806,
+    "phase_variance": 0.12288985,
     "avg_conductivity": 0.6302493,
     "avg_pressure": 1.4721831,
     "delivery_rate": 1.0
   },
   {
     "tick": 82,
-    "avg_phase": 0.37488472,
-    "phase_variance": 0.05685021,
+    "avg_phase": 0.58975744,
+    "phase_variance": 0.13110961,
     "avg_conductivity": 0.6302493,
     "avg_pressure": 1.4915639,
     "delivery_rate": 1.0
   },
   {
     "tick": 83,
-    "avg_phase": 0.38444173,
-    "phase_variance": 0.056831397,
+    "avg_phase": 0.55893457,
+    "phase_variance": 0.13714147,
     "avg_conductivity": 0.6302493,
     "avg_pressure": 1.5090072,
     "delivery_rate": 1.0
   },
   {
     "tick": 84,
-    "avg_phase": 0.39399883,
-    "phase_variance": 0.05681276,
+    "avg_phase": 0.5281122,
+    "phase_variance": 0.14100187,
     "avg_conductivity": 0.6302493,
     "avg_pressure": 1.5247077,
     "delivery_rate": 1.0
   },
   {
     "tick": 85,
-    "avg_phase": 0.40355626,
-    "phase_variance": 0.056794286,
+    "avg_phase": 0.5172901,
+    "phase_variance": 0.14204991,
     "avg_conductivity": 0.6302493,
     "avg_pressure": 1.5486364,
     "delivery_rate": 1.0
   },
   {
     "tick": 86,
-    "avg_phase": 0.413114,
-    "phase_variance": 0.056775976,
+    "avg_phase": 0.48646855,
+    "phase_variance": 0.14263174,
     "avg_conductivity": 0.6302493,
     "avg_pressure": 1.5701735,
     "delivery_rate": 1.0
   },
   {
     "tick": 87,
-    "avg_phase": 0.42267185,
-    "phase_variance": 0.05675782,
+    "avg_phase": 0.45564732,
+    "phase_variance": 0.14051822,
     "avg_conductivity": 0.6302493,
     "avg_pressure": 1.5895548,
     "delivery_rate": 1.0
   },
   {
     "tick": 88,
-    "avg_phase": 0.43222985,
-    "phase_variance": 0.056739803,
+    "avg_phase": 0.46482643,
+    "phase_variance": 0.14075965,
     "avg_conductivity": 0.6302493,
     "avg_pressure": 1.6069999,
     "delivery_rate": 1.0
   },
   {
     "tick": 89,
-    "avg_phase": 0.44178814,
-    "phase_variance": 0.056721922,
+    "avg_phase": 0.45400596,
+    "phase_variance": 0.13952355,
     "avg_conductivity": 0.6302493,
     "avg_pressure": 1.622699,
     "delivery_rate": 1.0
   },
   {
     "tick": 90,
-    "avg_phase": 0.45134667,
-    "phase_variance": 0.05670416,
+    "avg_phase": 0.46318588,
+    "phase_variance": 0.13977131,
     "avg_conductivity": 0.5987368,
     "avg_pressure": 1.6466298,
     "delivery_rate": 1.0
   },
   {
     "tick": 91,
-    "avg_phase": 0.46090546,
-    "phase_variance": 0.056686543,
+    "avg_phase": 0.45236605,
+    "phase_variance": 0.1383677,
     "avg_conductivity": 0.5987368,
     "avg_pressure": 1.6681659,
     "delivery_rate": 1.0
   },
   {
     "tick": 92,
-    "avg_phase": 0.45046413,
-    "phase_variance": 0.05489872,
+    "avg_phase": 0.44154674,
+    "phase_variance": 0.13641404,
     "avg_conductivity": 0.5987368,
     "avg_pressure": 1.6875501,
     "delivery_rate": 1.0
   },
   {
     "tick": 93,
-    "avg_phase": 0.4600233,
-    "phase_variance": 0.05490387,
+    "avg_phase": 0.45072764,
+    "phase_variance": 0.13662454,
     "avg_conductivity": 0.5987368,
     "avg_pressure": 1.7049954,
     "delivery_rate": 1.0
   },
   {
     "tick": 94,
-    "avg_phase": 0.4695826,
-    "phase_variance": 0.054908857,
+    "avg_phase": 0.45990902,
+    "phase_variance": 0.13683459,
     "avg_conductivity": 0.5987368,
     "avg_pressure": 1.7206951,
     "delivery_rate": 1.0
   },
   {
     "tick": 95,
-    "avg_phase": 0.4791422,
-    "phase_variance": 0.05491369,
+    "avg_phase": 0.4290906,
+    "phase_variance": 0.13267705,
     "avg_conductivity": 0.5987368,
     "avg_pressure": 1.7446252,
     "delivery_rate": 1.0
   },
   {
     "tick": 96,
-    "avg_phase": 0.48870167,
-    "phase_variance": 0.05491834,
+    "avg_phase": 0.4382725,
+    "phase_variance": 0.13283604,
     "avg_conductivity": 0.5987368,
     "avg_pressure": 1.7661636,
     "delivery_rate": 1.0
   },
   {
     "tick": 97,
-    "avg_phase": 0.49826148,
-    "phase_variance": 0.05492282,
+    "avg_phase": 0.4474549,
+    "phase_variance": 0.1329947,
     "avg_conductivity": 0.5987368,
     "avg_pressure": 1.7855463,
     "delivery_rate": 1.0
   },
   {
     "tick": 98,
-    "avg_phase": 0.50782156,
-    "phase_variance": 0.054927155,
+    "avg_phase": 0.35663754,
+    "phase_variance": 0.11329577,
     "avg_conductivity": 0.5987368,
     "avg_pressure": 1.8029923,
     "delivery_rate": 1.0
   },
   {
     "tick": 99,
-    "avg_phase": 0.51738167,
-    "phase_variance": 0.054931317,
+    "avg_phase": 0.32582042,
+    "phase_variance": 0.100557014,
     "avg_conductivity": 0.5987368,
     "avg_pressure": 1.8186934,
     "delivery_rate": 1.0
   },
   {
     "tick": 100,
-    "avg_phase": 0.526942,
-    "phase_variance": 0.054935325,
+    "avg_phase": 0.31500363,
+    "phase_variance": 0.093326904,
     "avg_conductivity": 0.5688,
     "avg_pressure": 1.8426224,
     "delivery_rate": 1.0
   },
   {
     "tick": 101,
-    "avg_phase": 0.5365026,
-    "phase_variance": 0.054939173,
+    "avg_phase": 0.28418714,
+    "phase_variance": 0.07718552,
     "avg_conductivity": 0.5688,
     "avg_pressure": 1.8641618,
     "delivery_rate": 1.0
   },
   {
     "tick": 102,
-    "avg_phase": 0.5260632,
-    "phase_variance": 0.056350876,
+    "avg_phase": 0.2733711,
+    "phase_variance": 0.068318225,
     "avg_conductivity": 0.5688,
     "avg_pressure": 1.8835446,
     "delivery_rate": 1.0
   },
   {
     "tick": 103,
-    "avg_phase": 0.53562415,
-    "phase_variance": 0.056373306,
+    "avg_phase": 0.24255513,
+    "phase_variance": 0.04896755,
     "avg_conductivity": 0.5688,
     "avg_pressure": 1.9009911,
     "delivery_rate": 1.0
   },
   {
     "tick": 104,
-    "avg_phase": 0.5451849,
-    "phase_variance": 0.056395456,
+    "avg_phase": 0.2517395,
+    "phase_variance": 0.04884175,
     "avg_conductivity": 0.5688,
     "avg_pressure": 1.916692,
     "delivery_rate": 1.0
   },
   {
     "tick": 105,
-    "avg_phase": 0.4947461,
-    "phase_variance": 0.05881767,
+    "avg_phase": 0.2609241,
+    "phase_variance": 0.048717923,
     "avg_conductivity": 0.5688,
     "avg_pressure": 1.940622,
     "delivery_rate": 1.0
   },
   {
     "tick": 106,
-    "avg_phase": 0.50430727,
-    "phase_variance": 0.058819905,
+    "avg_phase": 0.2701091,
+    "phase_variance": 0.04859607,
     "avg_conductivity": 0.5688,
     "avg_pressure": 1.9621606,
     "delivery_rate": 1.0
   },
   {
     "tick": 107,
-    "avg_phase": 0.5138688,
-    "phase_variance": 0.05882186,
+    "avg_phase": 0.27929428,
+    "phase_variance": 0.048476152,
     "avg_conductivity": 0.5688,
     "avg_pressure": 1.981543,
     "delivery_rate": 1.0
   },
   {
     "tick": 108,
-    "avg_phase": 0.52343035,
-    "phase_variance": 0.058823563,
+    "avg_phase": 0.26847973,
+    "phase_variance": 0.03936156,
     "avg_conductivity": 0.5688,
     "avg_pressure": 1.9989897,
     "delivery_rate": 1.0
   },
   {
     "tick": 109,
-    "avg_phase": 0.53299206,
-    "phase_variance": 0.058824997,
+    "avg_phase": 0.27766544,
+    "phase_variance": 0.039212853,
     "avg_conductivity": 0.5688,
     "avg_pressure": 2.0146909,
     "delivery_rate": 1.0
   },
   {
     "tick": 110,
-    "avg_phase": 0.542554,
-    "phase_variance": 0.05882617,
+    "avg_phase": 0.28685144,
+    "phase_variance": 0.03906599,
     "avg_conductivity": 0.54036,
     "avg_pressure": 2.0386205,
     "delivery_rate": 1.0
   },
   {
     "tick": 111,
-    "avg_phase": 0.512116,
-    "phase_variance": 0.060997453,
+    "avg_phase": 0.29603767,
+    "phase_variance": 0.038920976,
     "avg_conductivity": 0.54036,
     "avg_pressure": 2.0601592,
     "delivery_rate": 1.0
   },
   {
     "tick": 112,
-    "avg_phase": 0.52167803,
-    "phase_variance": 0.061025742,
+    "avg_phase": 0.30522412,
+    "phase_variance": 0.038777746,
     "avg_conductivity": 0.54036,
     "avg_pressure": 2.0795443,
     "delivery_rate": 1.0
   },
   {
     "tick": 113,
-    "avg_phase": 0.5312404,
-    "phase_variance": 0.06105359,
+    "avg_phase": 0.31441078,
+    "phase_variance": 0.03863628,
     "avg_conductivity": 0.54036,
     "avg_pressure": 2.0969894,
     "delivery_rate": 1.0
   },
   {
     "tick": 114,
-    "avg_phase": 0.5408027,
-    "phase_variance": 0.061080955,
+    "avg_phase": 0.32359776,
+    "phase_variance": 0.038496558,
     "avg_conductivity": 0.54036,
     "avg_pressure": 2.1126907,
     "delivery_rate": 1.0
   },
   {
     "tick": 115,
-    "avg_phase": 0.5303651,
-    "phase_variance": 0.062353503,
+    "avg_phase": 0.33278492,
+    "phase_variance": 0.038358558,
     "avg_conductivity": 0.54036,
     "avg_pressure": 2.1366193,
     "delivery_rate": 1.0
   },
   {
     "tick": 116,
-    "avg_phase": 0.5399277,
-    "phase_variance": 0.062362477,
+    "avg_phase": 0.34197232,
+    "phase_variance": 0.03822224,
     "avg_conductivity": 0.54036,
     "avg_pressure": 2.158158,
     "delivery_rate": 1.0
   },
   {
     "tick": 117,
-    "avg_phase": 0.5494906,
-    "phase_variance": 0.062371004,
+    "avg_phase": 0.35115993,
+    "phase_variance": 0.03808759,
     "avg_conductivity": 0.54036,
     "avg_pressure": 2.1775434,
     "delivery_rate": 1.0
   },
   {
     "tick": 118,
-    "avg_phase": 0.5590533,
-    "phase_variance": 0.062379118,
+    "avg_phase": 0.36034775,
+    "phase_variance": 0.037954565,
     "avg_conductivity": 0.54036,
     "avg_pressure": 2.1949885,
     "delivery_rate": 1.0
   },
   {
     "tick": 119,
-    "avg_phase": 0.56861633,
-    "phase_variance": 0.062386815,
+    "avg_phase": 0.36953583,
+    "phase_variance": 0.037823156,
     "avg_conductivity": 0.54036,
     "avg_pressure": 2.2106898,
     "delivery_rate": 1.0
   },
   {
     "tick": 120,
-    "avg_phase": 0.5781795,
-    "phase_variance": 0.06239409,
+    "avg_phase": 0.37872413,
+    "phase_variance": 0.037693366,
     "avg_conductivity": 0.51334196,
     "avg_pressure": 2.234621,
     "delivery_rate": 1.0
   },
   {
     "tick": 121,
-    "avg_phase": 0.58774257,
-    "phase_variance": 0.06240095,
+    "avg_phase": 0.38791257,
+    "phase_variance": 0.037565116,
     "avg_conductivity": 0.51334196,
     "avg_pressure": 2.256157,
     "delivery_rate": 1.0
   },
   {
     "tick": 122,
-    "avg_phase": 0.5973058,
-    "phase_variance": 0.062407404,
+    "avg_phase": 0.39710128,
+    "phase_variance": 0.037438437,
     "avg_conductivity": 0.51334196,
     "avg_pressure": 2.2755432,
     "delivery_rate": 1.0
   },
   {
     "tick": 123,
-    "avg_phase": 0.6068693,
-    "phase_variance": 0.06241347,
+    "avg_phase": 0.40629005,
+    "phase_variance": 0.037313264,
     "avg_conductivity": 0.51334196,
     "avg_pressure": 2.292987,
     "delivery_rate": 1.0
   },
   {
     "tick": 124,
-    "avg_phase": 0.6164328,
-    "phase_variance": 0.062419157,
+    "avg_phase": 0.3954792,
+    "phase_variance": 0.033124685,
     "avg_conductivity": 0.51334196,
     "avg_pressure": 2.3086884,
     "delivery_rate": 1.0
   },
   {
     "tick": 125,
-    "avg_phase": 0.6059963,
-    "phase_variance": 0.06705213,
+    "avg_phase": 0.40466857,
+    "phase_variance": 0.032970082,
     "avg_conductivity": 0.51334196,
     "avg_pressure": 2.332621,
     "delivery_rate": 1.0
   },
   {
     "tick": 126,
-    "avg_phase": 0.55555993,
-    "phase_variance": 0.076620825,
+    "avg_phase": 0.41385788,
+    "phase_variance": 0.03281693,
     "avg_conductivity": 0.51334196,
     "avg_pressure": 2.3541567,
     "delivery_rate": 1.0
   },
   {
     "tick": 127,
-    "avg_phase": 0.5651238,
-    "phase_variance": 0.07666345,
+    "avg_phase": 0.4230475,
+    "phase_variance": 0.03266525,
     "avg_conductivity": 0.51334196,
     "avg_pressure": 2.373542,
     "delivery_rate": 1.0
   },
   {
     "tick": 128,
-    "avg_phase": 0.57468754,
-    "phase_variance": 0.07670592,
+    "avg_phase": 0.43223736,
+    "phase_variance": 0.03251499,
     "avg_conductivity": 0.51334196,
     "avg_pressure": 2.3909872,
     "delivery_rate": 1.0
   },
   {
     "tick": 129,
-    "avg_phase": 0.5642516,
-    "phase_variance": 0.079712346,
+    "avg_phase": 0.4414274,
+    "phase_variance": 0.03236614,
     "avg_conductivity": 0.51334196,
     "avg_pressure": 2.4066875,
     "delivery_rate": 1.0
   },
   {
     "tick": 130,
-    "avg_phase": 0.5538156,
-    "phase_variance": 0.082162686,
+    "avg_phase": 0.45061764,
+    "phase_variance": 0.03221868,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.43062,
     "delivery_rate": 1.0
   },
   {
     "tick": 131,
-    "avg_phase": 0.52337974,
-    "phase_variance": 0.08494293,
+    "avg_phase": 0.45980793,
+    "phase_variance": 0.032072607,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.452159,
     "delivery_rate": 1.0
   },
   {
     "tick": 132,
-    "avg_phase": 0.5329439,
-    "phase_variance": 0.08500394,
+    "avg_phase": 0.4689985,
+    "phase_variance": 0.03192789,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.4715412,
     "delivery_rate": 1.0
   },
   {
     "tick": 133,
-    "avg_phase": 0.54250824,
-    "phase_variance": 0.08506506,
+    "avg_phase": 0.47818923,
+    "phase_variance": 0.03178451,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.488986,
     "delivery_rate": 1.0
   },
   {
     "tick": 134,
-    "avg_phase": 0.53207254,
-    "phase_variance": 0.08650269,
+    "avg_phase": 0.48738012,
+    "phase_variance": 0.03164245,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.5046873,
     "delivery_rate": 1.0
   },
   {
     "tick": 135,
-    "avg_phase": 0.54163694,
-    "phase_variance": 0.08654656,
+    "avg_phase": 0.4765711,
+    "phase_variance": 0.030957425,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.528619,
     "delivery_rate": 1.0
   },
   {
     "tick": 136,
-    "avg_phase": 0.55120146,
-    "phase_variance": 0.08659055,
+    "avg_phase": 0.4857623,
+    "phase_variance": 0.030785613,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.5501587,
     "delivery_rate": 1.0
   },
   {
     "tick": 137,
-    "avg_phase": 0.5407661,
-    "phase_variance": 0.08847139,
+    "avg_phase": 0.49495372,
+    "phase_variance": 0.030615069,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.5695407,
     "delivery_rate": 1.0
   },
   {
     "tick": 138,
-    "avg_phase": 0.55033076,
-    "phase_variance": 0.08851803,
+    "avg_phase": 0.5041453,
+    "phase_variance": 0.030445803,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.5869884,
     "delivery_rate": 1.0
   },
   {
     "tick": 139,
-    "avg_phase": 0.5598956,
-    "phase_variance": 0.08856481,
+    "avg_phase": 0.51333696,
+    "phase_variance": 0.03027778,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.6026895,
     "delivery_rate": 1.0
   },
   {
     "tick": 140,
-    "avg_phase": 0.56946015,
-    "phase_variance": 0.088611774,
+    "avg_phase": 0.52252877,
+    "phase_variance": 0.030110983,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.6266186,
     "delivery_rate": 1.0
   },
   {
     "tick": 141,
-    "avg_phase": 0.57902503,
-    "phase_variance": 0.08865892,
+    "avg_phase": 0.53172076,
+    "phase_variance": 0.029945407,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.6481574,
     "delivery_rate": 1.0
   },
   {
     "tick": 142,
-    "avg_phase": 0.58859,
-    "phase_variance": 0.08870616,
+    "avg_phase": 0.540913,
+    "phase_variance": 0.029781038,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.6675434,
     "delivery_rate": 1.0
   },
   {
     "tick": 143,
-    "avg_phase": 0.5781551,
-    "phase_variance": 0.09207377,
+    "avg_phase": 0.5501053,
+    "phase_variance": 0.029617857,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.6849878,
     "delivery_rate": 1.0
   },
   {
     "tick": 144,
-    "avg_phase": 0.58772004,
-    "phase_variance": 0.09212425,
+    "avg_phase": 0.5592976,
+    "phase_variance": 0.02945584,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.700689,
     "delivery_rate": 1.0
   },
   {
     "tick": 145,
-    "avg_phase": 0.55728525,
-    "phase_variance": 0.09786507,
+    "avg_phase": 0.5684902,
+    "phase_variance": 0.029295005,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.7246213,
     "delivery_rate": 1.0
   },
   {
     "tick": 146,
-    "avg_phase": 0.5668504,
-    "phase_variance": 0.09790644,
+    "avg_phase": 0.5776829,
+    "phase_variance": 0.029135304,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.746157,
     "delivery_rate": 1.0
   },
   {
     "tick": 147,
-    "avg_phase": 0.57641566,
-    "phase_variance": 0.097947896,
+    "avg_phase": 0.5668757,
+    "phase_variance": 0.032034393,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.7655418,
     "delivery_rate": 1.0
   },
   {
     "tick": 148,
-    "avg_phase": 0.54598093,
-    "phase_variance": 0.10305259,
+    "avg_phase": 0.5760688,
+    "phase_variance": 0.031940658,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.7829874,
     "delivery_rate": 1.0
   },
   {
     "tick": 149,
-    "avg_phase": 0.5555462,
-    "phase_variance": 0.10308101,
+    "avg_phase": 0.5852619,
+    "phase_variance": 0.03184754,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.7986884,
     "delivery_rate": 1.0
   },
   {
     "tick": 150,
-    "avg_phase": 0.56511176,
-    "phase_variance": 0.10310955,
+    "avg_phase": 0.5944551,
+    "phase_variance": 0.03175498,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.8226197,
     "delivery_rate": 1.0
   },
   {
     "tick": 151,
-    "avg_phase": 0.5546772,
-    "phase_variance": 0.10565565,
+    "avg_phase": 0.5836486,
+    "phase_variance": 0.035258528,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.8441567,
     "delivery_rate": 1.0
   },
   {
     "tick": 152,
-    "avg_phase": 0.5642426,
-    "phase_variance": 0.10569757,
+    "avg_phase": 0.59284204,
+    "phase_variance": 0.03522305,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.8635418,
     "delivery_rate": 1.0
   },
   {
     "tick": 153,
-    "avg_phase": 0.5538083,
-    "phase_variance": 0.10822667,
+    "avg_phase": 0.6020359,
+    "phase_variance": 0.03518773,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.880987,
     "delivery_rate": 1.0
   },
   {
     "tick": 154,
-    "avg_phase": 0.5433738,
-    "phase_variance": 0.11011723,
+    "avg_phase": 0.6112294,
+    "phase_variance": 0.035152566,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.8966882,
     "delivery_rate": 1.0
   },
   {
     "tick": 155,
-    "avg_phase": 0.5329395,
-    "phase_variance": 0.11170563,
+    "avg_phase": 0.6204235,
+    "phase_variance": 0.035117585,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.9206197,
     "delivery_rate": 1.0
   },
   {
     "tick": 156,
-    "avg_phase": 0.54250515,
-    "phase_variance": 0.11171079,
+    "avg_phase": 0.6096175,
+    "phase_variance": 0.039639786,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.9421582,
     "delivery_rate": 1.0
   },
   {
     "tick": 157,
-    "avg_phase": 0.552071,
-    "phase_variance": 0.11171611,
+    "avg_phase": 0.6188115,
+    "phase_variance": 0.039647978,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.9615417,
     "delivery_rate": 1.0
   },
   {
     "tick": 158,
-    "avg_phase": 0.5616367,
-    "phase_variance": 0.11172152,
+    "avg_phase": 0.62800586,
+    "phase_variance": 0.03965611,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.9789855,
     "delivery_rate": 1.0
   },
   {
     "tick": 159,
-    "avg_phase": 0.49120265,
-    "phase_variance": 0.11605204,
+    "avg_phase": 0.61720014,
+    "phase_variance": 0.04461483,
     "avg_conductivity": 0.5,
     "avg_pressure": 2.9946868,
     "delivery_rate": 1.0
   },
   {
     "tick": 160,
-    "avg_phase": 0.48076835,
-    "phase_variance": 0.115537316,
+    "avg_phase": 0.62639475,
+    "phase_variance": 0.044653382,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.01862,
     "delivery_rate": 1.0
   },
   {
     "tick": 161,
-    "avg_phase": 0.49033424,
-    "phase_variance": 0.11550713,
+    "avg_phase": 0.61558914,
+    "phase_variance": 0.04962461,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.040158,
     "delivery_rate": 1.0
   },
   {
     "tick": 162,
-    "avg_phase": 0.47990027,
-    "phase_variance": 0.11480348,
+    "avg_phase": 0.624784,
+    "phase_variance": 0.04969258,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.0595398,
     "delivery_rate": 1.0
   },
   {
     "tick": 163,
-    "avg_phase": 0.46946633,
-    "phase_variance": 0.113867976,
+    "avg_phase": 0.63397884,
+    "phase_variance": 0.04976038,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.0769885,
     "delivery_rate": 1.0
   },
   {
     "tick": 164,
-    "avg_phase": 0.43903238,
-    "phase_variance": 0.1102053,
+    "avg_phase": 0.6431738,
+    "phase_variance": 0.049828008,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.0926898,
     "delivery_rate": 1.0
   },
   {
     "tick": 165,
-    "avg_phase": 0.44859844,
-    "phase_variance": 0.1101645,
+    "avg_phase": 0.6523688,
+    "phase_variance": 0.049895424,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.1166177,
     "delivery_rate": 1.0
   },
   {
     "tick": 166,
-    "avg_phase": 0.4181646,
-    "phase_variance": 0.10497116,
+    "avg_phase": 0.66156405,
+    "phase_variance": 0.049962655,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.1381562,
     "delivery_rate": 1.0
   },
   {
     "tick": 167,
-    "avg_phase": 0.4277307,
-    "phase_variance": 0.1049394,
+    "avg_phase": 0.67075926,
+    "phase_variance": 0.050029717,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.1575406,
     "delivery_rate": 1.0
   },
   {
     "tick": 168,
-    "avg_phase": 0.43729696,
-    "phase_variance": 0.10490805,
+    "avg_phase": 0.65995455,
+    "phase_variance": 0.05672548,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.1749866,
     "delivery_rate": 1.0
   },
   {
     "tick": 169,
-    "avg_phase": 0.426863,
-    "phase_variance": 0.102171294,
+    "avg_phase": 0.6491501,
+    "phase_variance": 0.06283447,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.1906872,
     "delivery_rate": 1.0
   },
   {
     "tick": 170,
-    "avg_phase": 0.43642932,
-    "phase_variance": 0.10213828,
+    "avg_phase": 0.6583457,
+    "phase_variance": 0.06293108,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.2146184,
     "delivery_rate": 1.0
   },
   {
     "tick": 171,
-    "avg_phase": 0.4259958,
-    "phase_variance": 0.09950792,
+    "avg_phase": 0.66754127,
+    "phase_variance": 0.06302764,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.2361567,
     "delivery_rate": 1.0
   },
   {
     "tick": 172,
-    "avg_phase": 0.39556208,
-    "phase_variance": 0.09229759,
+    "avg_phase": 0.6767371,
+    "phase_variance": 0.063124135,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.2555408,
     "delivery_rate": 1.0
   },
   {
     "tick": 173,
-    "avg_phase": 0.3851283,
-    "phase_variance": 0.08791638,
+    "avg_phase": 0.68593305,
+    "phase_variance": 0.06322057,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.2729867,
     "delivery_rate": 1.0
   },
   {
     "tick": 174,
-    "avg_phase": 0.37469473,
-    "phase_variance": 0.08325096,
+    "avg_phase": 0.69512886,
+    "phase_variance": 0.06331696,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.288688,
     "delivery_rate": 1.0
   },
   {
     "tick": 175,
-    "avg_phase": 0.38426122,
-    "phase_variance": 0.08321013,
+    "avg_phase": 0.704325,
+    "phase_variance": 0.063413285,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.3126185,
     "delivery_rate": 1.0
   },
   {
     "tick": 176,
-    "avg_phase": 0.37382764,
-    "phase_variance": 0.07844431,
+    "avg_phase": 0.6735212,
+    "phase_variance": 0.07848077,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.334157,
     "delivery_rate": 1.0
   },
   {
     "tick": 177,
-    "avg_phase": 0.3833941,
-    "phase_variance": 0.078414395,
+    "avg_phase": 0.6627175,
+    "phase_variance": 0.085211076,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.3535419,
     "delivery_rate": 1.0
   },
   {
     "tick": 178,
-    "avg_phase": 0.39296058,
-    "phase_variance": 0.078384966,
+    "avg_phase": 0.6719139,
+    "phase_variance": 0.08531203,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.3709877,
     "delivery_rate": 1.0
   },
   {
     "tick": 179,
-    "avg_phase": 0.3825271,
-    "phase_variance": 0.07390261,
+    "avg_phase": 0.6811101,
+    "phase_variance": 0.0854134,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.386689,
     "delivery_rate": 1.0
   },
   {
     "tick": 180,
-    "avg_phase": 0.35209382,
-    "phase_variance": 0.06323209,
+    "avg_phase": 0.6903069,
+    "phase_variance": 0.085515186,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.4106197,
     "delivery_rate": 1.0
   },
   {
     "tick": 181,
-    "avg_phase": 0.36166027,
-    "phase_variance": 0.063206,
+    "avg_phase": 0.6995035,
+    "phase_variance": 0.08561734,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.432155,
     "delivery_rate": 1.0
   },
   {
     "tick": 182,
-    "avg_phase": 0.37122685,
-    "phase_variance": 0.06318018,
+    "avg_phase": 0.7087001,
+    "phase_variance": 0.08571991,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.4515388,
     "delivery_rate": 1.0
   },
   {
     "tick": 183,
-    "avg_phase": 0.38079357,
-    "phase_variance": 0.06315467,
+    "avg_phase": 0.67789704,
+    "phase_variance": 0.101467066,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.4689853,
     "delivery_rate": 1.0
   },
   {
     "tick": 184,
-    "avg_phase": 0.39036027,
-    "phase_variance": 0.06312943,
+    "avg_phase": 0.66709405,
+    "phase_variance": 0.10852981,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.4846866,
     "delivery_rate": 1.0
   },
   {
     "tick": 185,
-    "avg_phase": 0.39992687,
-    "phase_variance": 0.0631045,
+    "avg_phase": 0.67629087,
+    "phase_variance": 0.10867794,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.5086205,
     "delivery_rate": 1.0
   },
   {
     "tick": 186,
-    "avg_phase": 0.40949363,
-    "phase_variance": 0.06307988,
+    "avg_phase": 0.66548806,
+    "phase_variance": 0.11579955,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.530158,
     "delivery_rate": 1.0
   },
   {
     "tick": 187,
-    "avg_phase": 0.39906037,
-    "phase_variance": 0.059074335,
+    "avg_phase": 0.67468506,
+    "phase_variance": 0.11596592,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.5495396,
     "delivery_rate": 1.0
   },
   {
     "tick": 188,
-    "avg_phase": 0.40862715,
-    "phase_variance": 0.059059657,
+    "avg_phase": 0.6638825,
+    "phase_variance": 0.12304394,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.5669885,
     "delivery_rate": 1.0
   },
   {
     "tick": 189,
-    "avg_phase": 0.41819397,
-    "phase_variance": 0.059045214,
+    "avg_phase": 0.6730797,
+    "phase_variance": 0.12322446,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.5826898,
     "delivery_rate": 1.0
   },
   {
     "tick": 190,
-    "avg_phase": 0.40776077,
-    "phase_variance": 0.055511717,
+    "avg_phase": 0.66227716,
+    "phase_variance": 0.13012186,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.6066175,
     "delivery_rate": 1.0
   },
   {
     "tick": 191,
-    "avg_phase": 0.4173276,
-    "phase_variance": 0.055506982,
+    "avg_phase": 0.65147454,
+    "phase_variance": 0.13655725,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.6281552,
     "delivery_rate": 1.0
   },
   {
     "tick": 192,
-    "avg_phase": 0.42689446,
-    "phase_variance": 0.055502415,
+    "avg_phase": 0.58067214,
+    "phase_variance": 0.15548694,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.6475413,
     "delivery_rate": 1.0
   },
   {
     "tick": 193,
-    "avg_phase": 0.4364612,
-    "phase_variance": 0.055498004,
+    "avg_phase": 0.5698699,
+    "phase_variance": 0.15867932,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.6649854,
     "delivery_rate": 1.0
   },
   {
     "tick": 194,
-    "avg_phase": 0.44602814,
-    "phase_variance": 0.055493776,
+    "avg_phase": 0.5190676,
+    "phase_variance": 0.16412699,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.6806867,
     "delivery_rate": 1.0
   },
   {
     "tick": 195,
-    "avg_phase": 0.4555951,
-    "phase_variance": 0.055489708,
+    "avg_phase": 0.4882654,
+    "phase_variance": 0.16438757,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.7046192,
     "delivery_rate": 1.0
   },
   {
     "tick": 196,
-    "avg_phase": 0.46516204,
-    "phase_variance": 0.055485796,
+    "avg_phase": 0.4774633,
+    "phase_variance": 0.16374113,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.7261562,
     "delivery_rate": 1.0
   },
   {
     "tick": 197,
-    "avg_phase": 0.47472885,
-    "phase_variance": 0.055482063,
+    "avg_phase": 0.42666125,
+    "phase_variance": 0.15819629,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.7455401,
     "delivery_rate": 1.0
   },
   {
     "tick": 198,
-    "avg_phase": 0.48429596,
-    "phase_variance": 0.055478502,
+    "avg_phase": 0.39585945,
+    "phase_variance": 0.15144339,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.7629867,
     "delivery_rate": 1.0
   },
   {
     "tick": 199,
-    "avg_phase": 0.49386293,
-    "phase_variance": 0.055475097,
+    "avg_phase": 0.4050575,
+    "phase_variance": 0.15158747,
     "avg_conductivity": 0.5,
     "avg_pressure": 3.778688,
     "delivery_rate": 1.0

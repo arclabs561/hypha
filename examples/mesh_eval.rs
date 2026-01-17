@@ -10,7 +10,7 @@
 //! - Energy-aware peer scoring
 
 use hypha::mesh::{MeshConfig, MeshControl, TopicMesh};
-use rand::prelude::*;
+use rand::{rng, Rng};
 use serde::Serialize;
 
 /// Result of a mesh evaluation scenario
@@ -35,7 +35,7 @@ fn simulate_mesh_propagation(
     publisher_idx: usize,
     drop_prob: f32,
 ) -> (u32, Vec<u64>) {
-    let mut rng = thread_rng();
+    let mut rng = rng();
     let mut delivered = 0u32;
     let mut latencies = Vec::new();
     let node_count = meshes.len();
@@ -59,7 +59,7 @@ fn simulate_mesh_propagation(
         let mut next_wave = Vec::new();
 
         for &idx in &current_wave {
-            if received[idx] || rng.gen::<f32>() < drop_prob {
+            if received[idx] || rng.random::<f32>() < drop_prob {
                 continue;
             }
 
@@ -67,7 +67,7 @@ fn simulate_mesh_propagation(
             delivered += 1;
 
             // Latency based on hops
-            let latency = hop as u64 * 15_000 + rng.gen_range(0..5_000);
+            let latency = hop as u64 * 15_000 + rng.random_range(0..5_000);
             latencies.push(latency);
 
             // Record message
