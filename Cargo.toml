@@ -1,8 +1,8 @@
 [workspace]
 members = [
     ".",
-    "crates/hypha-compute",
-    "crates/hypha-core",
+    "hypha-compute",
+    "hypha-core",
 ]
 exclude = []
 
@@ -17,7 +17,7 @@ rust-version = "1.91"
 
 [dependencies]
 anyhow = "1.0.100"
-hypha-core = { path = "crates/hypha-core" }
+hypha-core = { path = "hypha-core" }
 cid = "0.11.1"
 ed25519-dalek = { version = "2.2.0", features = ["rand_core"] }
 fjall = { version = "3.0.1", features = ["lz4"] }
@@ -57,7 +57,6 @@ lapl = { path = "../lapl" }
 rmt = { path = "../rmt" }
 qig = { path = "../qig" }
 wass = { path = "../wass" }
-prep = { path = "../prep" }
 slabs = { path = "../slabs" }
 walk = { path = "../walk" }
 propago = { path = "../propago" }

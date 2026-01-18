@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 anyhow = "1.0"
 async-trait = "0.1"
-hypha = { path = "../../" }
+hypha-core = { path = "../hypha-core" }
 thiserror = "2.0"
 tracing = "0.1"
 wasmtime = "16.0" # Stable, secure WASM runtime

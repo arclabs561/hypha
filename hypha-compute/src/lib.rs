@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use hypha::Metabolism;
+use hypha_core::Metabolism;
 use std::sync::{Arc, Mutex};
 
 /// Error type for compute failures
