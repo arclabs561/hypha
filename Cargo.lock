@@ -1550,6 +1550,7 @@ dependencies = [
  "cid 0.11.1",
  "ed25519-dalek",
  "fjall",
+ "hypha-core",
  "libp2p",
  "proptest",
  "rand 0.9.2",
@@ -1573,12 +1574,23 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "hypha",
+ "hypha-core",
  "thiserror 2.0.17",
  "tokio",
  "tracing",
  "wasmtime",
  "wat",
+]
+
+[[package]]
+name = "hypha-core"
+version = "0.1.0"
+dependencies = [
+ "instant",
+ "rand 0.9.2",
+ "serde",
+ "serde_json",
+ "tracing",
 ]
 
 [[package]]
@@ -5257,3 +5269,83 @@ dependencies = [
  "cc",
  "pkg-config",
 ]
+
+[[patch.unused]]
+name = "ans"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "cnk"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "fynch"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "hyp"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "innr"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "jin"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "kuji"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "lapl"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "logp"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "pare"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "propago"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "qig"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "rkhs"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "rmt"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "sbits"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "slabs"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "subsume-core"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "tier"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "walk"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "wass"
+version = "0.1.0"

@@ -45,8 +45,6 @@ innr = { path = "../innr" }
 logp = { path = "../logp" }
 kuji = { path = "../kuji" }
 hyp = { path = "../hyp" }
-skel = { path = "../skel" }
-yukti = { path = "../yukti" }
 pare = { path = "../pare" }
 cnk = { path = "../cnk" }
 sbits = { path = "../sbits" }

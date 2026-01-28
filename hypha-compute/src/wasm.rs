@@ -13,7 +13,7 @@ impl WasmTimeRuntime {
         let mut config = Config::new();
         config.async_support(true);
         config.consume_fuel(true); // Vital for resource limiting
-        
+
         let engine = Engine::new(&config)?;
         Ok(Self { engine })
     }
@@ -39,10 +39,12 @@ impl ComputeRuntime for WasmTimeRuntime {
         // 2. Setup Store & Fuel
         struct State {}
         let mut store = Store::new(&self.engine, State {});
-        
+
         // Map 1.0 energy -> 100,000 fuel units (example ratio)
         let fuel_limit = (budget * 100_000.0) as u64;
-        store.set_fuel(fuel_limit).map_err(|e| ComputeError::Wasm(e.to_string()))?;
+        store
+            .set_fuel(fuel_limit)
+            .map_err(|e| ComputeError::Wasm(e.to_string()))?;
 
         // 3. Instantiate
         let linker = Linker::new(&self.engine);
@@ -64,13 +66,13 @@ impl ComputeRuntime for WasmTimeRuntime {
                 let remaining = store.get_fuel().unwrap_or(0);
                 let consumed = fuel_limit.saturating_sub(remaining);
                 let cost = consumed as f32 / 100_000.0;
-                
+
                 // Deduct from metabolism
                 let mut meta = metabolism.lock().unwrap();
                 if !meta.consume(cost) {
                     return Err(ComputeError::Exhausted);
                 }
-                
+
                 Ok(vec![]) // Output capturing TBD
             }
             Err(e) => {
@@ -92,10 +94,10 @@ mod tests {
     async fn test_wasm_execution_consumes_fuel() {
         // 1. Setup Runtime
         let runtime = WasmTimeRuntime::new().unwrap();
-        
+
         // 2. Setup Metabolism (100% battery)
         let meta = Arc::new(Mutex::new(BatteryMetabolism::default()));
-        
+
         // 3. Create a simple WAT module that loops to burn fuel
         // This module exports "run".
         let wat_finite = r#"
@@ -115,21 +117,24 @@ mod tests {
         // 4. Execute with budget
         // 1.0 budget = 100,000 units. 1000 loops should be cheap.
         let result = runtime.execute(&wasm_bytes, &[], meta.clone(), 1.0).await;
-        
+
         assert!(result.is_ok(), "Execution failed: {:?}", result.err());
 
         // 5. Verify energy consumption
         let remaining = meta.lock().unwrap().energy_score();
         println!("Remaining energy: {}", remaining);
         assert!(remaining < 1.0, "Energy should have been consumed");
-        assert!(remaining > 0.9, "Energy should not be exhausted by simple loop");
+        assert!(
+            remaining > 0.9,
+            "Energy should not be exhausted by simple loop"
+        );
     }
 
     #[tokio::test]
     async fn test_exhaustion() {
         let runtime = WasmTimeRuntime::new().unwrap();
         let meta = Arc::new(Mutex::new(BatteryMetabolism::default()));
-        
+
         // Loop 1 million times
         let wat = r#"
             (module
@@ -145,14 +150,16 @@ mod tests {
         let wasm_bytes = wat::parse_str(wat).unwrap();
 
         // Tiny budget (0.0001 = 10 fuel)
-        let result = runtime.execute(&wasm_bytes, &[], meta.clone(), 0.0001).await;
-        
+        let result = runtime
+            .execute(&wasm_bytes, &[], meta.clone(), 0.0001)
+            .await;
+
         // Should fail due to OOG (Out Of Gas) / Wasm runtime error
         assert!(result.is_err());
         if let Err(ComputeError::Wasm(msg)) = result {
             println!("Got expected error: {}", msg);
             // Wasmtime error messages vary, but if it errored on a loop, it's likely fuel.
-            // assert!(msg.contains("fuel")); 
+            // assert!(msg.contains("fuel"));
         }
     }
 }

@@ -7,15 +7,15 @@ Hypha is the **L6 Coordination Layer** of the Tekne Stack. It provides the "Fung
 -   **Bio-Inspired**: Systems model biological processes (mycelial growth, quorum sensing, metabolism).
 -   **Resource-Aware**: "Metabolism" is a first-class citizen.
 -   **Local-First**: Data and compute prefer to stay local; sync is eventual (CRDTs).
--   **Ecosystem-Integrated**: Hypha does not reinvent the wheel. It connects `jin`, `bop`, and `innr`.
+-   **Ecosystem-Integrated**: Hypha does not reinvent the wheel. It connects an external agent layer, an ANN/knowledge layer, and low-level SIMD/math crates.
 
 ## 2. Architecture
 
 ```mermaid
 graph TD
-    A[bop (Agents)] --> B[hypha-core (P2P)]
+    A[external agents (planning/orchestration)] --> B[hypha-core (P2P)]
     B --> C[hypha-compute (WASM)]
-    B --> D[jin (Knowledge/ANN)]
+    B --> D[knowledge/ANN layer]
     C --> E[innr (Simd)]
 ```
 
@@ -31,18 +31,18 @@ graph TD
     *   **Sandboxing**: Strict fuel limits mapped to `Metabolism`.
     *   **Isolation**: Prevents agentic tasks from crashing the node.
 
-### `bop` (The Brain - External)
-*   **Responsibility**: Agentic reasoning, planning, LLM inference.
-*   **Integration**: `bop` runs *on* `hypha` nodes, using `hypha-core` for coordination.
+### External agent layer (The Brain)
+*   **Responsibility**: Agentic reasoning, planning, model/tool orchestration.
+*   **Integration**: Agents run *on* `hypha` nodes (or adjacent hosts) and use `hypha-core` for coordination.
 
-### `jin` (The Memory - External)
-*   **Responsibility**: Vector storage, ANN search, Memory recall.
-*   **Integration**: `hypha` nodes use `jin` for local knowledge storage and semantic routing.
+### Knowledge / ANN layer (The Memory)
+*   **Responsibility**: Vector storage, ANN search, recall.
+*   **Integration**: `hypha` nodes use a local knowledge layer for semantic routing and retrieval.
 
 ## 3. Data Flow
 
 1.  **Sensing**: `hypha-core` receives `EnergyStatus` and `Task` bundles.
-2.  **Reasoning**: `bop` (via `hypha-agent` adapter or direct) decides to bid.
+2.  **Reasoning**: an external agent decides whether to bid/accept work.
 3.  **Execution**: `hypha-compute` runs the task (WASM).
 4.  **Accounting**: `Metabolism` tracks cost.
 
@@ -50,4 +50,4 @@ graph TD
 
 1.  **Phase 1 (Complete)**: Hardened P2P networking & CRDT sync.
 2.  **Phase 2 (Current)**: WASM Compute runtime (`hypha-compute`).
-3.  **Phase 3**: Integration with `bop` (Agents) and `jin` (Knowledge).
+3.  **Phase 3**: Integration with external agents and the knowledge/ANN layer.

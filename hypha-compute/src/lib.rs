@@ -20,7 +20,7 @@ pub trait ComputeRuntime: Send + Sync {
     fn name(&self) -> &str;
 
     /// Execute a task payload
-    /// 
+    ///
     /// * `payload`: The binary code (WASM) to execute
     /// * `input`: Input data for the task
     /// * `metabolism`: Access to resource accounting

@@ -1,8 +1,8 @@
+use rand::rng;
+use rand::seq::IndexedRandom;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
-use rand::rng;
-use rand::seq::IndexedRandom;
 
 /// Mesh configuration parameters (following gossipsub v1.1 defaults)
 #[derive(Debug, Clone)]
@@ -88,13 +88,20 @@ impl MeshPeer {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum MeshControl {
-    Graft { topic: String },
-    Prune { topic: String, backoff: Duration },
+    Graft {
+        topic: String,
+    },
+    Prune {
+        topic: String,
+        backoff: Duration,
+    },
     IHave {
         topic: String,
         message_ids: Vec<String>,
     },
-    IWant { message_ids: Vec<String> },
+    IWant {
+        message_ids: Vec<String>,
+    },
 }
 
 #[derive(Debug)]

@@ -1,10 +1,10 @@
-pub mod metabolism;
 pub mod agent;
 pub mod mesh;
+pub mod metabolism;
 pub mod sensor;
 
 // Re-export common types
-pub use metabolism::{Metabolism, BatteryMetabolism, MockMetabolism, PowerMode};
-pub use agent::{Capability, Task, Bid, EnergyStatus};
-pub use mesh::{TopicMesh, MeshConfig, MeshPeer, MeshControl, MeshStats};
-pub use sensor::{VirtualSensor, BasicSensor};
+pub use agent::{Bid, Capability, EnergyStatus, Task};
+pub use mesh::{MeshConfig, MeshControl, MeshPeer, MeshStats, TopicMesh};
+pub use metabolism::{BatteryMetabolism, Metabolism, MockMetabolism, PowerMode};
+pub use sensor::{BasicSensor, VirtualSensor};
