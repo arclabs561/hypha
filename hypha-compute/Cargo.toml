@@ -10,7 +10,7 @@ documentation = "https://docs.rs/hypha-compute"
 [dependencies]
 anyhow = "1.0"
 async-trait = "0.1"
-hypha-core = { path = "../hypha-core" }
+hypha-core = { path = "../hypha-core", version = "0.1.0" }
 thiserror = "2.0"
 tracing = "0.1"
 wasmtime = "16.0" # Stable, secure WASM runtime
