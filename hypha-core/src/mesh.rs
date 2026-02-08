@@ -132,6 +132,12 @@ impl TopicMesh {
         }
     }
 
+    /// Return the current number of peers in the mesh.
+    #[must_use]
+    pub fn mesh_size(&self) -> usize {
+        self.mesh_peers.len()
+    }
+
     pub fn set_pressure(&mut self, pressure: f32) {
         self.local_pressure = pressure;
     }
