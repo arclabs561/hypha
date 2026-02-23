@@ -1,12 +1,12 @@
 use serde::{Deserialize, Serialize};
 
-/// Trait for resource management/metabolism
-pub trait Metabolism: Send + Sync + std::fmt::Debug {
+pub trait Metabolism: Send + Sync + core::fmt::Debug {
     fn energy_score(&self) -> f32;
     fn consume(&mut self, cost: f32) -> bool;
     fn remaining(&self) -> f32;
     fn set_mode(&mut self, mode: PowerMode);
     fn is_mains_powered(&self) -> bool;
+    #[cfg(feature = "std")]
     fn as_any(&mut self) -> &mut dyn std::any::Any;
 }
 
@@ -45,7 +45,6 @@ impl Metabolism for BatteryMetabolism {
         let c_score = self.mah_remaining / 2500.0;
         (v_score * 0.4 + c_score * 0.6).clamp(0.0, 1.0)
     }
-
     fn consume(&mut self, cost: f32) -> bool {
         if self.mah_remaining <= 0.0 {
             return false;
@@ -55,11 +54,9 @@ impl Metabolism for BatteryMetabolism {
         self.voltage = 3.3 + (capacity_ratio * 0.9);
         true
     }
-
     fn remaining(&self) -> f32 {
         self.mah_remaining
     }
-
     fn set_mode(&mut self, mode: PowerMode) {
         match mode {
             PowerMode::Normal => {
@@ -76,11 +73,10 @@ impl Metabolism for BatteryMetabolism {
             }
         }
     }
-
     fn is_mains_powered(&self) -> bool {
         self.is_mains
     }
-
+    #[cfg(feature = "std")]
     fn as_any(&mut self) -> &mut dyn std::any::Any {
         self
     }
@@ -110,12 +106,13 @@ impl Metabolism for MockMetabolism {
         true
     }
     fn remaining(&self) -> f32 {
-        self.energy * 2500.0 // Mock mapping 1.0 -> 2500 mAh
+        self.energy * 2500.0
     }
     fn set_mode(&mut self, _mode: PowerMode) {}
     fn is_mains_powered(&self) -> bool {
         self.is_mains
     }
+    #[cfg(feature = "std")]
     fn as_any(&mut self) -> &mut dyn std::any::Any {
         self
     }

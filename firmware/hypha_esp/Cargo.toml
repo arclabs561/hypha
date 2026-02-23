@@ -1,0 +1,16 @@
+# Minimal ESP32-S3 firmware: prints EnergyStatus JSON over USB CDC.
+# Standalone crate (not part of parent workspace).
+[workspace]
+
+[package]
+name = "hypha_esp"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+esp-idf-svc = { version = "0.51", features = ["binstart"] }
+esp-idf-sys = { version = "0.36", features = ["binstart"] }
+
+[profile.release]
+opt-level = "s"
+lto = true

@@ -1,0 +1,26 @@
+[patch.crates-io]
+# Optional local development overrides for sibling checkouts under a shared `dev/` directory.
+# Copy this file to `.cargo/config.toml` if you have these repos checked out next to `hypha/`.
+#
+# This file is intentionally an example: the paths will not exist for a standalone clone.
+
+innr = { path = "../innr" }
+logp = { path = "../logp" }
+kuji = { path = "../kuji" }
+hyp = { path = "../hyp" }
+pare = { path = "../pare" }
+cnk = { path = "../cnk" }
+sbits = { path = "../sbits" }
+ans = { path = "../ans" }
+fynch = { path = "../fynch" }
+rkhs = { path = "../rkhs" }
+lapl = { path = "../lapl" }
+rmt = { path = "../rmt" }
+qig = { path = "../qig" }
+wass = { path = "../wass" }
+slabs = { path = "../slabs" }
+walk = { path = "../walk" }
+propago = { path = "../propago" }
+tier = { path = "../tier" }
+jin = { path = "../jin" }
+subsume-core = { path = "../subsume/subsume-core" }

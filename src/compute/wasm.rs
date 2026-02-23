@@ -1,6 +1,6 @@
-use crate::{ComputeError, ComputeRuntime};
+use crate::compute::{ComputeError, ComputeRuntime};
 use async_trait::async_trait;
-use hypha_core::Metabolism;
+use crate::core::Metabolism;
 use std::sync::{Arc, Mutex};
 use wasmtime::{Config, Engine, Linker, Module, Store};
 
@@ -86,8 +86,8 @@ impl ComputeRuntime for WasmTimeRuntime {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ComputeError;
-    use hypha_core::{BatteryMetabolism, Metabolism};
+    use crate::compute::ComputeError;
+    use crate::core::{BatteryMetabolism, Metabolism};
     use std::sync::{Arc, Mutex};
 
     #[tokio::test]
