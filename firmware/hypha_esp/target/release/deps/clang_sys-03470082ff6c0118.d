@@ -1,0 +1,14 @@
+/Users/arc/Documents/dev/hypha/firmware/hypha_esp/target/release/deps/clang_sys-03470082ff6c0118.d: /Users/arc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/lib.rs /Users/arc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/support.rs /Users/arc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/link.rs /Users/arc/Documents/dev/hypha/firmware/hypha_esp/target/release/build/clang-sys-6b88e96c70ad5a38/out/macros.rs /Users/arc/Documents/dev/hypha/firmware/hypha_esp/target/release/build/clang-sys-6b88e96c70ad5a38/out/common.rs /Users/arc/Documents/dev/hypha/firmware/hypha_esp/target/release/build/clang-sys-6b88e96c70ad5a38/out/dynamic.rs
+
+/Users/arc/Documents/dev/hypha/firmware/hypha_esp/target/release/deps/libclang_sys-03470082ff6c0118.rlib: /Users/arc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/lib.rs /Users/arc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/support.rs /Users/arc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/link.rs /Users/arc/Documents/dev/hypha/firmware/hypha_esp/target/release/build/clang-sys-6b88e96c70ad5a38/out/macros.rs /Users/arc/Documents/dev/hypha/firmware/hypha_esp/target/release/build/clang-sys-6b88e96c70ad5a38/out/common.rs /Users/arc/Documents/dev/hypha/firmware/hypha_esp/target/release/build/clang-sys-6b88e96c70ad5a38/out/dynamic.rs
+
+/Users/arc/Documents/dev/hypha/firmware/hypha_esp/target/release/deps/libclang_sys-03470082ff6c0118.rmeta: /Users/arc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/lib.rs /Users/arc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/support.rs /Users/arc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/link.rs /Users/arc/Documents/dev/hypha/firmware/hypha_esp/target/release/build/clang-sys-6b88e96c70ad5a38/out/macros.rs /Users/arc/Documents/dev/hypha/firmware/hypha_esp/target/release/build/clang-sys-6b88e96c70ad5a38/out/common.rs /Users/arc/Documents/dev/hypha/firmware/hypha_esp/target/release/build/clang-sys-6b88e96c70ad5a38/out/dynamic.rs
+
+/Users/arc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/lib.rs:
+/Users/arc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/support.rs:
+/Users/arc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/link.rs:
+/Users/arc/Documents/dev/hypha/firmware/hypha_esp/target/release/build/clang-sys-6b88e96c70ad5a38/out/macros.rs:
+/Users/arc/Documents/dev/hypha/firmware/hypha_esp/target/release/build/clang-sys-6b88e96c70ad5a38/out/common.rs:
+/Users/arc/Documents/dev/hypha/firmware/hypha_esp/target/release/build/clang-sys-6b88e96c70ad5a38/out/dynamic.rs:
+
+# env-dep:OUT_DIR=/Users/arc/Documents/dev/hypha/firmware/hypha_esp/target/release/build/clang-sys-6b88e96c70ad5a38/out

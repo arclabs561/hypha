@@ -11,7 +11,7 @@
 //! This module provides a simulation-friendly mesh layer that can be evaluated
 //! without running a full libp2p swarm.
 
-pub use hypha_core::mesh::{MeshConfig, MeshControl, MeshPeer, MeshStats, TopicMesh};
+pub use crate::core::mesh::{MeshConfig, MeshControl, MeshPeer, MeshStats, TopicMesh};
 
 #[cfg(test)]
 mod tests {

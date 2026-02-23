@@ -3,19 +3,20 @@ use fjall::{Database, Keyspace, KeyspaceCreateOptions};
 use libp2p::{futures::StreamExt, gossipsub, swarm::SwarmEvent, Multiaddr, PeerId};
 use rand::{rng, Rng};
 use rand_core::OsRng;
-use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tracing::info;
 
 pub mod capabilities;
+pub mod compute;
+pub mod core;
 pub mod eval;
 pub mod mesh;
 pub mod mycelium;
 pub mod sync;
 
-pub use hypha_core::{
+pub use crate::core::{
     BasicSensor, BatteryMetabolism, Bid, Capability, EnergyStatus, Metabolism, MockMetabolism,
     PowerMode, Task, VirtualSensor,
 };
