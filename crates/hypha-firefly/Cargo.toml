@@ -1,0 +1,11 @@
+[package]
+name = "hypha-firefly"
+version = "0.1.0"
+edition = "2021"
+description = "Pure no_std logic for Hypha firefly synchronization, LED state machine, and mesh metrics"
+license = "MIT OR Apache-2.0"
+
+[features]
+default = []
+# Enable std (for host-side testing, simulation, f32::sqrt). No-std by default.
+std = []

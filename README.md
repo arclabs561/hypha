@@ -1,5 +1,9 @@
 # hypha
 
+[![crates.io](https://img.shields.io/crates/v/hypha.svg)](https://crates.io/crates/hypha)
+[![Documentation](https://docs.rs/hypha/badge.svg)](https://docs.rs/hypha)
+[![CI](https://github.com/arclabs561/hypha/actions/workflows/ci.yml/badge.svg)](https://github.com/arclabs561/hypha/actions/workflows/ci.yml)
+
 `hypha` is a Rust-based P2P coordination prototype focused on:
 
 - Persistent node identity + local state (LSM-tree)

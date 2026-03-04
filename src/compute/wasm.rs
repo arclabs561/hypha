@@ -1,6 +1,6 @@
 use crate::compute::{ComputeError, ComputeRuntime};
-use async_trait::async_trait;
 use crate::core::Metabolism;
+use async_trait::async_trait;
 use std::sync::{Arc, Mutex};
 use wasmtime::{Config, Engine, Linker, Module, Store};
 

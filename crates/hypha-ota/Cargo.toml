@@ -1,0 +1,19 @@
+[package]
+name = "hypha-ota"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = []
+std = []
+
+[dependencies]
+ed25519-dalek = { version = "2.1", default-features = false, features = ["alloc"] }
+sha2          = { version = "0.10", default-features = false }
+base64        = { version = "0.21", default-features = false, features = ["alloc"] }
+hex           = { version = "0.4",  default-features = false, features = ["alloc"] }
+serde_json    = { version = "1",    default-features = false, features = ["alloc"] }
+
+[dev-dependencies]
+ed25519-dalek = { version = "2.1", features = ["rand_core"] }
+rand          = "0.8"

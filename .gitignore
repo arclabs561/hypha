@@ -3,4 +3,7 @@ target/
 .cursor/
 .vscode/
 .idea/
-.cargo/config.toml
+.cargo/config.tomlfirmware/
+.embuild/
+firmware/
+.embuild/

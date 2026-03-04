@@ -1,5 +1,5 @@
-use async_trait::async_trait;
 use crate::core::Metabolism;
+use async_trait::async_trait;
 use std::sync::{Arc, Mutex};
 
 /// Error type for compute failures
