@@ -1,0 +1,14 @@
+[package]
+name = "hypha-core"
+version = "0.1.0"
+edition = "2021"
+description = "Embeddable types and traits for Hypha: metabolism, capabilities, sensors"
+license = "MIT OR Apache-2.0"
+rust-version = "1.91"
+
+[features]
+default = ["std"]
+std = []
+
+[dependencies]
+serde = { version = "1.0", default-features = false, features = ["derive"] }

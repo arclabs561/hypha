@@ -1,41 +1,55 @@
-# vire
+# hypha
 
-`vire` (Viral + Wire) is a Rust-based P2P coordination layer designed for resilience and low-power efficiency.
+[![crates.io](https://img.shields.io/crates/v/hypha.svg)](https://crates.io/crates/hypha)
+[![Documentation](https://docs.rs/hypha/badge.svg)](https://docs.rs/hypha)
+[![CI](https://github.com/arclabs561/hypha/actions/workflows/ci.yml/badge.svg)](https://github.com/arclabs561/hypha/actions/workflows/ci.yml)
 
-## Features
+`hypha` is a Rust-based P2P coordination prototype focused on:
 
-- **Viral Coordination**: Uses `libp2p`'s `gossipsub` for efficient message propagation.
-- **Low-Battery Awareness**: Adaptive duty cycling and gossip frequency based on device power state.
-- **Deterministic Testing**: Integrated with `turmoil` for simulated network testing.
-- **Embedded Ready**: Designed to run on resource-constrained devices like Raspberry Pi.
+- Persistent node identity + local state (LSM-tree)
+- Power-aware mesh maintenance (graft/prune, scoring, backoff)
+- Adaptive heartbeat pacing and bidding heuristics
 
-## Coordination Strategies
+## Architecture
 
-- **Normal**: Full participation in gossip and relay.
-- **LowBattery**: Reduced heartbeat frequency, limited relaying.
-- **Critical**: Passive listening only, minimal pulse to maintain presence.
+Nodes in `hypha` are "Spores"—autonomous units of persistence, networking, and agency.
 
-## Sandboxing & Simulation
+### 1. Persistence (`fjall`)
+Uses an LSM-tree for local state persistence. Critical for Raspberry Pi/DIY hardware to minimize SD card wear during high-frequency gossip updates.
 
-We use `turmoil` to simulate network partitions, latency, and packet loss in a deterministic environment.
+### 2. Capabilities & Power
+Nodes register capabilities (Compute, Storage, Sensing).
+- **Power-Aware Bidding**: Nodes evaluate tasks and only bid if they have the required energy (mAh) and voltage stability.
+- **Agency**: UCAN/capability types exist (prototype).
+
+### 3. Virtual Sensors
+A trait-based sensor system allows nodes to treat gossip messages from neighbors as local "Virtual Sensors." Enables sensor fusion (e.g., mmWave + Audio) across the mesh.
+
+### 4. Adaptive Pulse
+Heartbeat intervals stretch dynamically from **1s to 60s** based on real-time `PhysicalState` modeling (voltage, drain).
+
+## Testing
+
+Uses **`turmoil`** for deterministic simulation.
+
+- `tests/mycelium_world.rs`: Basic heartbeat pacing under simulated voltage drain.
+- `tests/viral_sim.rs`: Sanity checks for power-mode driven changes.
+
+## Usage
 
 ```rust
-#[cfg(test)]
-mod tests {
-    use turmoil;
-    // turmoil tests here
-}
-```
-
-## Getting Started
-
-```rust
-use vire::{SporeNode, PowerMode};
+use hypha::{SporeNode, PowerMode, Capability};
+use tempfile::tempdir;
 
 #[tokio::main]
 async fn main() {
-    let mut node = SporeNode::new();
-    node.set_power_mode(PowerMode::LowBattery);
+    let tmp = tempdir().unwrap();
+    let mut node = SporeNode::new(tmp.path()).unwrap();
+    
+    // Register a local sensor/capability
+    node.add_capability(Capability::Sensing("mmWave".to_string()));
+    
+    // The node will automatically adjust its pulse based on voltage
     node.start().await.unwrap();
 }
 ```

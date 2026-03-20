@@ -1,0 +1,86 @@
+[
+  {
+    "scenario": "baseline",
+    "heartbeat_count": 5,
+    "final_mesh_size": 4,
+    "final_median_score": 0.44542685,
+    "graft_count": 200,
+    "prune_count": 0,
+    "delivery_rate": 1.0,
+    "messages_delivered": 2450,
+    "messages_published": 50,
+    "recovery_heartbeats": null
+  },
+  {
+    "scenario": "sybil_30h_7s_0in",
+    "heartbeat_count": 8,
+    "final_mesh_size": 4,
+    "final_median_score": 0.43880522,
+    "graft_count": 148,
+    "prune_count": 0,
+    "delivery_rate": 1.0,
+    "messages_delivered": 870,
+    "messages_published": 30,
+    "recovery_heartbeats": null
+  },
+  {
+    "scenario": "sybil_30h_15s_0in",
+    "heartbeat_count": 8,
+    "final_mesh_size": 4,
+    "final_median_score": 0.43880522,
+    "graft_count": 180,
+    "prune_count": 0,
+    "delivery_rate": 1.0,
+    "messages_delivered": 870,
+    "messages_published": 30,
+    "recovery_heartbeats": null
+  },
+  {
+    "scenario": "sybil_30h_30s_0in",
+    "heartbeat_count": 8,
+    "final_mesh_size": 4,
+    "final_median_score": 0.43880522,
+    "graft_count": 240,
+    "prune_count": 0,
+    "delivery_rate": 1.0,
+    "messages_delivered": 870,
+    "messages_published": 30,
+    "recovery_heartbeats": null
+  },
+  {
+    "scenario": "sybil_30h_60s_0in",
+    "heartbeat_count": 8,
+    "final_mesh_size": 4,
+    "final_median_score": 0.43880522,
+    "graft_count": 360,
+    "prune_count": 0,
+    "delivery_rate": 1.0,
+    "messages_delivered": 870,
+    "messages_published": 30,
+    "recovery_heartbeats": null
+  },
+  {
+    "scenario": "partition_recovery",
+    "heartbeat_count": 7,
+    "final_mesh_size": 4,
+    "final_median_score": 0.55700004,
+    "graft_count": 0,
+    "prune_count": 0,
+    "delivery_rate": 1.0,
+    "messages_delivered": 780,
+    "messages_published": 20,
+    "recovery_heartbeats": 1
+  },
+  {
+    "scenario": "energy_drain",
+    "heartbeat_count": 15,
+    "final_mesh_size": 4,
+    "final_median_score": 0.4034025,
+    "graft_count": 92,
+    "prune_count": 92,
+    "delivery_rate": 1.0,
+    "messages_delivered": 4030,
+    "messages_published": 95,
+    "recovery_heartbeats": null
+  }
+]

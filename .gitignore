@@ -1,1 +1,9 @@
 /target
+target/
+.cursor/
+.vscode/
+.idea/
+.cargo/config.tomlfirmware/
+.embuild/
+firmware/
+.embuild/

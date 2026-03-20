@@ -1,0 +1,347 @@
+[
+  {
+    "consistency": {
+      "converged": false,
+      "max_divergence": 30
+    },
+    "delivery": {
+      "messages_delivered": 270,
+      "messages_published": 10,
+      "p50_ms": 19,
+      "p90_ms": 36,
+      "p99_ms": 39,
+      "rate": "90.00%"
+    },
+    "energy": {
+      "gini_coefficient": "0.000",
+      "mah_per_delivery": "0.1185",
+      "nodes_exhausted": 0,
+      "total_mah_consumed": "32.01"
+    },
+    "fault_events": 0,
+    "node_count": 30,
+    "scenario": "baseline"
+  },
+  {
+    "consistency": {
+      "converged": false,
+      "max_divergence": 30
+    },
+    "delivery": {
+      "messages_delivered": 270,
+      "messages_published": 10,
+      "p50_ms": 19,
+      "p90_ms": 36,
+      "p99_ms": 38,
+      "rate": "90.00%"
+    },
+    "energy": {
+      "gini_coefficient": "0.000",
+      "mah_per_delivery": "0.1185",
+      "nodes_exhausted": 0,
+      "total_mah_consumed": "32.01"
+    },
+    "fault_events": 0,
+    "node_count": 30,
+    "scenario": "percolation_0pct"
+  },
+  {
+    "consistency": {
+      "converged": false,
+      "max_divergence": 60
+    },
+    "delivery": {
+      "messages_delivered": 240,
+      "messages_published": 10,
+      "p50_ms": 19,
+      "p90_ms": 36,
+      "p99_ms": 38,
+      "rate": "80.00%"
+    },
+    "energy": {
+      "gini_coefficient": "0.195",
+      "mah_per_delivery": "0.1209",
+      "nodes_exhausted": 6,
+      "total_mah_consumed": "29.01"
+    },
+    "fault_events": 0,
+    "node_count": 30,
+    "scenario": "percolation_20pct"
+  },
+  {
+    "consistency": {
+      "converged": false,
+      "max_divergence": 120
+    },
+    "delivery": {
+      "messages_delivered": 180,
+      "messages_published": 10,
+      "p50_ms": 19,
+      "p90_ms": 36,
+      "p99_ms": 51,
+      "rate": "60.00%"
+    },
+    "energy": {
+      "gini_coefficient": "0.388",
+      "mah_per_delivery": "0.1278",
+      "nodes_exhausted": 12,
+      "total_mah_consumed": "23.01"
+    },
+    "fault_events": 0,
+    "node_count": 30,
+    "scenario": "percolation_40pct"
+  },
+  {
+    "consistency": {
+      "converged": false,
+      "max_divergence": 180
+    },
+    "delivery": {
+      "messages_delivered": 120,
+      "messages_published": 10,
+      "p50_ms": 18,
+      "p90_ms": 48,
+      "p99_ms": 71,
+      "rate": "40.00%"
+    },
+    "energy": {
+      "gini_coefficient": "0.570",
+      "mah_per_delivery": "0.1417",
+      "nodes_exhausted": 18,
+      "total_mah_consumed": "17.01"
+    },
+    "fault_events": 0,
+    "node_count": 30,
+    "scenario": "percolation_60pct"
+  },
+  {
+    "consistency": {
+      "converged": false,
+      "max_divergence": 242
+    },
+    "delivery": {
+      "messages_delivered": 58,
+      "messages_published": 10,
+      "p50_ms": 17,
+      "p90_ms": 35,
+      "p99_ms": 46,
+      "rate": "19.33%"
+    },
+    "energy": {
+      "gini_coefficient": "0.716",
+      "mah_per_delivery": "0.1863",
+      "nodes_exhausted": 24,
+      "total_mah_consumed": "10.81"
+    },
+    "fault_events": 0,
+    "node_count": 30,
+    "scenario": "percolation_80pct"
+  },
+  {
+    "consistency": {
+      "converged": false,
+      "max_divergence": 270
+    },
+    "delivery": {
+      "messages_delivered": 30,
+      "messages_published": 10,
+      "p50_ms": 17,
+      "p90_ms": 32,
+      "p99_ms": 38,
+      "rate": "10.00%"
+    },
+    "energy": {
+      "gini_coefficient": "0.773",
+      "mah_per_delivery": "0.2668",
+      "nodes_exhausted": 27,
+      "total_mah_consumed": "8.00"
+    },
+    "fault_events": 0,
+    "node_count": 30,
+    "scenario": "percolation_90pct"
+  },
+  {
+    "consistency": {
+      "converged": false,
+      "max_divergence": 31
+    },
+    "delivery": {
+      "messages_delivered": 269,
+      "messages_published": 10,
+      "p50_ms": 19,
+      "p90_ms": 36,
+      "p99_ms": 38,
+      "rate": "89.67%"
+    },
+    "energy": {
+      "gini_coefficient": "0.000",
+      "mah_per_delivery": "0.1186",
+      "nodes_exhausted": 0,
+      "total_mah_consumed": "31.91"
+    },
+    "fault_events": 1,
+    "node_count": 30,
+    "scenario": "degradation_10pct"
+  },
+  {
+    "consistency": {
+      "converged": false,
+      "max_divergence": 31
+    },
+    "delivery": {
+      "messages_delivered": 269,
+      "messages_published": 10,
+      "p50_ms": 31,
+      "p90_ms": 37,
+      "p99_ms": 54,
+      "rate": "89.67%"
+    },
+    "energy": {
+      "gini_coefficient": "0.000",
+      "mah_per_delivery": "0.1186",
+      "nodes_exhausted": 0,
+      "total_mah_consumed": "31.91"
+    },
+    "fault_events": 1,
+    "node_count": 30,
+    "scenario": "degradation_30pct"
+  },
+  {
+    "consistency": {
+      "converged": false,
+      "max_divergence": 39
+    },
+    "delivery": {
+      "messages_delivered": 261,
+      "messages_published": 10,
+      "p50_ms": 34,
+      "p90_ms": 52,
+      "p99_ms": 57,
+      "rate": "87.00%"
+    },
+    "energy": {
+      "gini_coefficient": "0.000",
+      "mah_per_delivery": "0.1192",
+      "nodes_exhausted": 0,
+      "total_mah_consumed": "31.12"
+    },
+    "fault_events": 1,
+    "node_count": 30,
+    "scenario": "degradation_50pct"
+  },
+  {
+    "consistency": {
+      "converged": false,
+      "max_divergence": 57
+    },
+    "delivery": {
+      "messages_delivered": 243,
+      "messages_published": 10,
+      "p50_ms": 36,
+      "p90_ms": 72,
+      "p99_ms": 104,
+      "rate": "81.00%"
+    },
+    "energy": {
+      "gini_coefficient": "0.000",
+      "mah_per_delivery": "0.1207",
+      "nodes_exhausted": 0,
+      "total_mah_consumed": "29.32"
+    },
+    "fault_events": 1,
+    "node_count": 30,
+    "scenario": "degradation_70pct"
+  },
+  {
+    "consistency": {
+      "converged": false,
+      "max_divergence": 65
+    },
+    "delivery": {
+      "messages_delivered": 55,
+      "messages_published": 10,
+      "p50_ms": 34,
+      "p90_ms": 82,
+      "p99_ms": 88,
+      "rate": "18.33%"
+    },
+    "energy": {
+      "gini_coefficient": "0.000",
+      "mah_per_delivery": "0.1911",
+      "nodes_exhausted": 0,
+      "total_mah_consumed": "10.51"
+    },
+    "fault_events": 1,
+    "node_count": 30,
+    "scenario": "degradation_90pct"
+  },
+  {
+    "consistency": {
+      "converged": false,
+      "max_divergence": 36
+    },
+    "delivery": {
+      "messages_delivered": 264,
+      "messages_published": 10,
+      "p50_ms": 33,
+      "p90_ms": 50,
+      "p99_ms": 57,
+      "rate": "88.00%"
+    },
+    "energy": {
+      "gini_coefficient": "0.000",
+      "mah_per_delivery": "0.1190",
+      "nodes_exhausted": 0,
+      "total_mah_consumed": "31.41"
+    },
+    "fault_events": 1,
+    "node_count": 30,
+    "scenario": "network_partition"
+  },
+  {
+    "consistency": {
+      "converged": false,
+      "max_divergence": 96
+    },
+    "delivery": {
+      "messages_delivered": 204,
+      "messages_published": 10,
+      "p50_ms": 34,
+      "p90_ms": 55,
+      "p99_ms": 90,
+      "rate": "68.00%"
+    },
+    "energy": {
+      "gini_coefficient": "0.294",
+      "mah_per_delivery": "0.1246",
+      "nodes_exhausted": 9,
+      "total_mah_consumed": "25.42"
+    },
+    "fault_events": 2,
+    "node_count": 30,
+    "scenario": "combined_stress"
+  },
+  {
+    "consistency": {
+      "converged": false,
+      "max_divergence": 64
+    },
+    "delivery": {
+      "messages_delivered": 536,
+      "messages_published": 20,
+      "p50_ms": 33,
+      "p90_ms": 47,
+      "p99_ms": 55,
+      "rate": "89.33%"
+    },
+    "energy": {
+      "gini_coefficient": "0.000",
+      "mah_per_delivery": "0.1187",
+      "nodes_exhausted": 0,
+      "total_mah_consumed": "63.63"
+    },
+    "fault_events": 2,
+    "node_count": 30,
+    "scenario": "recovery_via_spike"
+  }
+]

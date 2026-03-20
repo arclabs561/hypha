@@ -1,0 +1,107 @@
+name: chaos
+
+on:
+  workflow_dispatch:
+    inputs:
+      seeds:
+        description: "Comma-separated integer seeds (e.g. 1,2,3)"
+        required: false
+        default: "1,2,3"
+      duration_secs:
+        description: "Per-run duration seconds"
+        required: false
+        default: "18"
+      relay_sleep_secs:
+        description: "If nonzero, SIGSTOP/SIGCONT the relay for this many seconds during line topology"
+        required: false
+        default: "0"
+      relay_hard_kill:
+        description: "If '1', use SIGKILL (kill -9) instead of SIGTERM when restarting relay"
+        required: false
+        default: "0"
+      sub_sleep_secs:
+        description: "If nonzero, SIGSTOP/SIGCONT the subscriber for this many seconds (pair topology)"
+        required: false
+        default: "0"
+      malformed_first:
+        description: "If '1', publisher sends a malformed packet before the valid one"
+        required: false
+        default: "0"
+      metrics:
+        description: "If '1', collect RSS/PID metrics to metrics.csv"
+        required: false
+        default: "0"
+
+concurrency:
+  group: chaos-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  netns-chaos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        transport: [tcp, quic]
+        topology: [pair, line]
+        seed: [1, 2, 3]
+    env:
+      RUST_BACKTRACE: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.91
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build netem example
+        run: cargo build --example netem_node --locked
+
+      - name: Parse workflow inputs
+        id: inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "duration_secs=${{ github.event.inputs.duration_secs }}" >> "$GITHUB_OUTPUT"
+          echo "relay_sleep_secs=${{ github.event.inputs.relay_sleep_secs }}" >> "$GITHUB_OUTPUT"
+          echo "relay_hard_kill=${{ github.event.inputs.relay_hard_kill }}" >> "$GITHUB_OUTPUT"
+          echo "sub_sleep_secs=${{ github.event.inputs.sub_sleep_secs }}" >> "$GITHUB_OUTPUT"
+          echo "malformed_first=${{ github.event.inputs.malformed_first }}" >> "$GITHUB_OUTPUT"
+          echo "metrics=${{ github.event.inputs.metrics }}" >> "$GITHUB_OUTPUT"
+
+      - name: Run chaos harness (seeded)
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x scripts/chaos/netns_chaos.sh
+          # Use the matrix seed; workflow input "seeds" exists for future expansion,
+          # but the matrix is the canonical driver here.
+          sudo -E env \
+            HYPHA_CHAOS_DIR=/tmp/hypha_chaos \
+            HYPHA_CHAOS_RELAY_SLEEP_SECS="${{ steps.inputs.outputs.relay_sleep_secs }}" \
+            HYPHA_CHAOS_RELAY_HARD_KILL="${{ steps.inputs.outputs.relay_hard_kill }}" \
+            HYPHA_CHAOS_SUB_SLEEP_SECS="${{ steps.inputs.outputs.sub_sleep_secs }}" \
+            HYPHA_CHAOS_PUB_MALFORMED_FIRST="${{ steps.inputs.outputs.malformed_first }}" \
+            HYPHA_CHAOS_METRICS="${{ steps.inputs.outputs.metrics }}" \
+            scripts/chaos/netns_chaos.sh \
+              "${{ matrix.topology }}" \
+              "${{ matrix.transport }}" \
+              "${{ matrix.seed }}" \
+              "${{ steps.inputs.outputs.duration_secs }}"
+
+      - name: Upload chaos artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hypha-chaos-${{ matrix.topology }}-${{ matrix.transport }}-seed${{ matrix.seed }}
+          path: /tmp/hypha_chaos
+
