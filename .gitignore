@@ -7,3 +7,4 @@ target/
 .embuild/
 firmware/
 .embuild/
+Cargo.lock
