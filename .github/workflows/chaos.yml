@@ -53,7 +53,7 @@ jobs:
       RUST_BACKTRACE: "1"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -100,7 +100,7 @@ jobs:
 
       - name: Upload chaos artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: hypha-chaos-${{ matrix.topology }}-${{ matrix.transport }}-seed${{ matrix.seed }}
           path: /tmp/hypha_chaos
