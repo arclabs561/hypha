@@ -20,10 +20,11 @@
 //! Device checks for updates every 5 min and installs over WiFi.
 
 mod ble;
+mod led;
 mod mqtt;
 
 use std::collections::HashMap;
-use std::sync::atomic::AtomicU32;
+use std::sync::atomic::{AtomicBool, AtomicU32};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -58,12 +59,15 @@ const OTA_CHECK_INTERVAL_SECS: u64 = 300; // 5 min
 const CHUNK_SIZE: usize = 4096;
 const HEALTH_INTERVAL_SECS: u64 = 60;
 
-/// Shared counters for the retained health topic.
+/// Shared counters for the retained health topic (+ LED state inputs).
 #[derive(Default)]
 pub struct Stats {
     pub adverts_seen: AtomicU32,
     pub scan_windows: AtomicU32,
     pub mqtt_connects: AtomicU32,
+    pub mqtt_connected: AtomicBool,
+    /// Operator-toggled locate blink (hypha/<board>/cmd {"locate":true|false}).
+    pub locate: AtomicBool,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -82,6 +86,10 @@ fn main() -> anyhow::Result<()> {
     let sys_loop = EspSystemEventLoop::take()?;
     let nvs = EspDefaultNvsPartition::take()?;
 
+    // LED first: the locate blink should run from power-on, before WiFi is up.
+    let stats = Arc::new(Stats::default());
+    led::spawn(peripherals.rmt.channel0, peripherals.pins.gpio8, stats.clone());
+
     let mut wifi = BlockingWifi::wrap(
         EspWifi::new(peripherals.modem, sys_loop.clone(), Some(nvs))?,
         sys_loop,
@@ -99,11 +107,13 @@ fn main() -> anyhow::Result<()> {
 
     // BLE scan starts after WiFi is up; ESP-IDF coex arbitrates the shared
     // radio from here on (scan windows yield to WiFi).
-    let stats = Arc::new(Stats::default());
     let adverts: ble::AdvertMap = Arc::new(Mutex::new(HashMap::new()));
     ble::spawn_scan_thread(adverts.clone(), stats.clone())?;
     let mut mqtt = mqtt::connect(&board_id, stats.clone())?;
     let mut seq: u32 = 0;
+    // Subscribe to the cmd topic once per connection generation (the esp-idf
+    // client drops subscriptions on reconnect; clean session).
+    let mut subscribed_gen: u32 = 0;
 
     let boot_time = std::time::Instant::now();
     let mut last_health: Option<std::time::Instant> = None;
@@ -131,6 +141,15 @@ fn main() -> anyhow::Result<()> {
         // Toggle mock energy for demo
         energy_score = if high { 0.85 } else { 0.55 };
         high = !high;
+
+        // (Re)subscribe to the cmd topic on each new connection generation.
+        let gen = stats.mqtt_connects.load(std::sync::atomic::Ordering::Relaxed);
+        if gen != subscribed_gen && stats.mqtt_connected.load(std::sync::atomic::Ordering::Relaxed) {
+            match mqtt::subscribe_cmd(&mut mqtt, &board_id) {
+                Ok(()) => subscribed_gen = gen,
+                Err(e) => error!("{:?}", e),
+            }
+        }
 
         // Flush the BLE advert window (one publish per ~2s loop tick).
         let batch: Vec<_> = {
@@ -167,8 +186,40 @@ fn main() -> anyhow::Result<()> {
     }
 }
 
+const FW_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 fn try_ota_update() -> anyhow::Result<()> {
     info!("Checking OTA at {}", OTA_URL);
+
+    // Version gate: without it, any staged image re-installs every poll cycle
+    // forever (the pre-0.2.0 loop bug). The stage step writes firmware.bin.version
+    // next to the image; missing version file = no update (loop-proof default).
+    {
+        let mut client = HttpClient::wrap(EspHttpConnection::new(&HttpConfig::default())?);
+        let ver_url = format!("{}.version", OTA_URL);
+        let request = client.request(Method::Get, &ver_url, &[])?;
+        let mut response = request.submit()?;
+        if response.status() != 200 {
+            info!("OTA: no version file (status {}), skipping", response.status());
+            return Ok(());
+        }
+        let mut vbuf = [0u8; 64];
+        let n = io::try_read_full(&mut response, &mut vbuf).map_err(|e| e.0)?;
+        // non-UTF8 version file = skip, never update: "" would compare unequal
+        // and re-trigger the very download loop this gate exists to prevent
+        let staged = match core::str::from_utf8(&vbuf[..n]) {
+            Ok(s) => s.trim(),
+            Err(e) => {
+                info!("OTA: version file not UTF-8 ({}), skipping", e);
+                return Ok(());
+            }
+        };
+        if staged == FW_VERSION {
+            info!("OTA: up to date ({})", FW_VERSION);
+            return Ok(());
+        }
+        info!("OTA: staged {} != running {}, updating", staged, FW_VERSION);
+    }
 
     let http_config = if OTA_URL.starts_with("https://") {
         #[cfg(esp_idf_mbedtls_certificate_bundle)]

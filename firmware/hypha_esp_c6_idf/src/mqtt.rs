@@ -25,8 +25,15 @@ const MQTT_PASS: Option<&str> = option_env!("MQTT_PASS");
 /// Strongest-RSSI entries kept per published batch.
 const BATCH_CAP: usize = 64;
 
+/// Command topic: operator publishes {"locate":true|false} to blink one board
+/// for physical identification. Dumb substring parse on purpose (no JSON dep).
+pub fn cmd_topic(board_id: &str) -> String {
+    format!("hypha/{}/cmd", board_id)
+}
+
 pub fn connect(board_id: &str, stats: Arc<Stats>) -> anyhow::Result<EspMqttClient<'static>> {
     let url = format!("mqtt://{}:{}", MQTT_HOST, MQTT_PORT);
+    let my_cmd = cmd_topic(board_id);
     let conf = MqttClientConfiguration {
         client_id: Some(board_id),
         username: MQTT_USER,
@@ -43,15 +50,41 @@ pub fn connect(board_id: &str, stats: Arc<Stats>) -> anyhow::Result<EspMqttClien
     let client = EspMqttClient::new_cb(&url, &conf, move |event| match event.payload() {
         EventPayload::Connected(_) => {
             stats.mqtt_connects.fetch_add(1, Ordering::Relaxed);
+            stats.mqtt_connected.store(true, Ordering::Relaxed);
             info!("MQTT connected");
         }
-        EventPayload::Disconnected => warn!("MQTT disconnected; will reconnect"),
+        EventPayload::Disconnected => {
+            stats.mqtt_connected.store(false, Ordering::Relaxed);
+            warn!("MQTT disconnected; will reconnect");
+        }
+        EventPayload::Received { topic, data, .. } => {
+            if topic == Some(my_cmd.as_str()) {
+                // sentinel "" is the right failure shape here: a non-UTF8 command
+                // matches no keyword and is ignored, which is the desired handling
+                let body = core::str::from_utf8(data).unwrap_or("");
+                if body.contains("locate") {
+                    let on = body.contains("true");
+                    stats.locate.store(on, Ordering::Relaxed);
+                    info!("cmd: locate={}", on);
+                }
+            }
+        }
         EventPayload::Error(e) => warn!("MQTT error: {:?}", e),
         _ => {}
     })?;
 
     info!("MQTT client created for {}", url);
     Ok(client)
+}
+
+/// (Re)subscribe to the command topic. The esp-idf client does not carry
+/// subscriptions across reconnects (clean session), so the main loop calls this
+/// once per observed connection generation.
+pub fn subscribe_cmd(client: &mut EspMqttClient<'static>, board_id: &str) -> anyhow::Result<()> {
+    client
+        .subscribe(&cmd_topic(board_id), QoS::AtLeastOnce)
+        .map_err(|e| anyhow::anyhow!("cmd subscribe: {:?}", e))?;
+    Ok(())
 }
 
 pub fn publish_adverts(

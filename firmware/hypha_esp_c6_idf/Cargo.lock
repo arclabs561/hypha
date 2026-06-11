@@ -803,11 +803,12 @@ dependencies = [
 
 [[package]]
 name = "hypha_esp_c6_idf"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "embedded-svc",
  "embuild",
+ "esp-idf-hal",
  "esp-idf-svc",
  "esp-idf-sys",
  "esp32-nimble",
