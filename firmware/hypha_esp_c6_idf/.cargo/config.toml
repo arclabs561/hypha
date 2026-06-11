@@ -1,8 +1,18 @@
 [build]
 target = "riscv32imac-esp-espidf"
 
+[target.riscv32imac-esp-espidf]
+# ldproxy resolves the real linker from esp-idf-sys's build output (cargo install ldproxy)
+linker = "ldproxy"
+
 [env]
 IDF_TARGET = "esp32c6"
+# v5.2.3 (the esp-idf-sys 0.36 default) has a stale submodule pin that breaks the
+# shallow clone (esp32h2-bt-lib fetch fails). v5.2.7 moved NimBLE symbols out of ROM
+# (os_mempool_init loses its r_ prefix) which breaks esp32-nimble 0.11.1's imports.
+# v5.2.5 keeps the 0.11.1-era symbol layout. Clone with --jobs=1 if embuild's
+# parallel shallow clone races ("shallow file has changed since we read it").
+ESP_IDF_VERSION = "v5.2.5"
 
 [unstable]
 build-std = ["std", "panic_abort"]

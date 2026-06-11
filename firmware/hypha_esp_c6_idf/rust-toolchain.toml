@@ -1,0 +1,5 @@
+# riscv32imac-esp-espidf is Tier 3: std is built from source (-Zbuild-std in
+# .cargo/config.toml), which requires nightly cargo + the rust-src component.
+[toolchain]
+channel = "nightly"
+components = ["rust-src"]

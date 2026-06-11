@@ -48,7 +48,11 @@ use log::{error, info};
 
 const SSID: &str = env!("WIFI_SSID");
 const PASSWORD: &str = env!("WIFI_PASS");
-const OTA_URL: &str = option_env!("OTA_URL").unwrap_or("http://192.168.4.1:8080/firmware.bin");
+// match, not unwrap_or: Option::unwrap_or is not const-stable (same idiom as MQTT_PORT)
+const OTA_URL: &str = match option_env!("OTA_URL") {
+    Some(u) => u,
+    None => "http://192.168.4.1:8080/firmware.bin",
+};
 
 const OTA_CHECK_INTERVAL_SECS: u64 = 300; // 5 min
 const CHUNK_SIZE: usize = 4096;
@@ -207,7 +211,7 @@ fn try_ota_update() -> anyhow::Result<()> {
     let mut total: usize = 0;
 
     loop {
-        let n = io::try_read(&mut response, &mut buf).map_err(|e| e.0)?;
+        let n = io::try_read_full(&mut response, &mut buf).map_err(|e| e.0)?;
         if n == 0 {
             break;
         }
