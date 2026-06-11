@@ -230,7 +230,7 @@ pub fn publish_health(
     let wifi_rssi = sta_rssi();
     let connects = stats.mqtt_connects.load(Ordering::Relaxed);
     let payload = format!(
-        r#"{{"board":"{}","fw":"{}","uptime_s":{},"heap_free":{},"wifi_rssi":{},"scan_windows":{},"adverts_seen":{},"mqtt_reconnects":{},"fires":{}}}"#,
+        r#"{{"board":"{}","fw":"{}","uptime_s":{},"heap_free":{},"wifi_rssi":{},"scan_windows":{},"adverts_seen":{},"mqtt_reconnects":{},"fires":{},"led":"{:06x}"}}"#,
         board_id,
         env!("CARGO_PKG_VERSION"),
         uptime_s,
@@ -242,6 +242,8 @@ pub fn publish_health(
         // local firefly fire count: telemetry compares this to received pulses
         // on hypha/sync/pulse to separate fire-rate from pulse-loss
         stats.fire.load(Ordering::Relaxed),
+        // actual rendered LED colour (0xRRGGBB) -- ground-truth hue in telemetry
+        stats.led_rgb.load(Ordering::Relaxed),
     );
     client
         .publish(

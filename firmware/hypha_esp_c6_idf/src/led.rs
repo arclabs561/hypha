@@ -149,6 +149,14 @@ fn led_loop(mut tx: TxRmtDriver<'static>, stats: Arc<Stats>) {
             }
         };
 
+        // Report the actual rendered colour for telemetry (packed 0xRRGGBB):
+        // the health topic surfaces it so an operator/watch sees ground-truth
+        // hue, not a reconstruction.
+        let pack = ((rgb.0 as u32).min(255) << 16)
+            | ((rgb.1 as u32).min(255) << 8)
+            | (rgb.2 as u32).min(255);
+        stats.led_rgb.store(pack, Ordering::Relaxed);
+
         if let Err(e) = write_dithered(&mut tx, rgb, &mut dith) {
             warn!("LED write failed: {:?}", e);
         }

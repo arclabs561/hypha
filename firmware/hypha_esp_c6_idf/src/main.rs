@@ -79,6 +79,9 @@ pub struct Stats {
     pub fire: AtomicU32,
     /// Peer firefly pulses heard on hypha/sync/pulse; main couples on each.
     pub peer_pulses: AtomicU32,
+    /// Last rendered LED colour (packed 0xRRGGBB); health reports it so the
+    /// actual hue is visible in telemetry, not just reconstructed.
+    pub led_rgb: AtomicU32,
 }
 
 fn main() -> anyhow::Result<()> {
