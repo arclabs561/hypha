@@ -8,6 +8,7 @@ Hypha is the **L6 Coordination Layer** of the Tekne Stack. It provides the "Fung
 -   **Resource-Aware**: "Metabolism" is a first-class citizen.
 -   **Local-First**: Data and compute prefer to stay local; sync is eventual (CRDTs).
 -   **Ecosystem-Integrated**: Hypha does not reinvent the wheel. It connects an external agent layer, an ANN/knowledge layer, and low-level SIMD/math crates.
+-   **Emergent Topology**: roles (sink/source/compute) are *elected* from the energy×capability gradient, not assigned — so one substrate spans a single-sink star (e.g. the single-sink sensor deployment), multi-sink redundancy, and the sinkless P2P mesh. See [`docs/TOPOLOGY.md`](docs/TOPOLOGY.md). The star and the mesh are not two projects; the star is the degenerate case of the mesh.
 
 ## 2. Architecture
 
