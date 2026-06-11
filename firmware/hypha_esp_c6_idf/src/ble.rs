@@ -53,26 +53,39 @@ fn scan_loop(map: AdvertMap, stats: Arc<Stats>) {
     info!("BLE scan starting (active={})", active);
 
     loop {
+        // Yield the shared radio to an OTA download (private design note coex): a
+        // continuous BLE scan starves the HTTP transfer, so pause while
+        // OTA_ACTIVE. Presence has a brief gap during the ~1-2 min update.
+        if crate::OTA_ACTIVE.load(Ordering::Relaxed) {
+            thread::sleep(Duration::from_millis(500));
+            continue;
+        }
+
         let mut scan = BLEScan::new();
-        // Coex-friendly: window (30 ms) < interval (100 ms) leaves the radio
-        // free for WiFi between scan windows. Duplicates are NOT filtered so
-        // RSSI keeps updating for the per-window strongest-signal aggregation.
+        // filter_duplicates(true) is load-bearing for CPU, not just airtime:
+        // the C6 is single-core + FPU-less, and with duplicates UNfiltered every
+        // advert (~65/s) fires the callback on the high-priority NimBLE host
+        // task, starving the app threads so the main loop ran every ~12s (the
+        // firefly-8s, 4x-slow-advert, slow-OTA, watchdog symptoms all trace
+        // here). Controller-side dedup gives one sighting per device per window
+        // -- still a fresh RSSI sample per window, enough for presence -- at a
+        // fraction of the callback rate. Coex window(30)<interval(100).
         scan.active_scan(active)
-            .filter_duplicates(false)
+            .filter_duplicates(true)
             .interval(100)
             .window(30);
 
-        // i32::MAX == BLE_HS_FOREVER: scan until error; callback never stops it.
-        let res = block_on(scan.start(device, i32::MAX, |dev, data| {
+        // Finite 3s windows (not BLE_HS_FOREVER) so the loop can check
+        // OTA_ACTIVE and yield the radio within a few seconds of an OTA start.
+        let res = block_on(scan.start(device, 3000, |dev, data| {
             record_advert(&map, &stats, dev, &data);
             None::<()>
         }));
 
-        match res {
-            Ok(_) => info!("BLE scan ended; restarting"),
-            Err(e) => warn!("BLE scan error: {:?}; restarting", e),
+        if let Err(e) = res {
+            warn!("BLE scan error: {:?}; restarting", e);
+            thread::sleep(Duration::from_secs(1));
         }
-        thread::sleep(Duration::from_secs(5));
     }
 }
 

@@ -240,6 +240,20 @@ fn main() -> anyhow::Result<()> {
 
 const FW_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+/// Signals the BLE scan thread to yield the shared 2.4GHz radio during an OTA
+/// download. Without this the continuous BLE scan starves the HTTP transfer to
+/// ~64KB/48s (a 1.5MB image would take ~18 min and never finish) -- the C6
+/// single-front-end coex constraint (private design note) biting the OTA path.
+pub static OTA_ACTIVE: AtomicBool = AtomicBool::new(false);
+
+/// Resets OTA_ACTIVE (resumes BLE) when the download returns by any path.
+struct RadioYield;
+impl Drop for RadioYield {
+    fn drop(&mut self) {
+        OTA_ACTIVE.store(false, Ordering::Relaxed);
+    }
+}
+
 fn try_ota_update() -> anyhow::Result<()> {
     info!("Checking OTA at {}", OTA_URL);
 
@@ -272,6 +286,10 @@ fn try_ota_update() -> anyhow::Result<()> {
         }
         info!("OTA: staged {} != running {}, updating", staged, FW_VERSION);
     }
+
+    // Yield the radio to the download (BLE scan pauses until this returns).
+    OTA_ACTIVE.store(true, Ordering::Relaxed);
+    let _radio_yield = RadioYield;
 
     let http_config = if OTA_URL.starts_with("https://") {
         #[cfg(esp_idf_mbedtls_certificate_bundle)]
@@ -323,6 +341,10 @@ fn try_ota_update() -> anyhow::Result<()> {
         if total % (64 * 1024) < CHUNK_SIZE {
             info!("OTA: {} bytes written", total);
         }
+        // Yield the single core so IDLE runs and feeds the task watchdog: this
+        // hand-rolled download loop otherwise monopolizes the CPU once BLE is
+        // paused (OTA_ACTIVE), starving IDLE0 -> TWDT reboots mid-download.
+        thread::sleep(Duration::from_millis(1));
     }
 
     update.complete().map_err(|e| anyhow::anyhow!("OTA complete: {:?}", e))?;
