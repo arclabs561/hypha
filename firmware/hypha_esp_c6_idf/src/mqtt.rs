@@ -67,6 +67,23 @@ pub fn connect(board_id: &str, stats: Arc<Stats>) -> anyhow::Result<EspMqttClien
                     stats.locate.store(on, Ordering::Relaxed);
                     info!("cmd: locate={}", on);
                 }
+                if body.contains("led") {
+                    // {"led":"auto"|"metabolism"|"link"|"version"|"off"} -- dumb
+                    // substring match, longest-distinct keywords, no JSON dep
+                    let m = if body.contains("metabolism") {
+                        crate::led::MODE_METABOLISM
+                    } else if body.contains("link") {
+                        crate::led::MODE_LINK
+                    } else if body.contains("version") {
+                        crate::led::MODE_VERSION
+                    } else if body.contains("\"off\"") {
+                        crate::led::MODE_OFF
+                    } else {
+                        crate::led::MODE_AUTO
+                    };
+                    stats.led_mode.store(m, Ordering::Relaxed);
+                    info!("cmd: led mode={}", m);
+                }
             }
         }
         EventPayload::Error(e) => warn!("MQTT error: {:?}", e),
@@ -174,7 +191,7 @@ fn addr_str(addr: &[u8; 6]) -> String {
         .join(":")
 }
 
-fn sta_rssi() -> i8 {
+pub fn sta_rssi() -> i8 {
     let mut ap: esp_idf_svc::sys::wifi_ap_record_t = Default::default();
     let rc = unsafe { esp_idf_svc::sys::esp_wifi_sta_get_ap_info(&mut ap) };
     if rc == esp_idf_svc::sys::ESP_OK {

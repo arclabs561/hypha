@@ -24,7 +24,7 @@ mod led;
 mod mqtt;
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, AtomicU32};
+use std::sync::atomic::{AtomicBool, AtomicI32, AtomicU32, AtomicU8};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -68,6 +68,12 @@ pub struct Stats {
     pub mqtt_connected: AtomicBool,
     /// Operator-toggled locate blink (hypha/<board>/cmd {"locate":true|false}).
     pub locate: AtomicBool,
+    /// Advert-batch publishes; the LED reads increments as the firefly heartbeat.
+    pub publishes: AtomicU32,
+    /// Last WiFi STA RSSI (dBm), refreshed each loop for the LED Link page.
+    pub wifi_rssi: AtomicI32,
+    /// LED carousel mode (led::MODE_*), set from the cmd topic.
+    pub led_mode: AtomicU8,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -142,6 +148,12 @@ fn main() -> anyhow::Result<()> {
         energy_score = if high { 0.85 } else { 0.55 };
         high = !high;
 
+        // Refresh WiFi RSSI for the LED Link page (cheap; once per ~2s tick).
+        stats.wifi_rssi.store(
+            mqtt::sta_rssi() as i32,
+            std::sync::atomic::Ordering::Relaxed,
+        );
+
         // (Re)subscribe to the cmd topic on each new connection generation.
         let gen = stats.mqtt_connects.load(std::sync::atomic::Ordering::Relaxed);
         if gen != subscribed_gen && stats.mqtt_connected.load(std::sync::atomic::Ordering::Relaxed) {
@@ -162,6 +174,10 @@ fn main() -> anyhow::Result<()> {
         seq = seq.wrapping_add(1);
         if let Err(e) = mqtt::publish_adverts(&mut mqtt, &board_id, &boot_id, seq, batch) {
             error!("{:?}", e);
+        } else {
+            stats
+                .publishes
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         }
 
         // Retained health every 60s (and once right after boot).
