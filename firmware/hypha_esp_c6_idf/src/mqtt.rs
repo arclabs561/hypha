@@ -230,7 +230,7 @@ pub fn publish_health(
     let wifi_rssi = sta_rssi();
     let connects = stats.mqtt_connects.load(Ordering::Relaxed);
     let payload = format!(
-        r#"{{"board":"{}","fw":"{}","uptime_s":{},"heap_free":{},"wifi_rssi":{},"scan_windows":{},"adverts_seen":{},"mqtt_reconnects":{},"fires":{},"led":"{:06x}"}}"#,
+        r#"{{"board":"{}","fw":"{}","uptime_s":{},"heap_free":{},"wifi_rssi":{},"scan_windows":{},"adverts_seen":{},"mqtt_reconnects":{},"fires":{},"led":"{:06x}","loop_max_ms":{}}}"#,
         board_id,
         env!("CARGO_PKG_VERSION"),
         uptime_s,
@@ -244,6 +244,9 @@ pub fn publish_health(
         stats.fire.load(Ordering::Relaxed),
         // actual rendered LED colour (0xRRGGBB) -- ground-truth hue in telemetry
         stats.led_rgb.load(Ordering::Relaxed),
+        // worst main-loop period this window (ms): >100 means radio starvation,
+        // the single-core scheduling bug; ~50 is healthy. The at-a-glance health.
+        stats.loop_max_ms.load(Ordering::Relaxed),
     );
     client
         .publish(

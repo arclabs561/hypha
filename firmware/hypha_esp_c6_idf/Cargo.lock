@@ -803,7 +803,7 @@ dependencies = [
 
 [[package]]
 name = "hypha_esp_c6_idf"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "anyhow",
  "embedded-svc",

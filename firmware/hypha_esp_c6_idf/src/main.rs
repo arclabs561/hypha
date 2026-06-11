@@ -82,6 +82,11 @@ pub struct Stats {
     /// Last rendered LED colour (packed 0xRRGGBB); health reports it so the
     /// actual hue is visible in telemetry, not just reconstructed.
     pub led_rgb: AtomicU32,
+    /// Worst main-loop period (ms) seen this health window; health reports it
+    /// and main resets it per window. This is the single number that makes the
+    /// single-core starvation bug (loop stalled ~9s under WiFi/BLE load instead
+    /// of ~50ms) visible at a glance instead of inferred from cadence drift.
+    pub loop_max_ms: AtomicU32,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -159,6 +164,10 @@ fn main() -> anyhow::Result<()> {
     loop {
         let dt = last_tick.elapsed().as_secs_f32();
         last_tick = std::time::Instant::now();
+        // Record the worst loop period this health window (starvation telemetry).
+        stats
+            .loop_max_ms
+            .fetch_max((dt * 1000.0) as u32, Ordering::Relaxed);
 
         // --- firefly: couple on peer pulses, advance by REAL dt, emit on fire ---
         let peer = stats.peer_pulses.load(Ordering::Relaxed);
@@ -227,6 +236,8 @@ fn main() -> anyhow::Result<()> {
                 {
                     error!("{:?}", e);
                 }
+                // Reset the per-window loop-stall high-water mark after reporting.
+                stats.loop_max_ms.store(0, Ordering::Relaxed);
             }
 
             if last_ota_check.elapsed() >= Duration::from_secs(OTA_CHECK_INTERVAL_SECS) {
@@ -242,6 +253,19 @@ fn main() -> anyhow::Result<()> {
 }
 
 const FW_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// Parse a plain "X.Y.Z" version into a comparable tuple; None if malformed
+/// (treated as "do not update", consistent with the loop-proof skip defaults).
+fn parse_semver(s: &str) -> Option<(u32, u32, u32)> {
+    let mut it = s.split('.');
+    let major = it.next()?.parse().ok()?;
+    let minor = it.next()?.parse().ok()?;
+    let patch = it.next()?.parse().ok()?;
+    if it.next().is_some() {
+        return None; // more than three components -> not a plain X.Y.Z
+    }
+    Some((major, minor, patch))
+}
 
 /// Signals the BLE scan thread to yield the shared 2.4GHz radio during an OTA
 /// download. Without this the continuous BLE scan starves the HTTP transfer to
@@ -283,11 +307,24 @@ fn try_ota_update() -> anyhow::Result<()> {
                 return Ok(());
             }
         };
-        if staged == FW_VERSION {
-            info!("OTA: up to date ({})", FW_VERSION);
-            return Ok(());
+        // Only update to a STRICTLY NEWER version. Exact-match alone re-installs
+        // nothing (good) but an OLDER staged image would still trigger a
+        // downgrade every poll (the thrash hit during USB testing when the stage
+        // dir held an older version than a hand-flashed board). Unparseable
+        // versions skip, never update -- the loop-proof default.
+        match (parse_semver(staged), parse_semver(FW_VERSION)) {
+            (Some(s), Some(r)) if s > r => {
+                info!("OTA: staged {} > running {}, updating", staged, FW_VERSION);
+            }
+            (Some(_), Some(_)) => {
+                info!("OTA: staged {} not newer than running {}, skipping", staged, FW_VERSION);
+                return Ok(());
+            }
+            _ => {
+                info!("OTA: unparseable version (staged {:?}), skipping", staged);
+                return Ok(());
+            }
         }
-        info!("OTA: staged {} != running {}, updating", staged, FW_VERSION);
     }
 
     // Yield the radio to the download (BLE scan pauses until this returns).
