@@ -3,8 +3,10 @@ target/
 .cursor/
 .vscode/
 .idea/
-.cargo/config.tomlfirmware/
+/.cargo/config.toml
 .embuild/
-firmware/
-.embuild/
-Cargo.lock
+/Cargo.lock
+# build artifacts and signing keys never ship in the public repo: a built image
+# bakes WiFi + MQTT credentials, and priv.pem is the mesh-OTA signing key
+firmware/*/build/
+firmware/mesh_ota/keys/

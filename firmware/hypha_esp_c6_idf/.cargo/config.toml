@@ -1,0 +1,8 @@
+[build]
+target = "riscv32imac-esp-espidf"
+
+[env]
+IDF_TARGET = "esp32c6"
+
+[unstable]
+build-std = ["std", "panic_abort"]

@@ -1,0 +1,9 @@
+# Mesh OTA partition table for ESP32-C6 (use with espflash --partition-table).
+# Bootloader must support OTA (e.g. ESP-IDF 2nd stage). Default flash: no table (single factory).
+# Name,   Type, SubType, Offset,   Size, Flags
+nvs,      data, nvs,     ,        0x4000,
+otadata,  data, ota,     ,        0x2000,
+phy_init, data, phy,     ,        0x1000,
+factory,  app,  factory, ,        1M,
+ota_0,    app,  ota_0,   ,        1M,
+ota_1,    app,  ota_1,   ,        1M,

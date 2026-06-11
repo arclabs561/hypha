@@ -1,0 +1,28 @@
+# ESP32-C6 BLE vantage node: passive BLE scan -> MQTT + WiFi STA + HTTP OTA
+# + EnergyStatus JSON over serial.
+# Build: see src/main.rs doc comment for the required env vars.
+# Flash once via USB with partitions_ota.csv; subsequent updates over WiFi.
+
+[workspace]
+
+[package]
+name = "hypha_esp_c6_idf"
+version = "0.1.0"
+edition = "2021"
+
+[build-dependencies]
+embuild = "0.33"
+
+[dependencies]
+esp-idf-svc = { version = "0.51", features = ["binstart"] }
+esp-idf-sys = { version = "0.36", features = ["binstart"] }
+# embedded-svc must match esp-idf-svc's own pin (0.51 -> embedded-svc 0.28).
+embedded-svc = "0.28"
+# 0.11.1 is the last release pinning esp-idf-svc 0.51; 0.12.0 requires 0.52.
+esp32-nimble = "0.11.1"
+log = "0.4"
+anyhow = "1.0"
+
+[profile.release]
+opt-level = "s"
+lto = true

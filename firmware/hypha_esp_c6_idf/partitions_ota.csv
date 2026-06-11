@@ -1,0 +1,16 @@
+# Dual-slot OTA partition table for a 4MB ESP32-C6 (use with
+#   cargo espflash flash --release --partition-table partitions_ota.csv).
+#
+# No factory partition: with WiFi + NimBLE + mbedTLS (full cert bundle) the
+# app image runs ~1.2-1.6MB, so factory + 2 OTA slots cannot fit in 4MB.
+# espflash writes the initial image to ota_0 when no factory slot exists;
+# EspOta then alternates ota_0/ota_1 with rollback.
+#
+# Slot size 0x1F0000 (~1.94MB) x2 leaves 64KB spare at the top of 4MB.
+# Confirm the module really has 4MB at first USB flash: espflash board-info.
+# Name,   Type, SubType, Offset,   Size,     Flags
+nvs,      data, nvs,     0x9000,   0x4000,
+otadata,  data, ota,     0xd000,   0x2000,
+phy_init, data, phy,     0xf000,   0x1000,
+ota_0,    app,  ota_0,   0x10000,  0x1f0000,
+ota_1,    app,  ota_1,   0x200000, 0x1f0000,
