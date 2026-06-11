@@ -11,6 +11,13 @@ CONFIG_BT_NIMBLE_ENABLED=y
 # (map insert, name/mfr strings); default 4-5K stack is tight.
 CONFIG_BT_NIMBLE_HOST_TASK_STACK_SIZE=8192
 
+# Main task runs the whole app loop: the OTA check alone puts a 4KB chunk
+# buffer on this stack, and the IDF default (3584) guarantees a stack
+# protection fault the moment try_ota_update runs (observed on first boot:
+# Guru Meditation right after "MQTT client created"). 16K is comfortable
+# for HTTP-client + JSON-building depth.
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384
+
 # WiFi/BLE coexistence on the C6's single radio is managed by ESP-IDF:
 # BLE scan windows yield to WiFi, so some adverts are missed (acceptable
 # for seconds-resolution presence).
