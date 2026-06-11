@@ -30,7 +30,11 @@ use log::warn;
 use crate::Stats;
 
 const TICK_MS: u64 = 30; // ~33 Hz
-const LOCATE_WINDOW_S: u64 = 120;
+// Boot shows a calm version-coloured BLOOM (a single fade-in/out), never the
+// locate blink: the high-salience magenta blink is reserved for operator
+// "find me" so it never cries wolf on a routine reboot/upgrade. Upgrades are
+// read passively from the version hue, not from any blink.
+const BOOT_BLOOM_S: f32 = 4.0;
 const MQTT_FAULT_AFTER_S: u64 = 120;
 const PAGE_SECS: f32 = 6.0; // dwell per page in auto-rotate
 const FADE_SECS: f32 = 1.0; // crossfade between pages
@@ -87,7 +91,7 @@ fn led_loop(mut tx: TxRmtDriver<'static>, stats: Arc<Stats>) {
     let mut rate: f32 = 0.0;
     let mut last_adverts = stats.adverts_seen.load(Ordering::Relaxed);
     let mut last_rate_t = boot;
-    let mut last_pub = stats.publishes.load(Ordering::Relaxed);
+    let mut last_fire = stats.fire.load(Ordering::Relaxed);
     let mut flash: f32 = 0.0;
 
     loop {
@@ -103,9 +107,10 @@ fn led_loop(mut tx: TxRmtDriver<'static>, stats: Arc<Stats>) {
             last_adverts = cur;
             last_rate_t = now;
         }
-        let pubs = stats.publishes.load(Ordering::Relaxed);
-        if pubs != last_pub {
-            last_pub = pubs;
+        // heartbeat flash on each firefly fire (synchronized across boards)
+        let fires = stats.fire.load(Ordering::Relaxed);
+        if fires != last_fire {
+            last_fire = fires;
             flash = 1.0;
         }
         flash *= 0.82;
@@ -115,9 +120,18 @@ fn led_loop(mut tx: TxRmtDriver<'static>, stats: Arc<Stats>) {
 
         let (r, g, b) = if mode == MODE_OFF {
             (0, 0, 0)
-        } else if stats.locate.load(Ordering::Relaxed) || up < LOCATE_WINDOW_S {
-            // locate / fresh-boot identify: unmistakable magenta blink
+        } else if stats.locate.load(Ordering::Relaxed) {
+            // locate: operator "find me" only — unmistakable magenta blink,
+            // never fired by boot/upgrade (those bloom in the version hue below)
             if (t * 1.5).fract() < 0.35 { (48, 0, 48) } else { (0, 0, 0) }
+        } else if (up as f32) < BOOT_BLOOM_S {
+            // boot bloom: a rainbow hue sweep that fades in and out — a fun,
+            // unmistakable "I just (re)started" distinct from the locate blink;
+            // the version is read from the carousel, not from boot
+            let p = (up as f32 + (t % 1.0)) / BOOT_BLOOM_S; // 0..1 over the window
+            let hue = (p * 360.0) % 360.0;
+            let v = sin01_half(p) * (cap as f32 * 0.7);
+            hsv(hue, 0.95, v / 255.0)
         } else if last_connected.elapsed().as_secs() > MQTT_FAULT_AFTER_S {
             let v = (sin01(t) * 24.0) as u32;
             (v, v * 2 / 5, 0) // amber breath: MQTT down
@@ -211,6 +225,11 @@ fn lerp_hue(a: f32, b: f32, t: f32) -> f32 {
 
 fn sin01(phase: f32) -> f32 {
     0.5 - 0.5 * (phase * core::f32::consts::TAU).cos()
+}
+
+/// 0..1..0 single hump over phase 0..1 (one bloom, not a repeating breath).
+fn sin01_half(phase: f32) -> f32 {
+    (phase.clamp(0.0, 1.0) * core::f32::consts::PI).sin()
 }
 
 fn hsv(h: f32, s: f32, v: f32) -> (u32, u32, u32) {

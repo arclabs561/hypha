@@ -20,11 +20,12 @@
 //! Device checks for updates every 5 min and installs over WiFi.
 
 mod ble;
+mod firefly;
 mod led;
 mod mqtt;
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, AtomicI32, AtomicU32, AtomicU8};
+use std::sync::atomic::{AtomicBool, AtomicI32, AtomicU32, AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -74,6 +75,10 @@ pub struct Stats {
     pub wifi_rssi: AtomicI32,
     /// LED carousel mode (led::MODE_*), set from the cmd topic.
     pub led_mode: AtomicU8,
+    /// Firefly fires (heartbeat); the LED flashes on each increment.
+    pub fire: AtomicU32,
+    /// Peer firefly pulses heard on hypha/sync/pulse; main couples on each.
+    pub peer_pulses: AtomicU32,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -136,69 +141,87 @@ fn main() -> anyhow::Result<()> {
         .map(|s| format!(",\"power_source\":\"{}\"", s))
         .unwrap_or_default();
 
+    // The loop ticks at 100ms so a firefly fire emits its pulse promptly
+    // (cross-board sync needs low jitter); the ~2s advert work is gated on a
+    // tick counter. ESP-NOW-free: coupling rides the MQTT bus (private design note).
+    const TICK_MS: u64 = 100;
+    const ADVERT_EVERY: u32 = 20; // 20 * 100ms = 2s window
+    let mut osc = firefly::Firefly::new(2.0); // 2s heartbeat
+    let mut last_peer = stats.peer_pulses.load(Ordering::Relaxed);
+    let mut tick: u32 = 0;
+
     loop {
-        // Print EnergyStatus JSON (host bridge / serial)
-        let line = format!(
-            r#"{{"source_id":"{}","energy_score":{:.2}{}}}"#,
-            source_id, energy_score, power_extra
-        );
-        println!("{}", line);
+        // --- firefly: couple on peer pulses, advance, emit our pulse on fire ---
+        let peer = stats.peer_pulses.load(Ordering::Relaxed);
+        let mut fired = false;
+        while last_peer != peer {
+            last_peer = last_peer.wrapping_add(1);
+            if osc.couple() {
+                fired = true;
+            }
+        }
+        if osc.advance(TICK_MS as f32 / 1000.0) {
+            fired = true;
+        }
+        if fired {
+            stats.fire.fetch_add(1, Ordering::Relaxed); // drives the LED heartbeat
+            if let Err(e) = mqtt::publish_pulse(&mut mqtt, &board_id) {
+                error!("{:?}", e);
+            }
+        }
 
-        // Toggle mock energy for demo
-        energy_score = if high { 0.85 } else { 0.55 };
-        high = !high;
-
-        // Refresh WiFi RSSI for the LED Link page (cheap; once per ~2s tick).
-        stats.wifi_rssi.store(
-            mqtt::sta_rssi() as i32,
-            std::sync::atomic::Ordering::Relaxed,
-        );
-
-        // (Re)subscribe to the cmd topic on each new connection generation.
-        let gen = stats.mqtt_connects.load(std::sync::atomic::Ordering::Relaxed);
-        if gen != subscribed_gen && stats.mqtt_connected.load(std::sync::atomic::Ordering::Relaxed) {
+        // (Re)subscribe (cmd + sync) on each new connection generation.
+        let gen = stats.mqtt_connects.load(Ordering::Relaxed);
+        if gen != subscribed_gen && stats.mqtt_connected.load(Ordering::Relaxed) {
             match mqtt::subscribe_cmd(&mut mqtt, &board_id) {
                 Ok(()) => subscribed_gen = gen,
                 Err(e) => error!("{:?}", e),
             }
         }
 
-        // Flush the BLE advert window (one publish per ~2s loop tick).
-        let batch: Vec<_> = {
-            let mut m = adverts.lock().unwrap();
-            m.drain().collect()
-        };
-        stats
-            .scan_windows
-            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        seq = seq.wrapping_add(1);
-        if let Err(e) = mqtt::publish_adverts(&mut mqtt, &board_id, &boot_id, seq, batch) {
-            error!("{:?}", e);
-        } else {
-            stats
-                .publishes
-                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        }
+        if tick % ADVERT_EVERY == 0 {
+            // EnergyStatus serial line (host bridge) + mock energy toggle
+            println!(
+                r#"{{"source_id":"{}","energy_score":{:.2}{}}}"#,
+                source_id, energy_score, power_extra
+            );
+            energy_score = if high { 0.85 } else { 0.55 };
+            high = !high;
 
-        // Retained health every 60s (and once right after boot).
-        if last_health.map_or(true, |t| t.elapsed() >= Duration::from_secs(HEALTH_INTERVAL_SECS)) {
-            last_health = Some(std::time::Instant::now());
-            if let Err(e) =
-                mqtt::publish_health(&mut mqtt, &board_id, boot_time.elapsed().as_secs(), &stats)
-            {
+            stats.wifi_rssi.store(mqtt::sta_rssi() as i32, Ordering::Relaxed);
+
+            let batch: Vec<_> = {
+                let mut m = adverts.lock().unwrap();
+                m.drain().collect()
+            };
+            stats.scan_windows.fetch_add(1, Ordering::Relaxed);
+            seq = seq.wrapping_add(1);
+            if let Err(e) = mqtt::publish_adverts(&mut mqtt, &board_id, &boot_id, seq, batch) {
                 error!("{:?}", e);
+            } else {
+                stats.publishes.fetch_add(1, Ordering::Relaxed);
+            }
+
+            if last_health.map_or(true, |t| t.elapsed() >= Duration::from_secs(HEALTH_INTERVAL_SECS))
+            {
+                last_health = Some(std::time::Instant::now());
+                if let Err(e) =
+                    mqtt::publish_health(&mut mqtt, &board_id, boot_time.elapsed().as_secs(), &stats)
+                {
+                    error!("{:?}", e);
+                }
+            }
+
+            if last_ota_check.elapsed() >= Duration::from_secs(OTA_CHECK_INTERVAL_SECS) {
+                last_ota_check = std::time::Instant::now();
+                if let Err(e) = try_ota_update() {
+                    error!("OTA check failed: {:?}", e);
+                }
             }
         }
 
-        // Check for OTA periodically
-        if last_ota_check.elapsed() >= Duration::from_secs(OTA_CHECK_INTERVAL_SECS) {
-            last_ota_check = std::time::Instant::now();
-            if let Err(e) = try_ota_update() {
-                error!("OTA check failed: {:?}", e);
-            }
-        }
-
-        thread::sleep(Duration::from_secs(2));
+        tick = tick.wrapping_add(1);
+        thread::sleep(Duration::from_millis(TICK_MS));
     }
 }
 

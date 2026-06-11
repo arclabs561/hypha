@@ -31,9 +31,14 @@ pub fn cmd_topic(board_id: &str) -> String {
     format!("hypha/{}/cmd", board_id)
 }
 
+/// Shared firefly-sync topic: every board publishes its pulse here and
+/// subscribes to hear peers (the cross-board coupling channel, private design note).
+pub const SYNC_TOPIC: &str = "hypha/sync/pulse";
+
 pub fn connect(board_id: &str, stats: Arc<Stats>) -> anyhow::Result<EspMqttClient<'static>> {
     let url = format!("mqtt://{}:{}", MQTT_HOST, MQTT_PORT);
     let my_cmd = cmd_topic(board_id);
+    let my_id = board_id.to_string();
     let conf = MqttClientConfiguration {
         client_id: Some(board_id),
         username: MQTT_USER,
@@ -58,6 +63,12 @@ pub fn connect(board_id: &str, stats: Arc<Stats>) -> anyhow::Result<EspMqttClien
             warn!("MQTT disconnected; will reconnect");
         }
         EventPayload::Received { topic, data, .. } => {
+            if topic == Some(SYNC_TOPIC) {
+                // a firefly pulse; ignore our own echo, couple on a peer's
+                if core::str::from_utf8(data).unwrap_or("") != my_id {
+                    stats.peer_pulses.fetch_add(1, Ordering::Relaxed);
+                }
+            }
             if topic == Some(my_cmd.as_str()) {
                 // sentinel "" is the right failure shape here: a non-UTF8 command
                 // matches no keyword and is ignored, which is the desired handling
@@ -101,6 +112,17 @@ pub fn subscribe_cmd(client: &mut EspMqttClient<'static>, board_id: &str) -> any
     client
         .subscribe(&cmd_topic(board_id), QoS::AtLeastOnce)
         .map_err(|e| anyhow::anyhow!("cmd subscribe: {:?}", e))?;
+    client
+        .subscribe(SYNC_TOPIC, QoS::AtMostOnce) // firefly pulses: lossy is fine
+        .map_err(|e| anyhow::anyhow!("sync subscribe: {:?}", e))?;
+    Ok(())
+}
+
+/// Publish this board's firefly pulse (fire-and-forget; peers couple on it).
+pub fn publish_pulse(client: &mut EspMqttClient<'static>, board_id: &str) -> anyhow::Result<()> {
+    client
+        .publish(SYNC_TOPIC, QoS::AtMostOnce, false, board_id.as_bytes())
+        .map_err(|e| anyhow::anyhow!("pulse publish: {:?}", e))?;
     Ok(())
 }
 
