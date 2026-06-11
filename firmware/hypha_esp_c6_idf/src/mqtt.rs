@@ -118,6 +118,51 @@ pub fn subscribe_cmd(client: &mut EspMqttClient<'static>, board_id: &str) -> any
     Ok(())
 }
 
+/// Human-readable ESP reset reason for the boot event (why did it restart).
+fn reset_reason() -> &'static str {
+    use esp_idf_svc::sys::*;
+    match unsafe { esp_reset_reason() } {
+        x if x == esp_reset_reason_t_ESP_RST_POWERON => "poweron",
+        x if x == esp_reset_reason_t_ESP_RST_SW => "sw-reset",
+        x if x == esp_reset_reason_t_ESP_RST_DEEPSLEEP => "deepsleep",
+        x if x == esp_reset_reason_t_ESP_RST_BROWNOUT => "brownout",
+        x if x == esp_reset_reason_t_ESP_RST_PANIC => "panic",
+        x if x == esp_reset_reason_t_ESP_RST_INT_WDT => "int-watchdog",
+        x if x == esp_reset_reason_t_ESP_RST_TASK_WDT => "task-watchdog",
+        x if x == esp_reset_reason_t_ESP_RST_WDT => "watchdog",
+        _ => "other",
+    }
+}
+
+/// Retained boot announcement: lets telemetry watch boot sequences remotely
+/// (reset reason distinguishes a clean OTA reboot from a panic/watchdog loop).
+pub fn publish_boot(
+    client: &mut EspMqttClient<'static>,
+    board_id: &str,
+    boot_id: &str,
+    wifi_ms: u128,
+) -> anyhow::Result<()> {
+    let heap = unsafe { esp_idf_svc::sys::esp_get_free_heap_size() };
+    let payload = format!(
+        r#"{{"board":"{}","ev":"boot","fw":"{}","boot":"{}","reset":"{}","wifi_ms":{},"heap_free":{}}}"#,
+        board_id,
+        env!("CARGO_PKG_VERSION"),
+        boot_id,
+        reset_reason(),
+        wifi_ms,
+        heap,
+    );
+    client
+        .publish(
+            &format!("hypha/{}/event", board_id),
+            QoS::AtLeastOnce,
+            true, // retained: a late watcher still sees the last boot
+            payload.as_bytes(),
+        )
+        .map_err(|e| anyhow::anyhow!("boot event: {:?}", e))?;
+    Ok(())
+}
+
 /// Publish this board's firefly pulse (fire-and-forget; peers couple on it).
 pub fn publish_pulse(client: &mut EspMqttClient<'static>, board_id: &str) -> anyhow::Result<()> {
     client
@@ -185,7 +230,7 @@ pub fn publish_health(
     let wifi_rssi = sta_rssi();
     let connects = stats.mqtt_connects.load(Ordering::Relaxed);
     let payload = format!(
-        r#"{{"board":"{}","fw":"{}","uptime_s":{},"heap_free":{},"wifi_rssi":{},"scan_windows":{},"adverts_seen":{},"mqtt_reconnects":{}}}"#,
+        r#"{{"board":"{}","fw":"{}","uptime_s":{},"heap_free":{},"wifi_rssi":{},"scan_windows":{},"adverts_seen":{},"mqtt_reconnects":{},"fires":{}}}"#,
         board_id,
         env!("CARGO_PKG_VERSION"),
         uptime_s,
@@ -194,6 +239,9 @@ pub fn publish_health(
         stats.scan_windows.load(Ordering::Relaxed),
         stats.adverts_seen.load(Ordering::Relaxed),
         connects.saturating_sub(1),
+        // local firefly fire count: telemetry compares this to received pulses
+        // on hypha/sync/pulse to separate fire-rate from pulse-loss
+        stats.fire.load(Ordering::Relaxed),
     );
     client
         .publish(

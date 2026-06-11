@@ -98,6 +98,7 @@ fn main() -> anyhow::Result<()> {
     let nvs = EspDefaultNvsPartition::take()?;
 
     // LED first: the locate blink should run from power-on, before WiFi is up.
+    let boot_time = std::time::Instant::now();
     let stats = Arc::new(Stats::default());
     led::spawn(peripherals.rmt.channel0, peripherals.pins.gpio8, stats.clone());
 
@@ -107,6 +108,7 @@ fn main() -> anyhow::Result<()> {
     )?;
 
     connect_wifi(&mut wifi)?;
+    let wifi_ms = boot_time.elapsed().as_millis();
 
     let mac = wifi.wifi().get_mac(WifiDeviceId::Sta)?;
     let source_id = format!("esp-c6-{:02x}{:02x}", mac[4], mac[5]);
@@ -126,8 +128,8 @@ fn main() -> anyhow::Result<()> {
     // client drops subscriptions on reconnect; clean session).
     let mut subscribed_gen: u32 = 0;
 
-    let boot_time = std::time::Instant::now();
     let mut last_health: Option<std::time::Instant> = None;
+    let mut boot_announced = false;
     let mut energy_score: f32 = 0.85;
     let mut high = true;
     let mut last_ota_check = std::time::Instant::now();
@@ -141,17 +143,21 @@ fn main() -> anyhow::Result<()> {
         .map(|s| format!(",\"power_source\":\"{}\"", s))
         .unwrap_or_default();
 
-    // The loop ticks at 100ms so a firefly fire emits its pulse promptly
-    // (cross-board sync needs low jitter); the ~2s advert work is gated on a
-    // tick counter. ESP-NOW-free: coupling rides the MQTT bus (private design note).
-    const TICK_MS: u64 = 100;
-    const ADVERT_EVERY: u32 = 20; // 20 * 100ms = 2s window
+    // Cadences are driven by MEASURED elapsed time, never an assumed tick
+    // length: under WiFi/BLE load the loop iterates irregularly (observed ~4x
+    // slow), so a fixed-dt firefly ran at ~8s instead of 2s. Measured dt keeps
+    // the oscillator and the advert window real-time-correct despite jitter.
+    const TICK_MS: u64 = 50; // shorter sleep -> lower firefly-pulse jitter
     let mut osc = firefly::Firefly::new(2.0); // 2s heartbeat
     let mut last_peer = stats.peer_pulses.load(Ordering::Relaxed);
-    let mut tick: u32 = 0;
+    let mut last_tick = std::time::Instant::now();
+    let mut last_advert = std::time::Instant::now();
 
     loop {
-        // --- firefly: couple on peer pulses, advance, emit our pulse on fire ---
+        let dt = last_tick.elapsed().as_secs_f32();
+        last_tick = std::time::Instant::now();
+
+        // --- firefly: couple on peer pulses, advance by REAL dt, emit on fire ---
         let peer = stats.peer_pulses.load(Ordering::Relaxed);
         let mut fired = false;
         while last_peer != peer {
@@ -160,7 +166,7 @@ fn main() -> anyhow::Result<()> {
                 fired = true;
             }
         }
-        if osc.advance(TICK_MS as f32 / 1000.0) {
+        if osc.advance(dt) {
             fired = true;
         }
         if fired {
@@ -179,7 +185,15 @@ fn main() -> anyhow::Result<()> {
             }
         }
 
-        if tick % ADVERT_EVERY == 0 {
+        // Announce the boot once the bus is up (retained; lets watch see boots).
+        if !boot_announced && stats.mqtt_connected.load(Ordering::Relaxed) {
+            if mqtt::publish_boot(&mut mqtt, &board_id, &boot_id, wifi_ms).is_ok() {
+                boot_announced = true;
+            }
+        }
+
+        if last_advert.elapsed() >= Duration::from_secs(2) {
+            last_advert = std::time::Instant::now();
             // EnergyStatus serial line (host bridge) + mock energy toggle
             println!(
                 r#"{{"source_id":"{}","energy_score":{:.2}{}}}"#,
@@ -220,7 +234,6 @@ fn main() -> anyhow::Result<()> {
             }
         }
 
-        tick = tick.wrapping_add(1);
         thread::sleep(Duration::from_millis(TICK_MS));
     }
 }
