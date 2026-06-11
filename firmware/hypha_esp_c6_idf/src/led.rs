@@ -9,7 +9,7 @@
 //! motion, not brightness.
 //!
 //! Pages (auto-rotate by default; pin/disable via hypha/<board>/cmd
-//! {"led":"auto"|"metabolism"|"link"|"version"|"off"}, private design note):
+//! {"led":"auto"|"metabolism"|"link"|"version"|"off"}):
 //!   - Metabolism: hue from BLE advert activity (per-room signature), breath
 //!     period from activity, firefly heartbeat flash (synchronized across
 //!     boards, firefly.rs) that winks the firmware VERSION colour.
@@ -31,7 +31,8 @@ use log::warn;
 
 use crate::Stats;
 
-const TICK_MS: u64 = 8; // 125 Hz: smooth motion + headroom for temporal dither
+const TICK_MS: u64 = 20; // 50 Hz: still smooth + dithers, ~2.5x less soft-float
+                         // load than 125Hz on the FPU-less core
 const FLASH_TAU: f32 = 0.13; // firefly flash decay time constant (s)
 const BOOT_BLOOM_S: f32 = 3.0;
 const BOOT_REVS: f32 = 3.0; // rainbow revolutions during boot

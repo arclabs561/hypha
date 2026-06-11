@@ -18,6 +18,18 @@ CONFIG_BT_NIMBLE_HOST_TASK_STACK_SIZE=8192
 # for HTTP-client + JSON-building depth.
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384
 
+# Main-task priority: the app loop runs on the main task. At the
+# IDF default (1) it starved -- WiFi (23) and the NimBLE host (~22-23) sit far
+# above it and a single core is strictly preemptive, so the loop ran every ~9s
+# not ~2s (firefly-8s, slow OTA, watchdog). 18 is in the 18-22 band: above the
+# LED/BLE app threads and idle, but BELOW the radios so it never chokes WiFi/BLE.
+# Safe because the loop is block-and-wake (sleeps 50ms; brief CPU each wake).
+CONFIG_ESP_MAIN_TASK_PRIORITY=18
+
+# Don't panic-reboot on the task watchdog: with bursty radio load IDLE can miss
+# its window transiently; we want a logged warning, not a reset loop.
+CONFIG_ESP_TASK_WDT_PANIC=n
+
 # WiFi/BLE coexistence on the C6's single radio is managed by ESP-IDF:
 # BLE scan windows yield to WiFi, so some adverts are missed (acceptable
 # for seconds-resolution presence).

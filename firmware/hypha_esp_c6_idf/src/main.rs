@@ -243,7 +243,7 @@ const FW_VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Signals the BLE scan thread to yield the shared 2.4GHz radio during an OTA
 /// download. Without this the continuous BLE scan starves the HTTP transfer to
 /// ~64KB/48s (a 1.5MB image would take ~18 min and never finish) -- the C6
-/// single-front-end coex constraint (private design note) biting the OTA path.
+/// single-front-end coex constraint biting the OTA path.
 pub static OTA_ACTIVE: AtomicBool = AtomicBool::new(false);
 
 /// Resets OTA_ACTIVE (resumes BLE) when the download returns by any path.

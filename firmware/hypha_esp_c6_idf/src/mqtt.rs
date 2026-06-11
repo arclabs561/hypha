@@ -32,7 +32,7 @@ pub fn cmd_topic(board_id: &str) -> String {
 }
 
 /// Shared firefly-sync topic: every board publishes its pulse here and
-/// subscribes to hear peers (the cross-board coupling channel, private design note).
+/// subscribes to hear peers (the cross-board coupling channel).
 pub const SYNC_TOPIC: &str = "hypha/sync/pulse";
 
 pub fn connect(board_id: &str, stats: Arc<Stats>) -> anyhow::Result<EspMqttClient<'static>> {

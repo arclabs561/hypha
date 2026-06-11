@@ -53,7 +53,7 @@ fn scan_loop(map: AdvertMap, stats: Arc<Stats>) {
     info!("BLE scan starting (active={})", active);
 
     loop {
-        // Yield the shared radio to an OTA download (private design note coex): a
+        // Yield the shared radio to an OTA download (coex): a
         // continuous BLE scan starves the HTTP transfer, so pause while
         // OTA_ACTIVE. Presence has a brief gap during the ~1-2 min update.
         if crate::OTA_ACTIVE.load(Ordering::Relaxed) {
@@ -75,17 +75,21 @@ fn scan_loop(map: AdvertMap, stats: Arc<Stats>) {
             .interval(100)
             .window(30);
 
-        // Finite 3s windows (not BLE_HS_FOREVER) so the loop can check
-        // OTA_ACTIVE and yield the radio within a few seconds of an OTA start.
-        let res = block_on(scan.start(device, 3000, |dev, data| {
+        // Burst scan: 1s scan window, then 2s idle. Continuous
+        // scanning floods the high-prio NimBLE host task with per-advert
+        // callbacks and starves the app; ~33% duty clears the few adverts/window
+        // presence needs while handing the single core back. Per-node and
+        // UNcoordinated -- synchronizing windows across vantages buys nothing for
+        // RSSI localization (no cross-receiver timing term).
+        let res = block_on(scan.start(device, 1000, |dev, data| {
             record_advert(&map, &stats, dev, &data);
             None::<()>
         }));
 
         if let Err(e) = res {
             warn!("BLE scan error: {:?}; restarting", e);
-            thread::sleep(Duration::from_secs(1));
         }
+        thread::sleep(Duration::from_secs(2)); // idle gear (mains: always returns to scan)
     }
 }
 
