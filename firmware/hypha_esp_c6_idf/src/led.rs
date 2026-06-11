@@ -125,10 +125,16 @@ fn led_loop(mut tx: TxRmtDriver<'static>, stats: Arc<Stats>) {
             // locate: operator find-me, magenta blink (never fired by boot)
             if (t * 1.5).fract() < 0.35 { (48.0, 0.0, 48.0) } else { (0.0, 0.0, 0.0) }
         } else if t < BOOT_BLOOM_S {
-            // boot: fast vivid rainbow spin, smootherstep-eased
+            // boot: an EXPONENTIAL "ignition" -- the hue spin accelerates
+            // (warp-up, cubic progress) and the brightness flares then decays
+            // exponentially (a spark, not a sinusoidal breath). Deliberately
+            // unique vs every other page; brighter than the whisper cap because
+            // boot is the one loud "I just (re)started" moment.
             let p = (t / BOOT_BLOOM_S).clamp(0.0, 1.0);
-            let hue = (p * 360.0 * BOOT_REVS) % 360.0;
-            hsv(hue, 1.0, bump(p) * cap * 0.95)
+            let warp = p * p * p; // accelerating spin
+            let hue = (warp * 360.0 * BOOT_REVS * 2.0) % 360.0;
+            let env = (1.0 - (-p * 10.0).exp()) * (-p * 2.2).exp(); // sharp attack, exp tail
+            hsv(hue, 1.0, env * 50.0)
         } else if last_connected.elapsed().as_secs() > MQTT_FAULT_AFTER_S {
             let v = sin01(t) * 24.0;
             (v, v * 0.4, 0.0) // amber breath: MQTT down
@@ -192,10 +198,23 @@ fn page(p: Page, c: &PageCtx) -> Rgb {
             hsv(hue, 0.85, val)
         }
         Page::Link => {
+            // rhythm signature: STEADY (no breath) -- "stillness" is its motion.
+            // Hue green->red from RSSI; brightness redundantly encodes strength
+            // (stronger link = brighter) so it reads without colour (CVD-safe).
             let q = ((c.rssi as f32 + 90.0) / 60.0).clamp(0.0, 1.0);
-            hsv(q * 120.0, 0.9, 2.0 + sin01(c.t / 3.5) * (c.cap * 0.4))
+            hsv(q * 120.0, 0.9, c.cap * (0.35 + 0.35 * q))
         }
-        Page::Version => hsv(c.ver_hue, 0.9, 3.0 + sin01(c.t / 3.0) * (c.cap * 0.4)),
+        Page::Version => {
+            // rhythm signature: a slow DOUBLE-PULSE (blip-blip ... pause), so
+            // the version page is identifiable by motion, not just by hue.
+            let ph = c.t % 4.0;
+            let pulse = bump((ph / 0.5).min(1.0)) + if ph > 0.7 && ph < 1.2 {
+                bump(((ph - 0.7) / 0.5).min(1.0))
+            } else {
+                0.0
+            };
+            hsv(c.ver_hue, 0.9, 2.0 + pulse.min(1.0) * (c.cap * 0.7))
+        }
     }
 }
 
