@@ -75,10 +75,26 @@ pub struct Stats {
     pub wifi_rssi: AtomicI32,
     /// LED carousel mode (led::MODE_*), set from the cmd topic.
     pub led_mode: AtomicU8,
-    /// Firefly fires (heartbeat); the LED flashes on each increment.
+    /// Firefly fires (heartbeat); the LED flashes on each increment (visible
+    /// only on the pinned metabolism/carousel diagnostic pages).
     pub fire: AtomicU32,
     /// Peer firefly pulses heard on hypha/sync/pulse; main couples on each.
     pub peer_pulses: AtomicU32,
+    /// Runtime LED brightness ceiling 0..255 (cmd/config {"led_max":N}); scales
+    /// every signal except locate. 0 = silent board (night use). Initialized
+    /// from the LED_MAX_VAL build env in main.
+    pub led_max: AtomicU32,
+    /// Which vocabulary state the LED is rendering (led::STATE_NAMES index);
+    /// health reports it so "why is it that colour" is a telemetry read.
+    pub led_state: AtomicU8,
+    /// Bumped per applied cmd/config; main publishes an ack event on change
+    /// (the mqtt callback can't publish from inside its own client's task).
+    pub cmd_seq: AtomicU32,
+    /// Cmds/configs that matched no known key or value; rising = someone is
+    /// sending commands this firmware doesn't understand.
+    pub cmd_ignored: AtomicU32,
+    /// Failed STA RSSI reads (wifi_rssi then holds the last-known value).
+    pub rssi_err: AtomicU32,
     /// Last rendered LED colour (packed 0xRRGGBB); health reports it so the
     /// actual hue is visible in telemetry, not just reconstructed.
     pub led_rgb: AtomicU32,
@@ -105,10 +121,14 @@ fn main() -> anyhow::Result<()> {
     let sys_loop = EspSystemEventLoop::take()?;
     let nvs = EspDefaultNvsPartition::take()?;
 
-    // LED first: the locate blink should run from power-on, before WiFi is up.
+    // LED first: the boot bloom should run from power-on, before WiFi is up.
     let boot_time = std::time::Instant::now();
     let stats = Arc::new(Stats::default());
-    led::spawn(peripherals.rmt.channel0, peripherals.pins.gpio8, stats.clone());
+    stats.led_max.store(led::default_max(), Ordering::Relaxed);
+    // sw-reset = the reset an OTA install ends with: show the green
+    // "update applied" blinks once after the bloom.
+    let updated = mqtt::reset_reason() == "sw-reset";
+    led::spawn(peripherals.rmt.channel0, peripherals.pins.gpio8, stats.clone(), updated);
 
     let mut wifi = BlockingWifi::wrap(
         EspWifi::new(peripherals.modem, sys_loop.clone(), Some(nvs))?,
@@ -135,6 +155,8 @@ fn main() -> anyhow::Result<()> {
     // Subscribe to the cmd topic once per connection generation (the esp-idf
     // client drops subscriptions on reconnect; clean session).
     let mut subscribed_gen: u32 = 0;
+    // Ack each applied cmd/config once (retried next tick on publish failure).
+    let mut acked_cmd_seq: u32 = 0;
 
     let mut last_health: Option<std::time::Instant> = None;
     let mut boot_announced = false;
@@ -204,6 +226,14 @@ fn main() -> anyhow::Result<()> {
             }
         }
 
+        // Closed-loop ack for applied cmds/configs (see Stats::cmd_seq).
+        let cseq = stats.cmd_seq.load(Ordering::Relaxed);
+        if cseq != acked_cmd_seq && stats.mqtt_connected.load(Ordering::Relaxed) {
+            if mqtt::publish_cmd_ack(&mut mqtt, &board_id, &stats).is_ok() {
+                acked_cmd_seq = cseq;
+            }
+        }
+
         if last_advert.elapsed() >= Duration::from_secs(2) {
             last_advert = std::time::Instant::now();
             // EnergyStatus serial line (host bridge) + mock energy toggle
@@ -214,7 +244,12 @@ fn main() -> anyhow::Result<()> {
             energy_score = if high { 0.85 } else { 0.55 };
             high = !high;
 
-            stats.wifi_rssi.store(mqtt::sta_rssi() as i32, Ordering::Relaxed);
+            match mqtt::sta_rssi() {
+                Some(r) => stats.wifi_rssi.store(r as i32, Ordering::Relaxed),
+                None => {
+                    stats.rssi_err.fetch_add(1, Ordering::Relaxed);
+                }
+            }
 
             let batch: Vec<_> = {
                 let mut m = adverts.lock().unwrap();

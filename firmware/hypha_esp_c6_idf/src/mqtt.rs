@@ -25,10 +25,56 @@ const MQTT_PASS: Option<&str> = option_env!("MQTT_PASS");
 /// Strongest-RSSI entries kept per published batch.
 const BATCH_CAP: usize = 64;
 
-/// Command topic: operator publishes {"locate":true|false} to blink one board
-/// for physical identification. Dumb substring parse on purpose (no JSON dep).
+/// Command topic (momentary, never retained): {"locate":true|false},
+/// {"led":"auto"|...}, {"led_max":0..255}.
 pub fn cmd_topic(board_id: &str) -> String {
     format!("hypha/{}/cmd", board_id)
+}
+
+/// Config topic (retained = desired state): same {"led","led_max"} fields as
+/// cmd, reapplied automatically on every (re)connect because the broker
+/// redelivers the retained message per subscribe. This is how an LED mode or
+/// night brightness survives a reboot. `locate` is deliberately NOT honored
+/// here: find-me is momentary by definition, and a retained locate is exactly
+/// the stuck-blinking failure shape.
+pub fn config_topic(board_id: &str) -> String {
+    format!("hypha/{}/config", board_id)
+}
+
+/// Minimal key-scoped JSON field extraction (no JSON dep): the raw token
+/// after `"key":`, trimmed, up to the next ',' or '}'. Key must appear as a
+/// quoted JSON key, so future keys can't false-match inside other words or
+/// values (a bare substring parser matched "led" inside "enabled"/"failed").
+fn json_field<'a>(body: &'a str, key: &str) -> Option<&'a str> {
+    let pat = format!("\"{}\"", key);
+    let i = body.find(&pat)?;
+    let rest = body[i + pat.len()..].trim_start();
+    let rest = rest.strip_prefix(':')?.trim_start();
+    let end = rest.find([',', '}']).unwrap_or(rest.len());
+    Some(rest[..end].trim())
+}
+
+fn mode_from_name(v: &str) -> Option<u8> {
+    Some(match v {
+        "auto" => crate::led::MODE_AUTO,
+        "metabolism" => crate::led::MODE_METABOLISM,
+        "link" => crate::led::MODE_LINK,
+        "version" => crate::led::MODE_VERSION,
+        "off" => crate::led::MODE_OFF,
+        "carousel" => crate::led::MODE_CAROUSEL,
+        _ => return None,
+    })
+}
+
+pub fn mode_name(m: u8) -> &'static str {
+    match m {
+        crate::led::MODE_METABOLISM => "metabolism",
+        crate::led::MODE_LINK => "link",
+        crate::led::MODE_VERSION => "version",
+        crate::led::MODE_OFF => "off",
+        crate::led::MODE_CAROUSEL => "carousel",
+        _ => "auto",
+    }
 }
 
 /// Shared firefly-sync topic: every board publishes its pulse here and
@@ -38,6 +84,7 @@ pub const SYNC_TOPIC: &str = "hypha/sync/pulse";
 pub fn connect(board_id: &str, stats: Arc<Stats>) -> anyhow::Result<EspMqttClient<'static>> {
     let url = format!("mqtt://{}:{}", MQTT_HOST, MQTT_PORT);
     let my_cmd = cmd_topic(board_id);
+    let my_config = config_topic(board_id);
     let my_id = board_id.to_string();
     let conf = MqttClientConfiguration {
         client_id: Some(board_id),
@@ -69,32 +116,54 @@ pub fn connect(board_id: &str, stats: Arc<Stats>) -> anyhow::Result<EspMqttClien
                     stats.peer_pulses.fetch_add(1, Ordering::Relaxed);
                 }
             }
-            if topic == Some(my_cmd.as_str()) {
+            let is_cmd = topic == Some(my_cmd.as_str());
+            let is_config = topic == Some(my_config.as_str());
+            if is_cmd || is_config {
                 // sentinel "" is the right failure shape here: a non-UTF8 command
-                // matches no keyword and is ignored, which is the desired handling
+                // matches no key and is counted as ignored, the desired handling
                 let body = core::str::from_utf8(data).unwrap_or("");
-                if body.contains("locate") {
-                    let on = body.contains("true");
-                    stats.locate.store(on, Ordering::Relaxed);
-                    info!("cmd: locate={}", on);
+                let mut applied = false;
+                if is_cmd {
+                    // momentary only: never honored from the retained config
+                    match json_field(body, "locate") {
+                        Some("true") => {
+                            stats.locate.store(true, Ordering::Relaxed);
+                            applied = true;
+                        }
+                        Some("false") => {
+                            stats.locate.store(false, Ordering::Relaxed);
+                            applied = true;
+                        }
+                        _ => {}
+                    }
                 }
-                if body.contains("led") {
-                    // {"led":"auto"|"metabolism"|"link"|"version"|"off"} -- dumb
-                    // substring match, longest-distinct keywords, no JSON dep
-                    let m = if body.contains("metabolism") {
-                        crate::led::MODE_METABOLISM
-                    } else if body.contains("link") {
-                        crate::led::MODE_LINK
-                    } else if body.contains("version") {
-                        crate::led::MODE_VERSION
-                    } else if body.contains("\"off\"") {
-                        crate::led::MODE_OFF
-                    } else {
-                        crate::led::MODE_AUTO
-                    };
+                if let Some(m) = json_field(body, "led")
+                    .map(|v| v.trim_matches('"'))
+                    .and_then(mode_from_name)
+                {
                     stats.led_mode.store(m, Ordering::Relaxed);
-                    info!("cmd: led mode={}", m);
+                    applied = true;
                 }
+                if let Some(n) = json_field(body, "led_max").and_then(|v| v.parse::<u32>().ok()) {
+                    stats.led_max.store(n.min(255), Ordering::Relaxed);
+                    applied = true;
+                }
+                if applied {
+                    // main publishes the ack event when it sees cmd_seq move
+                    // (publishing from inside the event callback is unsafe re
+                    // the client's own task)
+                    stats.cmd_seq.fetch_add(1, Ordering::Relaxed);
+                } else {
+                    // surfaced in health: a rising count means someone is
+                    // sending commands this firmware doesn't understand
+                    stats.cmd_ignored.fetch_add(1, Ordering::Relaxed);
+                }
+                info!(
+                    "{}: {} ({})",
+                    if is_cmd { "cmd" } else { "config" },
+                    body,
+                    if applied { "applied" } else { "ignored" }
+                );
             }
         }
         EventPayload::Error(e) => warn!("MQTT error: {:?}", e),
@@ -112,14 +181,48 @@ pub fn subscribe_cmd(client: &mut EspMqttClient<'static>, board_id: &str) -> any
     client
         .subscribe(&cmd_topic(board_id), QoS::AtLeastOnce)
         .map_err(|e| anyhow::anyhow!("cmd subscribe: {:?}", e))?;
+    // Retained config redelivers on every subscribe: this line IS the
+    // reboot/reconnect persistence of led mode + brightness.
+    client
+        .subscribe(&config_topic(board_id), QoS::AtLeastOnce)
+        .map_err(|e| anyhow::anyhow!("config subscribe: {:?}", e))?;
     client
         .subscribe(SYNC_TOPIC, QoS::AtMostOnce) // firefly pulses: lossy is fine
         .map_err(|e| anyhow::anyhow!("sync subscribe: {:?}", e))?;
     Ok(())
 }
 
+/// Closed-loop command ack: echo what the parser actually decoded and applied
+/// (non-retained event). "Did my command take?" and "is locate stuck on?"
+/// become bus reads instead of live-probe debugging sessions.
+pub fn publish_cmd_ack(
+    client: &mut EspMqttClient<'static>,
+    board_id: &str,
+    stats: &Stats,
+) -> anyhow::Result<()> {
+    let payload = format!(
+        r#"{{"board":"{}","ev":"cmd","locate":{},"mode":"{}","led_max":{},"cmd_ignored":{}}}"#,
+        board_id,
+        stats.locate.load(Ordering::Relaxed),
+        mode_name(stats.led_mode.load(Ordering::Relaxed)),
+        stats.led_max.load(Ordering::Relaxed),
+        stats.cmd_ignored.load(Ordering::Relaxed),
+    );
+    client
+        .publish(
+            &format!("hypha/{}/event", board_id),
+            QoS::AtLeastOnce,
+            false,
+            payload.as_bytes(),
+        )
+        .map_err(|e| anyhow::anyhow!("cmd ack: {:?}", e))?;
+    Ok(())
+}
+
 /// Human-readable ESP reset reason for the boot event (why did it restart).
-fn reset_reason() -> &'static str {
+/// Pub: main also reads it to show the green "update applied" blinks on a
+/// sw-reset boot (the reset an OTA install ends with).
+pub fn reset_reason() -> &'static str {
     use esp_idf_svc::sys::*;
     match unsafe { esp_reset_reason() } {
         x if x == esp_reset_reason_t_ESP_RST_POWERON => "poweron",
@@ -227,15 +330,18 @@ pub fn publish_health(
     stats: &Stats,
 ) -> anyhow::Result<()> {
     let heap_free = unsafe { esp_idf_svc::sys::esp_get_free_heap_size() };
-    let wifi_rssi = sta_rssi();
     let connects = stats.mqtt_connects.load(Ordering::Relaxed);
+    let led_state = stats.led_state.load(Ordering::Relaxed) as usize;
     let payload = format!(
-        r#"{{"board":"{}","fw":"{}","uptime_s":{},"heap_free":{},"wifi_rssi":{},"scan_windows":{},"adverts_seen":{},"mqtt_reconnects":{},"fires":{},"led":"{:06x}","loop_max_ms":{}}}"#,
+        r#"{{"board":"{}","fw":"{}","uptime_s":{},"heap_free":{},"wifi_rssi":{},"rssi_err":{},"scan_windows":{},"adverts_seen":{},"mqtt_reconnects":{},"fires":{},"led":"{:06x}","led_state":"{}","mode":"{}","locate":{},"led_max":{},"cmd_ignored":{},"loop_max_ms":{}}}"#,
         board_id,
         env!("CARGO_PKG_VERSION"),
         uptime_s,
         heap_free,
-        wifi_rssi,
+        // last-known reading; never a 0 sentinel, which aliases a failed read
+        // to "perfect signal". rssi_err counts failed reads alongside it.
+        stats.wifi_rssi.load(Ordering::Relaxed),
+        stats.rssi_err.load(Ordering::Relaxed),
         stats.scan_windows.load(Ordering::Relaxed),
         stats.adverts_seen.load(Ordering::Relaxed),
         connects.saturating_sub(1),
@@ -244,6 +350,13 @@ pub fn publish_health(
         stats.fire.load(Ordering::Relaxed),
         // actual rendered LED colour (0xRRGGBB) -- ground-truth hue in telemetry
         stats.led_rgb.load(Ordering::Relaxed),
+        // which vocabulary state produced that colour: the "why is it that
+        // colour" answer, directly in telemetry
+        crate::led::STATE_NAMES.get(led_state).unwrap_or(&"?"),
+        mode_name(stats.led_mode.load(Ordering::Relaxed)),
+        stats.locate.load(Ordering::Relaxed),
+        stats.led_max.load(Ordering::Relaxed),
+        stats.cmd_ignored.load(Ordering::Relaxed),
         // worst main-loop period this window (ms): >100 means radio starvation,
         // the single-core scheduling bug; ~50 is healthy. The at-a-glance health.
         stats.loop_max_ms.load(Ordering::Relaxed),
@@ -266,12 +379,15 @@ fn addr_str(addr: &[u8; 6]) -> String {
         .join(":")
 }
 
-pub fn sta_rssi() -> i8 {
+/// None on a failed read (e.g. STA disconnected). Callers keep the last-known
+/// value and count the failure; a 0-dBm sentinel here once made the LED Link
+/// page render "perfect signal" exactly when WiFi was down.
+pub fn sta_rssi() -> Option<i8> {
     let mut ap: esp_idf_svc::sys::wifi_ap_record_t = Default::default();
     let rc = unsafe { esp_idf_svc::sys::esp_wifi_sta_get_ap_info(&mut ap) };
     if rc == esp_idf_svc::sys::ESP_OK {
-        ap.rssi
+        Some(ap.rssi)
     } else {
-        0
+        None
     }
 }
