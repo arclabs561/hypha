@@ -1,0 +1,16 @@
+# Host-side unit tests for the firmware's PURE logic (no ESP-IDF deps), so they
+# run on the dev machine via `cargo test` — no flashing, no QEMU. The firmware
+# crate pins the riscv32 esp target in its own .cargo/config.toml, so `cargo
+# test` there cannot run on the host; this standalone sibling crate (outside the
+# firmware workspace, no ancestor cargo/toolchain config) builds on the host
+# default target and #[path]-includes the pure modules. It is the host-test home
+# until a pure `hypha-core` lib is extracted (planned with 0.17.0, after the
+# 0.16.0 flash, so the about-to-ship firmware is not refactored pre-rollout).
+[package]
+name = "hypha-host-tests"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[lib]
+path = "src/lib.rs"
