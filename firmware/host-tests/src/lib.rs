@@ -8,6 +8,12 @@
 //! helpers (HSV, dither, `json_field`, `parse_semver`) are still entangled with
 //! esp-dep imports in their files and need the `hypha-core` extraction first.
 
+// Prototype for the private design note boot-WiFi-delta self-flag: the pure decision core
+// lives here with its tests until 0.17.0 lifts it into hypha-core + wires the
+// esp wifi-scan. Kept here (not in the firmware crate) so the 0.16.0 binary is
+// byte-unchanged ahead of the flash.
+pub mod boot_move;
+
 #[cfg(test)]
 #[path = "../../hypha_esp_c6_idf/src/firefly.rs"]
 mod firefly;
@@ -32,7 +38,10 @@ mod firefly_tests {
     #[test]
     fn couple_near_threshold_triggers_fire() {
         let mut f = Firefly::new(PERIOD);
-        assert!(!f.advance(PERIOD * 0.95), "0.95 of a period must not fire yet");
+        assert!(
+            !f.advance(PERIOD * 0.95),
+            "0.95 of a period must not fire yet"
+        );
         assert!(f.couple(), "a peer pulse at phase 0.95 should push us over");
     }
 
@@ -42,7 +51,10 @@ mod firefly_tests {
     fn refractory_blocks_coupling_right_after_fire() {
         let mut f = Firefly::new(PERIOD);
         assert!(f.advance(PERIOD), "should fire at the period boundary");
-        assert!(!f.couple(), "coupling inside the refractory window must be ignored");
+        assert!(
+            !f.couple(),
+            "coupling inside the refractory window must be ignored"
+        );
     }
 
     /// Mirollo-Strogatz convergence (the firefly thesis): two oscillators
