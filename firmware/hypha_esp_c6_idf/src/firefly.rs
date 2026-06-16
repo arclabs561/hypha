@@ -16,14 +16,18 @@
 pub const EPSILON: f32 = 0.15;
 
 pub struct Firefly {
-    phase: f32,     // 0..1
-    period: f32,    // seconds per cycle
+    phase: f32,      // 0..1
+    period: f32,     // seconds per cycle
     refractory: f32, // seconds; ignore coupling right after a fire (anti-lockup)
 }
 
 impl Firefly {
     pub fn new(period: f32) -> Self {
-        Self { phase: 0.0, period, refractory: 0.0 }
+        Self {
+            phase: 0.0,
+            period,
+            refractory: 0.0,
+        }
     }
 
     /// Advance by `dt` seconds; returns true if it fired this step.
