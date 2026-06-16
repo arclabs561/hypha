@@ -25,13 +25,9 @@ pub enum OtaState {
         hasher: sha2::Sha256,
     },
     /// Transfer complete, hash verified.
-    Verified {
-        version: String,
-    },
+    Verified { version: String },
     /// Transfer failed.
-    Failed {
-        reason: &'static str,
-    },
+    Failed { reason: &'static str },
 }
 
 /// Actions the caller should take after a state transition.
@@ -60,10 +56,7 @@ pub enum OtaEvent<'a> {
         pubkey: &'a [u8; 32],
     },
     /// Received a chunk response.
-    Chunk {
-        sender: [u8; 6],
-        json: &'a [u8],
-    },
+    Chunk { sender: [u8; 6], json: &'a [u8] },
     /// Erase completed (caller confirms).
     EraseComplete,
     /// Write completed (caller confirms).
@@ -88,40 +81,47 @@ impl OtaState {
     pub fn process(self, event: OtaEvent<'_>) -> OtaTransition {
         match (self, event) {
             // Idle + Manifest → start receiving
-            (OtaState::Idle, OtaEvent::Manifest { sender, json, pubkey }) => {
-                match protocol::verify_manifest_json_full(json, pubkey) {
-                    Some((version, n_chunks, hash_hex, _sig)) => {
-                        if n_chunks == 0 || n_chunks > MAX_CHUNKS {
-                            return OtaTransition {
-                                state: OtaState::Idle,
-                                actions: vec![OtaAction::Abort { reason: "n_chunks out of range" }],
-                                chunk_data: None,
-                            };
-                        }
-                        let image_len = n_chunks * CHUNK_SIZE as u32;
-                        OtaTransition {
-                            state: OtaState::Receiving {
-                                sender,
-                                version,
-                                n_chunks,
-                                hash_hex,
-                                next_chunk: 0,
-                                hasher: sha2::Sha256::new(),
-                            },
-                            actions: vec![
-                                OtaAction::ErasePartition { image_len },
-                                OtaAction::RequestChunk { index: 0 },
-                            ],
+            (
+                OtaState::Idle,
+                OtaEvent::Manifest {
+                    sender,
+                    json,
+                    pubkey,
+                },
+            ) => match protocol::verify_manifest_json_full(json, pubkey) {
+                Some((version, n_chunks, hash_hex, _sig)) => {
+                    if n_chunks == 0 || n_chunks > MAX_CHUNKS {
+                        return OtaTransition {
+                            state: OtaState::Idle,
+                            actions: vec![OtaAction::Abort {
+                                reason: "n_chunks out of range",
+                            }],
                             chunk_data: None,
-                        }
+                        };
                     }
-                    None => OtaTransition {
-                        state: OtaState::Idle,
-                        actions: vec![],
+                    let image_len = n_chunks * CHUNK_SIZE as u32;
+                    OtaTransition {
+                        state: OtaState::Receiving {
+                            sender,
+                            version,
+                            n_chunks,
+                            hash_hex,
+                            next_chunk: 0,
+                            hasher: sha2::Sha256::new(),
+                        },
+                        actions: vec![
+                            OtaAction::ErasePartition { image_len },
+                            OtaAction::RequestChunk { index: 0 },
+                        ],
                         chunk_data: None,
-                    },
+                    }
                 }
-            }
+                None => OtaTransition {
+                    state: OtaState::Idle,
+                    actions: vec![],
+                    chunk_data: None,
+                },
+            },
 
             // Receiving + Chunk → write, hash, advance
             (
@@ -221,10 +221,7 @@ impl OtaState {
             }
 
             // Already receiving + new manifest → ignore (don't interrupt active transfer)
-            (
-                state @ OtaState::Receiving { .. },
-                OtaEvent::Manifest { .. },
-            ) => OtaTransition {
+            (state @ OtaState::Receiving { .. }, OtaEvent::Manifest { .. }) => OtaTransition {
                 state,
                 actions: vec![],
                 chunk_data: None,

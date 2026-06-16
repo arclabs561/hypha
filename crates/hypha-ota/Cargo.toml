@@ -2,6 +2,7 @@
 name = "hypha-ota"
 version = "0.1.0"
 edition = "2021"
+publish = false  # internal: never crates.io (no namespace sprawl)
 
 [features]
 default = []

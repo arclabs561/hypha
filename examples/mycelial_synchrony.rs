@@ -54,8 +54,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Collect neighbor phases
             let neighbors: Vec<(f32, f32)> = meshes[i]
                 .known_peers
-                .iter()
-                .filter_map(|(id, _)| {
+                .keys()
+                .filter_map(|id| {
                     let idx = id
                         .strip_prefix("node-")
                         .and_then(|s| s.parse::<usize>().ok())?;

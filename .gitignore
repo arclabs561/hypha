@@ -5,7 +5,10 @@ target/
 .idea/
 /.cargo/config.toml
 .embuild/
-/Cargo.lock
+# Cargo.lock is TRACKED (not ignored): a transitive dep (cid -> core2 0.4.0) is
+# yanked from crates.io, so CI's fresh resolve fails; committing the lock pins the
+# yanked-but-locked version and keeps local-green == CI-green. Library convention
+# deviated deliberately for this yank-drift.
 # build artifacts and signing keys never ship in the public repo: a built image
 # bakes WiFi + MQTT credentials, and priv.pem is the mesh-OTA signing key
 firmware/*/build/

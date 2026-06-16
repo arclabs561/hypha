@@ -1,3 +1,9 @@
+#![allow(
+    clippy::needless_range_loop,
+    dead_code,
+    clippy::absurd_extreme_comparisons,
+    unused_comparisons
+)] // bit-rotted root tests; lints addressed at the hypha-core consolidation (private design note P1)
 //! Virtual mesh simulation: N nodes running the full Mirollo-Strogatz firefly
 //! protocol with configurable topology, latency, packet loss, clock drift,
 //! and dynamic topology events.
@@ -317,14 +323,14 @@ fn run_sim(
         }
 
         // Periodic maintenance (every 1s)
-        if global_ms % 1000 == 0 {
+        if global_ms.is_multiple_of(1000) {
             for node in &mut nodes {
                 node.prune_peers();
             }
         }
 
         // Energy + activity update (every 10s)
-        if global_ms % 10_000 == 0 {
+        if global_ms.is_multiple_of(10_000) {
             for node in &mut nodes {
                 node.update_energy();
                 node.update_energy_trend();
@@ -1019,7 +1025,7 @@ fn test_sim_fire_flash_mode_appears() {
     let fire_frames: usize = records[0]
         .led_log
         .iter()
-        .filter(|&&(_, _, _, _, ref mode)| *mode == LedMode::Fire)
+        .filter(|&(_, _, _, _, mode)| *mode == LedMode::Fire)
         .count();
     assert!(fire_frames > 0, "should have fire flash frames");
 }
@@ -1334,7 +1340,7 @@ fn test_sim_fire_periodic_isolated() {
     // All intervals should be in a sane range (not chaotic)
     for (i, &gap) in intervals.iter().enumerate() {
         assert!(
-            gap >= 1500 && gap <= 4200,
+            (1500..=4200).contains(&gap),
             "interval {}: {}ms out of sane range [1500, 4200]",
             i,
             gap

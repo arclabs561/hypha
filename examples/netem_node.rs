@@ -166,19 +166,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     }
                     SwarmEvent::Behaviour(hypha::mycelium::MyceliumEvent::Gossipsub(
                         gossipsub::Event::Message { message, .. },
-                    )) => {
-                        if message.topic == mycelium.status_topic.hash() {
-                            match serde_json::from_slice::<EnergyStatus>(&message.data) {
-                                Ok(_p) => {
-                                    let dt = start.elapsed();
-                                    println!("RECEIVED_MS {}", dt.as_millis());
-                                    return Ok(());
-                                }
-                                Err(e) => {
-                                    // Treat malformed input as untrusted and keep running.
-                                    // This prevents a trivial DoS via invalid JSON.
-                                    println!("BAD_STATUS {}", e);
-                                }
+                    )) if message.topic == mycelium.status_topic.hash() => {
+                        match serde_json::from_slice::<EnergyStatus>(&message.data) {
+                            Ok(_p) => {
+                                let dt = start.elapsed();
+                                println!("RECEIVED_MS {}", dt.as_millis());
+                                return Ok(());
+                            }
+                            Err(e) => {
+                                // Treat malformed input as untrusted and keep running.
+                                // This prevents a trivial DoS via invalid JSON.
+                                println!("BAD_STATUS {}", e);
                             }
                         }
                     }
@@ -209,13 +207,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
                                 connected.get_or_insert(peer_id);
                                 mycelium.swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
                             }
-                            SwarmEvent::Behaviour(hypha::mycelium::MyceliumEvent::Gossipsub(gossipsub::Event::Subscribed { peer_id, topic })) => {
+                            SwarmEvent::Behaviour(hypha::mycelium::MyceliumEvent::Gossipsub(gossipsub::Event::Subscribed { peer_id, topic }))
                                 // Wait until the remote peer has subscribed to our status topic.
-                                if topic == mycelium.status_topic.hash() {
+                                if topic == mycelium.status_topic.hash() => {
                                     subscribed = true;
                                     mycelium.swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
                                 }
-                            }
                             _ => {}
                         }
                     }
@@ -358,31 +355,29 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     }
                     SwarmEvent::Behaviour(hypha::mycelium::MyceliumEvent::Gossipsub(
                         gossipsub::Event::Message { message, .. },
-                    )) => {
-                        if message.topic == mycelium.status_topic.hash() {
-                            // Application-level relay: re-publish once we see a status message.
-                            let mut last_err: Option<gossipsub::PublishError> = None;
-                            for _ in 0..10 {
-                                match mycelium
-                                    .swarm
-                                    .behaviour_mut()
-                                    .gossipsub
-                                    .publish(mycelium.status_topic.clone(), message.data.clone())
-                                {
-                                    Ok(_) => {
-                                        let dt = start.elapsed();
-                                        println!("RELAYED_MS {}", dt.as_millis());
-                                        break;
-                                    }
-                                    Err(e) => {
-                                        last_err = Some(e);
-                                        tokio::time::sleep(Duration::from_millis(50)).await;
-                                    }
+                    )) if message.topic == mycelium.status_topic.hash() => {
+                        // Application-level relay: re-publish once we see a status message.
+                        let mut last_err: Option<gossipsub::PublishError> = None;
+                        for _ in 0..10 {
+                            match mycelium
+                                .swarm
+                                .behaviour_mut()
+                                .gossipsub
+                                .publish(mycelium.status_topic.clone(), message.data.clone())
+                            {
+                                Ok(_) => {
+                                    let dt = start.elapsed();
+                                    println!("RELAYED_MS {}", dt.as_millis());
+                                    break;
+                                }
+                                Err(e) => {
+                                    last_err = Some(e);
+                                    tokio::time::sleep(Duration::from_millis(50)).await;
                                 }
                             }
-                            if last_err.is_some() {
-                                return Err(format!("relay publish failed: {:?}", last_err).into());
-                            }
+                        }
+                        if last_err.is_some() {
+                            return Err(format!("relay publish failed: {:?}", last_err).into());
                         }
                     }
                     _ => {}

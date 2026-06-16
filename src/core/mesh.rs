@@ -211,7 +211,7 @@ impl TopicMesh {
 
         scores.sort_by(|a, b| a.total_cmp(b));
         let mid = scores.len() / 2;
-        if scores.len() % 2 == 0 {
+        if scores.len().is_multiple_of(2) {
             (scores[mid - 1] + scores[mid]) / 2.0
         } else {
             scores[mid]

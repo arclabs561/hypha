@@ -1,3 +1,9 @@
+#![allow(
+    clippy::needless_range_loop,
+    dead_code,
+    clippy::absurd_extreme_comparisons,
+    unused_comparisons
+)] // bit-rotted root tests; lints addressed at the hypha-core consolidation (private design note P1)
 //! Tests for ESP firmware logic: serial validation, LED state machine, telemetry format.
 //!
 //! All pure logic lives in `hypha-firefly` (a `no_std`-compatible crate).
@@ -667,7 +673,7 @@ fn test_osc_brightness_range() {
         osc.advance(15, 3000);
         let bf = osc.brightness_factor();
         assert!(
-            bf >= 0.0 && bf <= 1.0,
+            (0.0..=1.0).contains(&bf),
             "brightness_factor out of range: {}",
             bf
         );
@@ -850,10 +856,8 @@ fn test_osc_three_oscillators_converge() {
         for i in 0..3 {
             if fired[i] {
                 for j in 0..3 {
-                    if j != i {
-                        if oscs[j].receive_pulse() {
-                            last_fire[j] = t; // absorption-fire
-                        }
+                    if j != i && oscs[j].receive_pulse() {
+                        last_fire[j] = t; // absorption-fire
                     }
                 }
             }
@@ -1415,7 +1419,7 @@ fn test_energy_oscillation_bounded() {
 fn test_long_uptime_breathing() {
     let uptime = 7 * 24 * 60 * 60 * 1000u64; // 7 days
     let val = compute_breathing_val(100, uptime, 3000);
-    assert!(val >= BREATHING_FLOOR && val <= 100);
+    assert!((BREATHING_FLOOR..=100).contains(&val));
 }
 
 // Hue clamping under extreme shifts
@@ -1448,7 +1452,7 @@ fn test_hue_clamp_upper_bound() {
 // Property-style tests: invariants that must always hold
 #[test]
 fn test_prop_sat_always_in_range() {
-    let configs = vec![
+    let configs = [
         NodeState {
             peer_count: 0,
             tx_ok: 0,
@@ -1515,7 +1519,7 @@ fn test_prop_breath_period_always_in_bounds() {
         let ar = ar_x10 as f32 / 10.0;
         let period = compute_breath_period_ms(ar);
         assert!(
-            period >= BREATH_PERIOD_MIN_MS && period <= BREATH_PERIOD_MAX_MS,
+            (BREATH_PERIOD_MIN_MS..=BREATH_PERIOD_MAX_MS).contains(&period),
             "activity_rate={}: period={} out of [{},{}]",
             ar,
             period,
@@ -1657,7 +1661,7 @@ fn test_e2e_full_cycle_led_range() {
         let val = ((steady.val as f32) * (0.6 + 0.4 * factor)) as u8;
         let val = val.max(BREATHING_FLOOR);
         assert!(
-            val >= BREATHING_FLOOR && val <= BRIGHTNESS_MAX,
+            (BREATHING_FLOOR..=BRIGHTNESS_MAX).contains(&val),
             "step {}: val={} out of valid range [{}, {}]",
             step,
             val,
@@ -1684,12 +1688,7 @@ fn test_prop_temp_energy_led_pipeline_never_panics() {
     // Property: for any temperature in [-40, 130], the full pipeline produces valid LED output
     for t in (-40..=130).step_by(5) {
         let energy = temp_to_energy(t as f32);
-        assert!(
-            energy >= 0.05 && energy <= 1.0,
-            "T={}: energy={}",
-            t,
-            energy
-        );
+        assert!((0.05..=1.0).contains(&energy), "T={}: energy={}", t, energy);
         for peers in 0..=4 {
             for rssi in [-128i16, -80, -50, -30, 0] {
                 let state = NodeState {
@@ -2260,7 +2259,7 @@ fn test_hetero_10pct_mismatch_weak_coupling_fails() {
     // Just verify it doesn't crash — sync is not expected at 10% mismatch
     let r = kuramoto_order_parameter(&[osc_a.phase(), osc_b.phase()]);
     // Documenting the actual behavior: R may be anywhere in [0, 1]
-    assert!(r >= 0.0 && r <= 1.01, "R should be valid: {:.3}", r);
+    assert!((0.0..=1.01).contains(&r), "R should be valid: {:.3}", r);
 }
 
 #[test]
@@ -2353,7 +2352,11 @@ fn test_gamma_correct_compresses_low_end() {
 fn test_gamma_midpoint_dark() {
     // Linear 128 (50%) should map to roughly 64 (25%) with gamma 2.0
     let g = gamma_correct(128);
-    assert!(g >= 55 && g <= 75, "gamma(128) should be ~64: got {}", g);
+    assert!(
+        (55..=75).contains(&g),
+        "gamma(128) should be ~64: got {}",
+        g
+    );
 }
 
 #[test]
@@ -2552,11 +2555,7 @@ fn test_oscillator_brightness_curve_perceptually_smooth() {
         let val = val.max(BREATHING_FLOOR);
 
         if !osc.just_fired() {
-            let jump = if val > prev_val {
-                val - prev_val
-            } else {
-                prev_val - val
-            };
+            let jump = val.abs_diff(prev_val);
             if jump > max_jump {
                 max_jump = jump;
             }

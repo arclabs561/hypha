@@ -236,11 +236,19 @@ pub fn compute_breathing_val_with_offset(
     breath_period_ms: u64,
     phase_offset_ms: u64,
 ) -> u8 {
-    let period = if breath_period_ms == 0 { 1 } else { breath_period_ms };
+    let period = if breath_period_ms == 0 {
+        1
+    } else {
+        breath_period_ms
+    };
     let adjusted = uptime_ms.wrapping_add(phase_offset_ms);
     let phase = (adjusted % period) as f32 / period as f32;
     // triangle: 0->1->0 over one period
-    let tri = if phase < 0.5 { phase * 2.0 } else { (1.0 - phase) * 2.0 };
+    let tri = if phase < 0.5 {
+        phase * 2.0
+    } else {
+        (1.0 - phase) * 2.0
+    };
     // modulate: 60% at trough, 100% at peak
     let factor = 0.6 + 0.4 * tri;
     let v = (base_val as f32 * factor) as u8;
@@ -285,7 +293,11 @@ pub fn compute_led_steady(state: &NodeState) -> LedOutput {
 
     let error_desat: f32 = if state.tx_ok + state.tx_err > 10 {
         let rate = state.tx_err as f32 / (state.tx_ok + state.tx_err) as f32;
-        if rate > 0.20 { (rate * 350.0).min(175.0) } else { 0.0 }
+        if rate > 0.20 {
+            (rate * 350.0).min(175.0)
+        } else {
+            0.0
+        }
     } else {
         0.0
     };
@@ -333,7 +345,11 @@ pub fn sin_approx(x: f32) -> f32 {
     let x = x % (2.0 * PI);
     let x = if x < 0.0 { x + 2.0 * PI } else { x };
     // sin is negative in [PI, 2*PI)
-    let (x, sign) = if x > PI { (x - PI, -1.0f32) } else { (x, 1.0f32) };
+    let (x, sign) = if x > PI {
+        (x - PI, -1.0f32)
+    } else {
+        (x, 1.0f32)
+    };
     // Bhaskara I formula for [0, PI]
     let num = 16.0 * x * (PI - x);
     let den = 5.0 * PI * PI - 4.0 * x * (PI - x);
@@ -427,7 +443,11 @@ impl PeerTable {
         // Insert new
         for slot in self.peers.iter_mut() {
             if slot.is_none() {
-                *slot = Some(PeerEntry { mac, last_seen_ms: now_ms, last_rssi: rssi });
+                *slot = Some(PeerEntry {
+                    mac,
+                    last_seen_ms: now_ms,
+                    last_rssi: rssi,
+                });
                 return Ok(true);
             }
         }
@@ -481,7 +501,10 @@ impl PeerTable {
 
     /// Get all current phases (placeholder -- for simulation, phases are tracked externally).
     pub fn macs(&self) -> Vec<[u8; 6]> {
-        self.peers.iter().filter_map(|p| p.as_ref().map(|e| e.mac)).collect()
+        self.peers
+            .iter()
+            .filter_map(|p| p.as_ref().map(|e| e.mac))
+            .collect()
     }
 }
 
@@ -586,7 +609,9 @@ impl OverlayState {
         let total = tx_ok.saturating_add(tx_err);
         if total > 10 {
             let rate = tx_err as f32 / total as f32;
-            if rate > 0.10 && now_ms.saturating_sub(self.last_error_flash) >= ERROR_FLASH_INTERVAL_MS {
+            if rate > 0.10
+                && now_ms.saturating_sub(self.last_error_flash) >= ERROR_FLASH_INTERVAL_MS
+            {
                 self.last_error_flash = now_ms;
                 self.error_flash_until = now_ms + ERROR_FLASH_MS;
             }
@@ -595,12 +620,7 @@ impl OverlayState {
 
     /// Resolve the current LED output given steady-state HSV, oscillator state,
     /// and current time. Returns `(hue, sat, val, mode)`.
-    pub fn resolve(
-        &self,
-        steady: &LedOutput,
-        osc_val: u8,
-        now_ms: u64,
-    ) -> (u8, u8, u8, LedMode) {
+    pub fn resolve(&self, steady: &LedOutput, osc_val: u8, now_ms: u64) -> (u8, u8, u8, LedMode) {
         if now_ms < self.error_flash_until {
             (0, 255, 120, LedMode::ErrorFlash)
         } else if now_ms < self.fire_flash_until {
@@ -738,18 +758,28 @@ impl MeshNode {
         let osc_val = osc_val.max(BREATHING_FLOOR);
 
         // Check for error flash
-        self.overlays.maybe_trigger_error(self.local_ms, self.tx_ok, self.tx_err);
+        self.overlays
+            .maybe_trigger_error(self.local_ms, self.tx_ok, self.tx_err);
 
         // Resolve overlays
         let (hue, sat, val, mode) = self.overlays.resolve(&steady, osc_val, self.local_ms);
 
-        TickResult { fired, hue, sat, val, mode, phase: self.oscillator.phase() }
+        TickResult {
+            fired,
+            hue,
+            sat,
+            val,
+            mode,
+            phase: self.oscillator.phase(),
+        }
     }
 
     /// Receive a pulse from a peer. Call after boot grace period.
     pub fn receive_pulse(&mut self, from_mac: [u8; 6], rssi: i16) -> ReceiveResult {
         // Peer tracking (always)
-        let peer_result = self.peer_table.add_or_refresh(from_mac, self.local_ms, rssi);
+        let peer_result = self
+            .peer_table
+            .add_or_refresh(from_mac, self.local_ms, rssi);
         let new_peer = matches!(peer_result, Ok(true));
         let overflow = peer_result.is_err();
 
@@ -768,7 +798,11 @@ impl MeshNode {
             false
         };
 
-        ReceiveResult { new_peer, absorbed, overflow }
+        ReceiveResult {
+            new_peer,
+            absorbed,
+            overflow,
+        }
     }
 
     /// Prune stale peers. Call periodically (e.g., every 1s).

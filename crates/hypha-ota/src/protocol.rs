@@ -65,10 +65,7 @@ fn verify_manifest(
 
 /// Parse JSON manifest and verify with the given public key.
 /// Returns `Some((version, n_chunks))` if valid.
-pub fn verify_manifest_json(
-    json_bytes: &[u8],
-    pubkey: &[u8; 32],
-) -> Option<(String, u32)> {
+pub fn verify_manifest_json(json_bytes: &[u8], pubkey: &[u8; 32]) -> Option<(String, u32)> {
     let text = core::str::from_utf8(json_bytes).ok()?;
     let v: serde_json::Value = serde_json::from_str(text).ok()?;
     if v.get("ota")?.as_str()? != "manifest" {
@@ -149,15 +146,13 @@ pub fn parse_chunk_response(data: &[u8]) -> Option<(u32, Vec<u8>)> {
 // ---------------------------------------------------------------------------
 
 /// Build manifest JSON string from fields.
-pub fn build_manifest_json(
-    version: &str,
-    hash_hex: &str,
-    n_chunks: u32,
-    sig_b64: &str,
-) -> String {
+pub fn build_manifest_json(version: &str, hash_hex: &str, n_chunks: u32, sig_b64: &str) -> String {
     alloc::format!(
         r#"{{"ota":"manifest","v":"{}","h":"{}","n":{},"sig":"{}"}}"#,
-        version, hash_hex, n_chunks, sig_b64
+        version,
+        hash_hex,
+        n_chunks,
+        sig_b64
     )
 }
 

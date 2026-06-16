@@ -1,3 +1,9 @@
+#![allow(
+    clippy::needless_range_loop,
+    dead_code,
+    clippy::absurd_extreme_comparisons,
+    unused_comparisons
+)] // bit-rotted root tests; lints addressed at the hypha-core consolidation (private design note P1)
 //! OTA protocol simulation tests.
 //!
 //! Tests the full OTA lifecycle — manifest signing/verification, chunk framing,

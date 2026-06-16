@@ -2,6 +2,6 @@
 
 extern crate alloc;
 
-pub mod protocol;
 pub mod flash_fmt;
+pub mod protocol;
 pub mod receiver;
