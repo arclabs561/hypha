@@ -14,6 +14,10 @@
 // byte-unchanged ahead of the flash.
 pub mod boot_move;
 
+// Scan-window desynchronization (DESYNC) prototype: the dual of the firefly's
+// sync coupling, for spreading scan windows. Same lift-at-0.17.0 status.
+pub mod desync;
+
 #[cfg(test)]
 #[path = "../../hypha_esp_c6_idf/src/firefly.rs"]
 mod firefly;
