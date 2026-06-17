@@ -33,15 +33,15 @@
 | Phase | What | Where | Status |
 |-------|------|--------|--------|
 | 1 | Signing pipeline: build produces `firmware.bin` + manifest + `.sig`; embed public key in firmware | Host: `firmware/mesh_ota/` (mesh_ota_sign); `hypha_esp_c6` feature `mesh_ota` + build.rs | **Done** |
-| 2 | OTA partition table + bootloader for esp-hal build; receive chunks, verify sig, write to partition, reboot | `hypha_esp_c6` (partition table, OTA receive, ota_apply) | **Done** |
-| 3 | Manifest broadcast + chunk server (sender) | Either (a) push image to one device over serial and it serves, or (b) idf build with ESP-NOW that serves after HTTP OTA | **Done** |
-| 4 | Receiver logic: listen for manifest, compare version, request chunks, verify, apply | `hypha_esp_c6` | **Done** (RAM cap 256 chunks; full image needs stream-to-flash) |
+| 2 | OTA partition table + bootloader for esp-hal build; receive chunks, verify sig, write to partition, reboot | `hypha_esp_c6` (partition table, OTA receive, ota_apply) | **Partial** |
+| 3 | Manifest broadcast + chunk server (sender) | Either (a) push image to one device over serial and it serves, or (b) idf build with ESP-NOW that serves after HTTP OTA | **Partial** |
+| 4 | Receiver logic: listen for manifest, compare version, request chunks, verify, apply | `hypha_esp_c6` | **Partial** (RAM cap 256 chunks; full image needs stream-to-flash) |
 
-**Phase 4 (done):** Receiver: on OTA_VERIFIED, if n_chunks <= 256 (MAX_CHUNKS_IN_RAM), device requests chunks from the manifest sender, assembles in RAM, verifies image hash, prints OTA_READY, then writes image to ota_0, sets otadata, and reboots (Phase 2b). If n > 256 it prints "OTA n=... > MAX_CHUNKS_IN_RAM, need stream-to-flash".
+**Phase 4 (partial):** Receiver: on OTA_VERIFIED, if n_chunks <= 256 (MAX_CHUNKS_IN_RAM), device requests chunks from the manifest sender, assembles in RAM, verifies image hash, prints OTA_READY, then writes image to ota_0, sets otadata, and reboots (Phase 2b). If n > 256 it prints "OTA n=... > MAX_CHUNKS_IN_RAM, need stream-to-flash". Full-image stream-to-flash is still open.
 
-**Phase 3 (done):** Sender: build with `MESH_OTA_MANIFEST_PATH=build/mesh_ota/manifest.json` (and pubkey) embeds manifest. Device broadcasts manifest every 30 s and responds to `{"ota":"req","i":N}` with `{"ota":"chunk","i":N,"b":"<base64>"}`. Chunk payload is currently stub (zeros); flash read for real chunks is TODO.
+**Phase 3 (partial):** Sender: build with `MESH_OTA_MANIFEST_PATH=build/mesh_ota/manifest.json` (and pubkey) embeds manifest. Device broadcasts manifest every 30 s and responds to `{"ota":"req","i":N}` with `{"ota":"chunk","i":N,"b":"<base64>"}`. Chunk payload is currently stubbed; flash read for real chunks is TODO.
 
-**Phase 2 (done):** Partition table `firmware/hypha_esp_c6/partitions_ota.csv` (nvs, otadata, phy_init, factory, ota_0, ota_1). Use with `espflash flash --partition-table partitions_ota.csv --bootloader <path>` when an OTA-capable bootloader is used. In-firmware: manifest verification on RX (feature `mesh_ota`); on OTA_READY, `ota_apply::write_ota_partition_and_reboot` writes image to ota_0 via ROM spiflash, writes otadata (boot ota_0), and calls `software_reset`.
+**Phase 2 (partial):** Partition table `firmware/hypha_esp_c6/partitions_ota.csv` (nvs, otadata, phy_init, factory, ota_0, ota_1). Use with `espflash flash --partition-table partitions_ota.csv --bootloader <path>` when an OTA-capable bootloader is used. In-firmware: manifest verification on RX (feature `mesh_ota`); on OTA_READY, `ota_apply::write_ota_partition_and_reboot` writes image to ota_0 via ROM spiflash, writes otadata (boot ota_0), and calls `software_reset`. End-to-end device update is not yet proven.
 
 **Phase 1 (done):** From repo root: `just mesh-ota-keygen` (once), then `just mesh-ota-build` (builds firmware, saves image, signs; writes `manifest.json`, `firmware.sig`, `pubkey.hex` to `firmware/hypha_esp_c6/build/mesh_ota/`). `just mesh-ota-verify` verifies the manifest. To embed the pubkey in firmware: `MESH_OTA_PUBKEY_PATH=build/mesh_ota/pubkey.hex cargo build --release --features "led,mesh_ota"` from `firmware/hypha_esp_c6`, or `just mesh-ota-firmware`. Host test: `cargo test --manifest-path firmware/mesh_ota/Cargo.toml --test sign_verify`.
 

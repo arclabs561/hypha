@@ -11,7 +11,7 @@ Hypha is intended to be usable in embedded and resource-constrained environments
 
 | Crate | Role | Typical use |
 |-------|------|-------------|
-| **hypha-core** | Types, metabolism, capabilities, virtual sensors. No networking, no persistence, no WASM. | Shared by both embedded firmware and host. Can be built with `no_std` + `alloc` for MCU. |
+| **hypha-core** | Types, metabolism, capabilities, virtual sensors. No networking, no persistence, no WASM. | Shared by embedded firmware experiments and hosts. Currently uses `std`; `no_std` + `alloc` is planned. |
 | **hypha** | Full node: SporeNode, fjall, libp2p, yrs sync, wasmtime. Depends on hypha-core. | Host only (Pi, Mac, server). |
 
 Embedded firmware depends only on `hypha-core`. It implements `Metabolism` from real hardware (e.g. ADC voltage, fuel gauge), reports `EnergyStatus` and sensor readings, and sends them over a transport (serial, BLE, LoRa) to a host that runs full `hypha` and proxies the device into the mesh.
@@ -22,7 +22,7 @@ Embedded firmware depends only on `hypha-core`. It implements `Metabolism` from 
 - **Metabolism**: trait `Metabolism`, `BatteryMetabolism`, `MockMetabolism`
 - **Sensors**: trait `VirtualSensor`, `BasicSensor`
 
-These use only `core`/`alloc`, `serde` (with `no_default_features`), and optional `std` for compatibility. No `libp2p`, `tokio`, `fjall`, `yrs`, or `wasmtime`.
+These avoid host-only dependencies such as `libp2p`, `tokio`, `fjall`, `yrs`, and `wasmtime`. The crate still depends on `std` today; the roadmap below tracks the `no_std` work needed before it can be used directly on bare-metal targets.
 
 ## What stays in hypha (host-only)
 

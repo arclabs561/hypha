@@ -1,3 +1,3 @@
-# Security Policy
+# Security
 
-To report a vulnerability, please email GitHub private vulnerability reporting.
+Report vulnerabilities through GitHub private vulnerability reporting.
