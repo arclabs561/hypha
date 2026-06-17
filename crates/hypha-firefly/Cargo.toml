@@ -3,7 +3,7 @@ name = "hypha-firefly"
 version = "0.1.0"
 edition = "2021"
 publish = false  # internal use; not published to crates.io
-description = "Pure no_std logic for Hypha firefly synchronization, LED state machine, and mesh metrics"
+description = "No-std firefly synchronization and LED logic"
 license = "MIT OR Apache-2.0"
 
 [features]

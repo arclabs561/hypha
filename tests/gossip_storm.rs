@@ -160,7 +160,7 @@ async fn test_gossip_storm_resilience() -> Result<(), Box<dyn std::error::Error>
     assert!(
         attack_count > 50,
         "victim should have processed significant attack traffic (got {attack_count}); \
-         floor is CI-throughput-robust -- the real-libp2p flood rate varies with runner \
+         floor tolerates CI throughput variance -- the real-libp2p flood rate varies with runner \
          speed (~110 observed on CI), so this asserts the storm reached the victim and it \
          kept processing, not a fixed count"
     );

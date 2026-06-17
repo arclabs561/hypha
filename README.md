@@ -2,52 +2,103 @@
 
 [![CI](https://github.com/arclabs561/hypha/actions/workflows/ci.yml/badge.svg)](https://github.com/arclabs561/hypha/actions/workflows/ci.yml)
 
-`hypha` is a Rust-based P2P coordination prototype focused on:
+Power-aware coordination for local sensor and compute nodes.
 
-- Persistent node identity + local state (LSM-tree)
-- Power-aware mesh maintenance (graft/prune, scoring, backoff)
-- Adaptive heartbeat pacing and bidding heuristics
+`hypha` models nodes as spores with a stable identity, a local store, a power
+state, and a set of capabilities. The host crate runs a libp2p-based node. The
+`hypha-core` crate holds the smaller type surface used by embedded and bridge
+code.
 
-## Architecture
+## Build
 
-Nodes in `hypha` are "Spores"—autonomous units of persistence, networking, and agency.
+```bash
+git clone https://github.com/arclabs561/hypha
+cd hypha
+cargo test
+```
 
-### 1. Persistence (`fjall`)
-Uses an LSM-tree for local state persistence. Critical for Raspberry Pi/DIY hardware to minimize SD card wear during high-frequency gossip updates.
-
-### 2. Capabilities & Power
-Nodes register capabilities (Compute, Storage, Sensing).
-- **Power-Aware Bidding**: Nodes evaluate tasks and only bid if they have the required energy (mAh) and voltage stability.
-- **Agency**: UCAN/capability types exist (prototype).
-
-### 3. Virtual Sensors
-A trait-based sensor system allows nodes to treat gossip messages from neighbors as local "Virtual Sensors." Enables sensor fusion (e.g., mmWave + Audio) across the mesh.
-
-### 4. Adaptive Pulse
-Heartbeat intervals stretch dynamically from **1s to 60s** based on real-time `PhysicalState` modeling (voltage, drain).
-
-## Testing
-
-Uses **`turmoil`** for deterministic simulation.
-
-- `tests/mycelium_world.rs`: Basic heartbeat pacing under simulated voltage drain.
-- `tests/viral_sim.rs`: Sanity checks for power-mode driven changes.
+The workspace is not published to crates.io yet. Use it from a checkout.
 
 ## Usage
 
+Create a node, register what it can do, and let its power state affect whether
+it bids for work:
+
 ```rust
-use hypha::{SporeNode, PowerMode, Capability};
+use hypha::{Capability, PowerMode, SporeNode};
 use tempfile::tempdir;
 
-#[tokio::main]
-async fn main() {
-    let tmp = tempdir().unwrap();
-    let mut node = SporeNode::new(tmp.path()).unwrap();
-    
-    // Register a local sensor/capability
-    node.add_capability(Capability::Sensing("mmWave".to_string()));
-    
-    // The node will automatically adjust its pulse based on voltage
-    node.start().await.unwrap();
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let tmp = tempdir()?;
+    let mut node = SporeNode::new(tmp.path())?;
+
+    node.add_capability(Capability::Compute(100));
+    node.set_power_mode(PowerMode::Normal);
+
+    println!("energy={:.2}", node.energy_score());
+    Ok(())
 }
 ```
+
+Run a small allocation example:
+
+```bash
+cargo run --example slime_mold_auction
+```
+
+Example output:
+
+```text
+Running Slime Mold Auction Experiment...
+Wave 1: Task pheromone reached 4 nodes.
+Wave 2: Task pheromone reached 12 nodes.
+Wave 3: Task pheromone reached 24 nodes.
+Wave 4: Task pheromone reached 28 nodes.
+Wave 5: Task pheromone reached 30 nodes.
+
+Bidding Results (Top 5):
+  Bidder: node-3, Weighted Score: 1.0000
+  Bidder: node-27, Weighted Score: 0.6700
+  Bidder: node-24, Weighted Score: 0.5349
+  Bidder: node-18, Weighted Score: 0.4547
+  Bidder: node-0, Weighted Score: 0.3064
+
+Winner: node-3 - task successfully allocated via mycelial gradient.
+```
+
+## Layout
+
+- `src/`: host node, libp2p wiring, task bidding, sync, and examples.
+- `crates/hypha-core/`: capability, metabolism, task, bid, and sensor types.
+- `crates/hypha-ota/`: signed OTA protocol helpers.
+- `crates/hypha-firefly/`: no-std firefly synchronization and LED logic.
+- `firmware/`: ESP experiments and host-side firmware logic tests.
+- `tests/`: simulation, schema compatibility, adversarial input, and libp2p tests.
+
+## Embedded Split
+
+Embedded devices do not run the full host crate. They use `hypha-core` types and
+send readings to a host bridge. See [EMBEDDED.md](EMBEDDED.md) for the split and
+the current ESP bridge path.
+
+## Limitations
+
+- The root `hypha` crate is host-only. It depends on libp2p, tokio, fjall, and
+  wasmtime.
+- UCAN handling is a placeholder and must not be treated as authorization.
+- `hypha-core` is being kept small, but it is not fully no-std-clean yet.
+- The firmware directories are experiments. Built images and signing keys are
+  intentionally ignored because images may contain deployment credentials.
+
+## Checks
+
+```bash
+just check
+```
+
+CI runs `cargo check --all-targets`, `cargo test`, `cargo fmt --all -- --check`,
+and `cargo clippy --all-targets -- -D warnings`.
+
+## License
+
+Licensed under either Apache-2.0 or MIT.

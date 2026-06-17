@@ -1,6 +1,6 @@
 //! Hypha Dashboard Generator
 //!
-//! Runs all evaluation scenarios and generates a beautiful HTML dashboard
+//! Runs all evaluation scenarios and generates an HTML dashboard
 //! with interactive charts.
 
 use hypha::mesh::{MeshConfig, TopicMesh};
