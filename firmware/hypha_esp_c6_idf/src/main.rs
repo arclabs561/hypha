@@ -143,7 +143,7 @@ fn main() -> anyhow::Result<()> {
     let board_id = option_env!("BOARD_ID")
         .map(String::from)
         .unwrap_or_else(|| format!("hypha-{:02x}{:02x}", mac[4], mac[5]));
-    // Distinguishes post-reboot publishes so the fusion plane can reset seq.
+    // Distinguishes post-reboot publishes so a downstream consumer can reset seq.
     let boot_id = format!("{:08x}", unsafe { esp_idf_svc::sys::esp_random() });
 
     // BLE scan starts after WiFi is up; ESP-IDF coex arbitrates the shared

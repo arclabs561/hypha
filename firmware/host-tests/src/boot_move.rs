@@ -1,19 +1,19 @@
 //! Boot-time WiFi-environment delta: a cheap, immediate "did this board move?"
-//! self-signal (private design note named it as the future firmware signal that closes the
-//! RF-baseline detector's hours-of-latency gap for the unplug-replug case).
+//! self-signal: the future firmware signal that closes the RF-baseline
+//! detector's hours-of-latency gap for the unplug-replug case.
 //!
 //! At boot the board already scans for APs to associate. Hashing that scan into
 //! a fingerprint and comparing it to the last-boot fingerprint (NVS-persisted)
 //! lets a board that woke up somewhere new flag itself in its boot event within
-//! seconds, instead of waiting ~half a day for the fusion plane's sliding
-//! baseline to cross threshold. It is ADDITIVE to `movement detector` (the RF-baseline
-//! conjunction detector), never a replacement: a false positive here just
-//! corroborates, and the operator-confirmed quarantine path is unchanged.
+//! seconds, instead of waiting ~half a day for the downstream fusion service's
+//! sliding baseline to cross threshold. It is ADDITIVE to the downstream
+//! RF-baseline conjunction detector, never a replacement: a false positive here
+//! just corroborates, and the operator-confirmed quarantine path is unchanged.
 //!
 //! This is the pure decision core. It has no ESP-IDF dependency, so it is
 //! host-tested here; at 0.17.0 it lifts into `hypha-core` and the firmware feeds
 //! it a real `esp_wifi_scan` AP list + an NVS-stored prior. The thresholds are
-//! the same shape as `movement detector`'s conjunction rule (a real move shifts MANY
+//! the same shape as the downstream conjunction rule (a real move shifts MANY
 //! APs together; one deviant AP is noise), kept deliberately conservative so a
 //! self-flag never fires on ordinary RF churn.
 
@@ -22,8 +22,8 @@
 /// distinct, and a hidden/renamed SSID does not perturb the fingerprint.
 pub type Ap = (u64, i8);
 
-/// Tunables (defaults reasoned from the path-loss literature + movement detector's
-/// margins; calibrate against this house's first real boot deltas at 0.17.0).
+/// Tunables (defaults reasoned from the path-loss literature + the detector's
+/// margins; calibrate against the deployment's first real boot deltas at 0.17.0).
 #[derive(Clone, Copy)]
 pub struct Cfg {
     /// Need at least this many APs in BOTH scans for a verdict; a sparse scan
@@ -35,7 +35,7 @@ pub struct Cfg {
     /// Per-AP RSSI shift (dB) counted as "shifted" on a common AP.
     pub shift_db: i32,
     /// Fraction of COMMON APs that must shift for an RSSI-conjunction move (the
-    /// movement detector min_frac analogue: many links move together, not one).
+    /// conjunction min_frac analogue: many links move together, not one).
     pub min_shift_frac: f32,
 }
 
@@ -47,7 +47,7 @@ pub const DEFAULT: Cfg = Cfg {
 };
 
 /// Decision breakdown (returned so the boot event can carry the evidence, the
-/// same "present the link evidence, operator disambiguates" stance as private design note).
+/// same "present the link evidence, operator disambiguates" stance as the detector).
 #[derive(Debug, PartialEq)]
 pub struct Verdict {
     pub moved: bool,
@@ -173,7 +173,7 @@ mod tests {
     #[test]
     fn one_deviant_ap_is_not_a_move() {
         // A single AP swings hard (it got moved / powered off), the rest hold:
-        // conjunction guard keeps this below quorum, like movement detector.
+        // conjunction guard keeps this below quorum, like the downstream detector.
         let mut now = home();
         now[0].1 -= 30;
         let v = evaluate(&home(), &now, DEFAULT);

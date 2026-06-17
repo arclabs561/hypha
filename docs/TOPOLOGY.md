@@ -33,7 +33,7 @@ emergent consequence of one gradient rather than a separate configuration concer
 
 ## The spectrum (same code, different gradient)
 
-**Single-sink star — the home (live today).** One node (storage-node) has `Storage` +
+**Single-sink star — the home (live today).** One always-on node has `Storage` +
 mains power and always-on connectivity; every other node is a mains-powered `Sensing`
 source. Election is trivial — there is one viable sink — so the emergent topology is a
 star: sources publish to the sink over MQTT, the sink owns the durable bounded store and
@@ -112,7 +112,7 @@ the signal the firmware is absorbing a consumer concern it should refuse.
 The privacy/trust gradient still governs *which* role a node may hold regardless of what
 the energy gradient would elect: a LOW-trust, internet-adjacent node must not become the
 sink for HIGH data even if it has the spare storage (the home boards are deliberately
-sources that hold no durable state — see the consuming repo's private design note/0036). Emergent
+sources that hold no durable state, by the consumer's privacy/role model). Emergent
 topology proposes; the trust boundary disposes. And the spectrum is a map, not a mandate:
 build the single-sink star (done), add the board-side buffer when outage-resilience earns
 it, and let multi-sink / sinkless / compute-bidding stay latent until a real deployment

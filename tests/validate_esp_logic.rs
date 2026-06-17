@@ -3,7 +3,7 @@
     dead_code,
     clippy::absurd_extreme_comparisons,
     unused_comparisons
-)] // bit-rotted root tests; lints addressed at the hypha-core consolidation (private design note P1)
+)] // bit-rotted root tests; lints addressed at the hypha-core consolidation
 //! Tests for ESP firmware logic: serial validation, LED state machine, telemetry format.
 //!
 //! All pure logic lives in `hypha-firefly` (a `no_std`-compatible crate).

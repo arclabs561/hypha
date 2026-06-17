@@ -8,7 +8,7 @@
 //! helpers (HSV, dither, `json_field`, `parse_semver`) are still entangled with
 //! esp-dep imports in their files and need the `hypha-core` extraction first.
 
-// Prototype for the private design note boot-WiFi-delta self-flag: the pure decision core
+// Prototype for the boot-WiFi-delta self-flag: the pure decision core
 // lives here with its tests until 0.17.0 lifts it into hypha-core + wires the
 // esp wifi-scan. Kept here (not in the firmware crate) so the 0.16.0 binary is
 // byte-unchanged ahead of the flash.

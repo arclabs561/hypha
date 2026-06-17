@@ -3,7 +3,7 @@
     dead_code,
     clippy::absurd_extreme_comparisons,
     unused_comparisons
-)] // bit-rotted root tests; lints addressed at the hypha-core consolidation (private design note P1)
+)] // bit-rotted root tests; lints addressed at the hypha-core consolidation
 //! Virtual mesh simulation: N nodes running the full Mirollo-Strogatz firefly
 //! protocol with configurable topology, latency, packet loss, clock drift,
 //! and dynamic topology events.

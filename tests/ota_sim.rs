@@ -3,7 +3,7 @@
     dead_code,
     clippy::absurd_extreme_comparisons,
     unused_comparisons
-)] // bit-rotted root tests; lints addressed at the hypha-core consolidation (private design note P1)
+)] // bit-rotted root tests; lints addressed at the hypha-core consolidation
 //! OTA protocol simulation tests.
 //!
 //! Tests the full OTA lifecycle — manifest signing/verification, chunk framing,
