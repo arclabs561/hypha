@@ -9,7 +9,7 @@ rust-version = "1.91"
 
 [features]
 default = ["std"]
-std = []
+std = ["serde/std"]
 
 [dependencies]
 serde = { version = "1.0", default-features = false, features = ["derive"] }

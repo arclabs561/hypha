@@ -105,6 +105,12 @@ impl SporeNode {
         self.capabilities.push(cap);
     }
 
+    fn has_capability(&self, required: &Capability) -> bool {
+        self.capabilities
+            .iter()
+            .any(|capability| capability.satisfies(required))
+    }
+
     pub fn set_power_mode(&mut self, mode: PowerMode) {
         self.metabolism.lock().unwrap().set_mode(mode.clone());
         self.power_mode = mode;
@@ -130,7 +136,7 @@ impl SporeNode {
             return None;
         }
 
-        if self.capabilities.contains(&task.required_capability) {
+        if self.has_capability(&task.required_capability) {
             Some(Bid {
                 task_id: task.id.clone(),
                 bidder_id: self.peer_id.to_string(),
@@ -262,7 +268,7 @@ impl SporeNode {
             return None;
         }
 
-        if self.capabilities.contains(&task.required_capability) {
+        if self.has_capability(&task.required_capability) {
             let bid = Bid {
                 task_id: task.id.clone(),
                 bidder_id: my_id,

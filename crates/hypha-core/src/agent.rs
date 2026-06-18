@@ -7,6 +7,17 @@ pub enum Capability {
     Sensing(String),
 }
 
+impl Capability {
+    pub fn satisfies(&self, required: &Self) -> bool {
+        match (self, required) {
+            (Self::Compute(available), Self::Compute(required)) => available >= required,
+            (Self::Storage(available), Self::Storage(required)) => available >= required,
+            (Self::Sensing(available), Self::Sensing(required)) => available == required,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EnergyStatus {
     pub source_id: String,
@@ -54,4 +65,46 @@ pub struct Bid {
     pub bidder_id: String,
     pub energy_score: f32,
     pub cost_mah: f32,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Capability;
+
+    #[test]
+    fn compute_capacity_satisfies_smaller_requirement() {
+        assert!(Capability::Compute(101).satisfies(&Capability::Compute(50)));
+        assert!(Capability::Compute(50).satisfies(&Capability::Compute(50)));
+    }
+
+    #[test]
+    fn compute_capacity_rejects_larger_requirement() {
+        assert!(!Capability::Compute(49).satisfies(&Capability::Compute(50)));
+    }
+
+    #[test]
+    fn storage_capacity_satisfies_smaller_requirement() {
+        assert!(Capability::Storage(2048).satisfies(&Capability::Storage(1024)));
+        assert!(Capability::Storage(1024).satisfies(&Capability::Storage(1024)));
+    }
+
+    #[test]
+    fn storage_capacity_rejects_larger_requirement() {
+        assert!(!Capability::Storage(1023).satisfies(&Capability::Storage(1024)));
+    }
+
+    #[test]
+    fn sensing_stays_exact_until_vocabulary_is_defined() {
+        assert!(Capability::Sensing("thermal".to_string())
+            .satisfies(&Capability::Sensing("thermal".to_string())));
+        assert!(!Capability::Sensing("thermal".to_string())
+            .satisfies(&Capability::Sensing("temperature".to_string())));
+    }
+
+    #[test]
+    fn different_capability_kinds_do_not_satisfy_each_other() {
+        assert!(!Capability::Compute(100).satisfies(&Capability::Storage(100)));
+        assert!(!Capability::Storage(100).satisfies(&Capability::Compute(100)));
+        assert!(!Capability::Sensing("thermal".to_string()).satisfies(&Capability::Compute(1)));
+    }
 }
