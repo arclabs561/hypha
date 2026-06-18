@@ -1,6 +1,6 @@
 ---
 id: 0004
-status: proposed
+status: accepted
 governs: crates/hypha-firefly/**, firmware/hypha_esp_c6_idf/src/firefly.rs, firmware/hypha_esp_c6_idf/src/mqtt.rs, firmware/hypha_esp_c6_idf/src/led.rs, docs/**
 why: Hypha currently uses firefly pulses for visible liveness and synchronization diagnostics; pulses are not authenticated and do not gate radio receive or sleep behavior.
 rejected: treating firefly phase as a security-relevant clock; claiming radio power savings from TX-only pulse behavior; making firefly the main ambient LED language.
@@ -13,7 +13,7 @@ review_trigger: revisit before using phase to control radio power, before signin
 
 # ADR-0004: firefly is telemetry until measured
 
-**Status**: Proposed
+**Status**: Accepted
 **Date**: 2026-06-18
 **Deciders**: arc
 

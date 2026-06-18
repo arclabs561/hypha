@@ -1,6 +1,6 @@
 ---
 id: 0005
-status: proposed
+status: accepted
 governs: crates/hypha-core/src/agent.rs, src/sync.rs, src/lib.rs, examples/**, docs/**
 why: Hypha currently sends task and bid data separately from Yrs shared-state updates; tasks carry no state vector, epoch, or other causality boundary.
 rejected: pretending task messages are ordered with CRDT state; adding a state-vector floor before a real task consumer needs versioned shared state.
@@ -13,7 +13,7 @@ review_trigger: revisit before a task references a shared-state key, before addi
 
 # ADR-0005: tasks do not reference state versions
 
-**Status**: Proposed
+**Status**: Accepted
 **Date**: 2026-06-18
 **Deciders**: arc
 

@@ -87,9 +87,8 @@ power-mode changes need board validation.
 
 ## Phase 3: Decide The Security And Trust Model
 
-Progress 2026-06-18: ADR-0002, ADR-0003, ADR-0004, and ADR-0005 now exist as
-proposed boundaries for peer scoring, conductivity, firefly, and task/state
-causality. They are not accepted implementation decisions yet.
+Progress 2026-06-18: ADR-0002, ADR-0003, ADR-0004, and ADR-0005 are accepted
+boundaries for peer scoring, conductivity, firefly, and task/state causality.
 
 Consumer: anyone relying on mesh behavior in an open RF environment.
 

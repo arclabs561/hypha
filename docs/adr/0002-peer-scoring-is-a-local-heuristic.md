@@ -1,6 +1,6 @@
 ---
 id: 0002
-status: proposed
+status: accepted
 governs: src/core/mesh.rs, tests/gossip_storm.rs, tests/adversarial_inputs.rs, ARCHITECTURE.md, docs/**
 why: Hypha's current peer score is a positive weighted sum over local observations and self-reported energy; it is useful for mesh maintenance but does not defend against malicious peers.
 rejected: treating the score as adversarial resilience; replacing it with a GossipSub-style security score before Hypha has validation verdicts, signed inputs, and a hostile-peer deployment requirement.
@@ -13,7 +13,7 @@ review_trigger: revisit before adding negative peer penalties, signed energy cla
 
 # ADR-0002: peer scoring is a local heuristic
 
-**Status**: Proposed
+**Status**: Accepted
 **Date**: 2026-06-18
 **Deciders**: arc
 

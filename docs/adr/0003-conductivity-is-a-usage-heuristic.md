@@ -1,6 +1,6 @@
 ---
 id: 0003
-status: proposed
+status: accepted
 governs: src/core/mesh.rs, examples/**, EVAL_ANALYSIS.md, ARCHITECTURE.md, docs/**
 why: Hypha's current conductivity field is a decaying local usage and pressure-gradient heuristic; it is not a flow variable with edge costs, pressure solve, or conservation.
 rejected: claiming Physarum routing from a local scalar; adding a graph flow solver before a routing consumer or measurement requires it.
@@ -13,7 +13,7 @@ review_trigger: revisit before renaming `conductivity`, adding a flow solver, or
 
 # ADR-0003: conductivity is a usage heuristic
 
-**Status**: Proposed
+**Status**: Accepted
 **Date**: 2026-06-18
 **Deciders**: arc
 
