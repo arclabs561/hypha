@@ -7,7 +7,46 @@ esp-bridge-stdin:
 
 # Run bridge on USB serial (default: /dev/cu.usbmodem1101). Flash firmware first if device doesn't send JSON.
 esp-bridge port="/dev/cu.usbmodem1101":
-    cargo run --bin esp_bridge -- --port {{port}}
+    port='{{port}}'; cargo run --bin esp_bridge -- --port "${port#port=}"
+
+# List serial ports that may be ESP boards.
+esp-c6-list-ports:
+    bash scripts/esp_list_ports.sh
+
+# Probe a connected ESP32-C6 before flashing. Confirm flash is 4MB+ for the OTA table.
+esp-c6-board-info port="/dev/cu.usbmodem1101" before="usb-reset":
+    port='{{port}}'; before='{{before}}'; cargo espflash board-info --chip esp32c6 --before "$before" --port "${port#port=}"
+
+# Build ESP32-C6 IDF firmware. Required env: WIFI_SSID, WIFI_PASS, MQTT_HOST.
+# Optional env: MQTT_PORT, MQTT_USER, MQTT_PASS, BOARD_ID, OTA_URL, POWER_SOURCE.
+esp-c6-build:
+    cd firmware/hypha_esp_c6_idf && cargo build --release
+
+# Flash one ESP32-C6 over USB with the dual-slot OTA partition table.
+esp-c6-flash port="/dev/cu.usbmodem1101":
+    port='{{port}}'; port="${port#port=}"; cargo espflash board-info --chip esp32c6 --before usb-reset --port "$port"; cd firmware/hypha_esp_c6_idf && cargo espflash flash --release --chip esp32c6 --before usb-reset --port "$port" --partition-table partitions_ota.csv --monitor
+
+# Flash every /dev/cu.usbmodem* ESP32-C6. Use without BOARD_ID so firmware derives unique IDs from MAC.
+esp-c6-flash-all:
+    bash -c 'set -euo pipefail; found=0; for port in /dev/cu.usbmodem*; do [[ -e "$port" ]] || continue; found=1; echo "probing $port"; cargo espflash board-info --chip esp32c6 --before usb-reset --port "$port"; echo "flashing $port"; (cd firmware/hypha_esp_c6_idf && cargo espflash flash --release --chip esp32c6 --before usb-reset --port "$port" --partition-table partitions_ota.csv); done; [[ "$found" -eq 1 ]] || { echo "no /dev/cu.usbmodem* ports found" >&2; exit 1; }'
+
+# Validate C6 serial output from connected boards.
+esp-c6-validate-serial:
+    bash scripts/validate_esp_serial.sh
+
+# Validate the host bridge against connected boards.
+esp-bridge-validate:
+    bash scripts/validate_esp_bridge.sh
+
+# Stream all C6 serial logs to /tmp/esp-debug.log.
+esp-c6-debug:
+    bash scripts/esp_debug_monitor.sh
+
+# Stop local ESP monitors/bridges that may hold serial ports.
+esp-c6-kill-ports:
+    pkill -f 'espflash monitor.*esp32c6' 2>/dev/null || true
+    pkill -f 'esp_bridge --ports' 2>/dev/null || true
+    pkill -f 'esp_bridge --port' 2>/dev/null || true
 
 check:
     cargo fmt --all -- --check
