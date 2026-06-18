@@ -87,6 +87,10 @@ power-mode changes need board validation.
 
 ## Phase 3: Decide The Security And Trust Model
 
+Progress 2026-06-18: ADR-0002, ADR-0003, ADR-0004, and ADR-0005 now exist as
+proposed boundaries for peer scoring, conductivity, firefly, and task/state
+causality. They are not accepted implementation decisions yet.
+
 Consumer: anyone relying on mesh behavior in an open RF environment.
 
 Gate: one ADR decides whether Hypha is hobbyist/cooperative only, or whether it
