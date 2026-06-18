@@ -22,6 +22,13 @@ fn compute_task(required: u32) -> Task {
     }
 }
 
+fn compute_task_with_reach(required: u32, reach_intensity: f32) -> Task {
+    Task {
+        reach_intensity,
+        ..compute_task(required)
+    }
+}
+
 #[test]
 fn evaluate_task_accepts_sufficient_compute_capacity() {
     let (_tmp, node) = compute_node(101, 1.0);
@@ -77,6 +84,56 @@ fn process_task_bundle_still_respects_better_known_bid() {
 
     assert!(node.process_task_bundle(&task, &mut bids).is_none());
     assert_eq!(bids.len(), 1);
+}
+
+#[test]
+fn process_task_bundle_compares_the_reach_adjusted_bid_score() {
+    let (_tmp, node) = compute_node(100, 1.0);
+    let task = compute_task_with_reach(50, 0.5);
+    let mut bids = vec![Bid {
+        task_id: "compute-50".to_string(),
+        bidder_id: "peer-a".to_string(),
+        energy_score: 0.9,
+        cost_mah: 1.0,
+    }];
+
+    assert!(node.process_task_bundle(&task, &mut bids).is_none());
+    assert_eq!(bids.len(), 1);
+}
+
+#[test]
+fn process_task_bundle_ignores_non_finite_known_bid_scores() {
+    let (_tmp, node) = compute_node(100, 1.0);
+    let task = compute_task(50);
+    let mut bids = vec![Bid {
+        task_id: "compute-50".to_string(),
+        bidder_id: "peer-a".to_string(),
+        energy_score: f32::NAN,
+        cost_mah: 1.0,
+    }];
+
+    let bid = node.process_task_bundle(&task, &mut bids).unwrap();
+
+    assert_eq!(bid.energy_score, 1.0);
+    assert_eq!(bids.len(), 2);
+}
+
+#[test]
+fn evaluate_task_rejects_too_little_reach() {
+    let (_tmp, node) = compute_node(100, 1.0);
+    let task = compute_task_with_reach(50, 0.09);
+
+    assert!(node.evaluate_task(&task, 0).is_none());
+}
+
+#[test]
+fn process_task_bundle_rejects_low_energy_before_bidding() {
+    let (_tmp, node) = compute_node(100, 0.19);
+    let task = compute_task(50);
+    let mut bids = Vec::new();
+
+    assert!(node.process_task_bundle(&task, &mut bids).is_none());
+    assert!(bids.is_empty());
 }
 
 #[test]

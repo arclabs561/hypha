@@ -111,6 +111,23 @@ impl SporeNode {
             .any(|capability| capability.satisfies(required))
     }
 
+    fn local_bid_for_task(&self, task: &Task, energy_score: f32) -> Option<Bid> {
+        if energy_score < 0.2 || task.reach_intensity < 0.1 {
+            return None;
+        }
+
+        if !self.has_capability(&task.required_capability) {
+            return None;
+        }
+
+        Some(Bid {
+            task_id: task.id.clone(),
+            bidder_id: self.peer_id.to_string(),
+            energy_score: energy_score * task.reach_intensity,
+            cost_mah: 50.0,
+        })
+    }
+
     pub fn set_power_mode(&mut self, mode: PowerMode) {
         self.metabolism.lock().unwrap().set_mode(mode.clone());
         self.power_mode = mode;
@@ -131,21 +148,7 @@ impl SporeNode {
             return None;
         }
 
-        if score < 0.2 {
-            // Critical threshold
-            return None;
-        }
-
-        if self.has_capability(&task.required_capability) {
-            Some(Bid {
-                task_id: task.id.clone(),
-                bidder_id: self.peer_id.to_string(),
-                energy_score: score,
-                cost_mah: 50.0, // Fixed cost for compute simulation
-            })
-        } else {
-            None
-        }
+        self.local_bid_for_task(task, score)
     }
 
     pub fn heartbeat_interval(&self) -> Duration {
@@ -249,37 +252,28 @@ impl SporeNode {
             // For now, we allow them for backward compatibility/testing
         }
 
-        // Only bid if our score beats the current best known bid supplied by
-        // the caller.
+        let bid = self.local_bid_for_task(task, score)?;
+
+        // Only bid if the bid we would emit beats the current best known bid
+        // supplied by the caller. Non-finite peer bids are ignored; they should
+        // not block a local finite bid.
         let best_bid = known_bids
             .iter()
-            .filter(|b| b.task_id == task.id)
-            // Avoid panics on NaN bids by using a total ordering.
+            .filter(|b| b.task_id == task.id && b.energy_score.is_finite())
             .max_by(|a, b| a.energy_score.total_cmp(&b.energy_score));
 
         if let Some(best) = best_bid {
-            if score < best.energy_score {
+            if bid.energy_score < best.energy_score {
                 return None;
             }
         }
 
-        // If reach intensity is too low, the local heuristic declines the task.
-        if task.reach_intensity < 0.1 {
-            return None;
-        }
-
-        if self.has_capability(&task.required_capability) {
-            let bid = Bid {
-                task_id: task.id.clone(),
-                bidder_id: my_id,
-                energy_score: score * task.reach_intensity,
-                cost_mah: 50.0,
-            };
-            known_bids.push(bid.clone());
-            Some(bid)
-        } else {
-            None
-        }
+        let bid = Bid {
+            bidder_id: my_id,
+            ..bid
+        };
+        known_bids.push(bid.clone());
+        Some(bid)
     }
 
     /// Construct a `Mycelium` swarm bound to this node's persisted identity.
