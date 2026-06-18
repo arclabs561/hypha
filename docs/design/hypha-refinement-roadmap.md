@@ -108,6 +108,10 @@ formats and compatibility.
 
 ## Phase 4: Fix The Coordination Types
 
+Progress 2026-06-18: ADR-0006 is proposed for splitting observed facts from
+computed scores, replacing exact-equality capability matching, and selecting
+one local bidding contract before public schema changes.
+
 Consumer: task allocation, bridge code, and downstream applications consuming
 observations.
 
