@@ -1,15 +1,13 @@
-//! Mirollo-Strogatz pulse-coupled oscillator for cross-board flash sync.
+//! Mirollo-Strogatz pulse-coupled oscillator for cross-board flash telemetry.
 //!
 //! Each board runs one oscillator whose phase advances 0->1 over `period`;
 //! at 1.0 it FIRES (heartbeat flash) and resets. On firing a board publishes
 //! a pulse to a shared MQTT topic; on hearing a peer's pulse it advances its
-//! own phase along a concave-down curve (the Mirollo-Strogatz coupling that
-//! provably drives identical oscillators into lockstep). The result: the
-//! boards' heartbeats converge to a synchronized flash across rooms — the
-//! hypha mesh thesis made visible as light, and a liveness signal (in sync =
-//! the coupling channel is healthy). Mirrors the hypha-firefly crate's model;
-//! this is the std-firmware port. If MQTT is down the oscillator free-runs
-//! (no coupling), still flashing locally, and re-couples when the bus returns.
+//! own phase along a concave-down curve. The result is a synchronized heartbeat
+//! overlay that works as a liveness diagnostic for the boards, MQTT bus, and
+//! coupling loop. This is not a radio power-control or security signal. Mirrors
+//! the hypha-firefly crate's model; this is the std-firmware port. If MQTT is
+//! down the oscillator free-runs locally and re-couples when the bus returns.
 
 /// Coupling strength: how hard a peer pulse advances our phase. ~0.1-0.2
 /// synchronizes a small fleet within a handful of cycles without overshoot.

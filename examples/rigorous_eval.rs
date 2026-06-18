@@ -261,8 +261,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         all_runs.push(run);
     }
 
-    // 3. Degradation attacks (like Gossipsub report)
-    println!("\nRunning: Degradation attack scenarios...");
+    // 3. Degradation scenarios
+    println!("\nRunning: Degradation scenarios...");
     for drop_pct in [10, 30, 50, 70, 90] {
         let scenario = EvalScenario {
             name: format!("degradation_{}pct", drop_pct),

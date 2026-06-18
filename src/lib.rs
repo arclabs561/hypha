@@ -110,16 +110,17 @@ impl SporeNode {
         self.power_mode = mode;
     }
 
-    /// Bio-inspired Energy Score: 1.0 is a stable mains-powered node
+    /// Local energy score: 1.0 is a stable mains-powered node.
     pub fn energy_score(&self) -> f32 {
         self.metabolism.lock().unwrap().energy_score()
     }
 
-    /// Quorum-Sensing Auction: Only bid if energy is abundant or few others are bidding
+    /// Local bidding heuristic: only bid if energy is available and the local
+    /// caller reports few competing bids.
     pub fn evaluate_task(&self, task: &Task, known_bids: usize) -> Option<Bid> {
         let score = self.energy_score();
 
-        // Quorum Logic: If 3+ healthy nodes are already bidding, small spores stay silent
+        // If 3+ healthy nodes are already bidding, lower-energy nodes stay silent.
         if known_bids >= 3 && score < 0.8 {
             return None;
         }
@@ -156,8 +157,8 @@ impl SporeNode {
             1_000 // 1 second
         };
 
-        // Pressure-Aware Acceleration: high pressure (backlog) accelerates heartbeat
-        // up to 4x to diffuse load faster, provided we have energy.
+        // High local pressure accelerates heartbeat up to 4x, provided we have
+        // enough energy.
         if score > 0.4 && pressure > 5.0 {
             let factor = (pressure / 5.0).min(4.0);
             Duration::from_millis((base_ms as f32 / factor) as u64)
@@ -205,7 +206,7 @@ impl SporeNode {
         Ok(())
     }
 
-    /// Validate UCAN token for a task
+    /// Prototype UCAN token check for a task.
     pub fn validate_ucan(&self, token: &str, _required_cap: &Capability) -> bool {
         // In a real implementation:
         // 1. Parse token using `ucan` crate APIs
@@ -218,7 +219,7 @@ impl SporeNode {
             return false;
         }
 
-        // Mock validation: "auth-valid" token is always valid
+        // Mock validation: "auth-valid" token is always valid.
         if token.contains("auth-valid") {
             return true;
         }
@@ -226,12 +227,12 @@ impl SporeNode {
         false
     }
 
-    /// Bio-inspired Emergent Auctioning: Uses reach diffusion and local consensus
+    /// Local task-bundle bidding heuristic.
     pub fn process_task_bundle(&self, task: &Task, known_bids: &mut Vec<Bid>) -> Option<Bid> {
         let score = self.energy_score();
         let my_id = self.peer_id.to_string();
 
-        // UCAN Authorization Check
+        // Prototype UCAN gate. This is not a complete authorization boundary.
         if let Some(token) = &task.auth_token {
             if !self.validate_ucan(token, &task.required_capability) {
                 tracing::warn!(task_id = %task.id, "Rejected task due to invalid UCAN");
@@ -242,7 +243,8 @@ impl SporeNode {
             // For now, we allow them for backward compatibility/testing
         }
 
-        // CBBA-inspired: Only bid if our score beats the current best known bid
+        // Only bid if our score beats the current best known bid supplied by
+        // the caller.
         let best_bid = known_bids
             .iter()
             .filter(|b| b.task_id == task.id)
@@ -255,7 +257,7 @@ impl SporeNode {
             }
         }
 
-        // Nutrient Reach Check: If reach intensity is too low, we can't "see" the task
+        // If reach intensity is too low, the local heuristic declines the task.
         if task.reach_intensity < 0.1 {
             return None;
         }

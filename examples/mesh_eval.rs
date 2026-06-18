@@ -2,12 +2,12 @@
 
 //! Mesh Layer Evaluation
 //!
-//! Tests the gossip mesh management layer for resilience under various conditions.
+//! Tests the gossip mesh management layer under varied local conditions.
 //! This evaluates:
 //! - Mesh maintenance (GRAFT/PRUNE with D parameters)
 //! - Opportunistic grafting recovery
-//! - Flood publishing for eclipse resistance
-//! - Energy-aware peer scoring
+//! - Flood publishing behavior
+//! - Energy-aware local peer scoring
 
 use hypha::mesh::{MeshConfig, MeshControl, TopicMesh};
 use rand::{rng, Rng};
@@ -163,14 +163,14 @@ fn scenario_baseline(node_count: usize) -> MeshEvalResult {
     }
 }
 
-/// Scenario: Mesh under attack (low-scoring Sybils)
-fn scenario_sybil_attack(honest_count: usize, sybil_count: usize) -> MeshEvalResult {
-    let total = honest_count + sybil_count;
+/// Scenario: mesh with many low-scoring peers.
+fn scenario_low_score_peers(honest_count: usize, low_score_count: usize) -> MeshEvalResult {
+    let total = honest_count + low_score_count;
     let mut meshes: Vec<TopicMesh> = (0..total)
         .map(|_| TopicMesh::new("hypha".to_string(), MeshConfig::default()))
         .collect();
 
-    // Add peers: honest nodes have high scores, sybils have low
+    // Add peers: baseline nodes have higher scores, extra peers have low scores.
     for i in 0..total {
         for j in 0..total {
             if i != j {
@@ -188,10 +188,10 @@ fn scenario_sybil_attack(honest_count: usize, sybil_count: usize) -> MeshEvalRes
     // Initial mesh formation
     let (mut graft_count, mut prune_count) = run_heartbeats(&mut meshes, 3);
 
-    // Sybils try to graft into honest meshes (simulate attack)
+    // Low-scoring peers try to graft into baseline meshes.
     for i in honest_count..total {
         for j in 0..honest_count {
-            // Sybil requests graft
+            // Low-scoring peer requests graft.
             let accepted = meshes[j].handle_graft(&format!("node-{}", i));
             if accepted {
                 graft_count += 1;
@@ -199,7 +199,7 @@ fn scenario_sybil_attack(honest_count: usize, sybil_count: usize) -> MeshEvalRes
         }
     }
 
-    // Run more heartbeats - honest nodes should prune low-scoring Sybils
+    // Run more heartbeats. Baseline nodes should prune low-scoring peers.
     let (g, p) = run_heartbeats(&mut meshes, 5);
     graft_count += g;
     prune_count += p;
@@ -219,7 +219,7 @@ fn scenario_sybil_attack(honest_count: usize, sybil_count: usize) -> MeshEvalRes
     let expected = msg_count * (honest_count as u32 - 1);
     let delivery_rate = total_delivered as f32 / expected as f32;
 
-    // Check mesh composition of first honest node - how many are honest?
+    // Check mesh composition of the first baseline node.
     let honest_in_mesh = meshes[0]
         .mesh_peers
         .iter()
@@ -231,12 +231,12 @@ fn scenario_sybil_attack(honest_count: usize, sybil_count: usize) -> MeshEvalRes
         })
         .count();
 
-    let sybil_in_mesh = meshes[0].mesh_size() - honest_in_mesh;
+    let low_score_in_mesh = meshes[0].mesh_size() - honest_in_mesh;
 
     MeshEvalResult {
         scenario: format!(
-            "sybil_{}h_{}s_{}in",
-            honest_count, sybil_count, sybil_in_mesh
+            "low_score_{}h_{}l_{}in",
+            honest_count, low_score_count, low_score_in_mesh
         ),
         heartbeat_count: 8,
         final_mesh_size: meshes[0].mesh_size(),
@@ -459,15 +459,15 @@ fn main() {
     println!("Running: baseline (50 nodes)...");
     results.push(scenario_baseline(50));
 
-    // Sybil attacks at different ratios
-    for sybil_ratio in [0.25, 0.5, 1.0, 2.0] {
+    // Low-scoring peers at different ratios.
+    for low_score_ratio in [0.25, 0.5, 1.0, 2.0] {
         let honest = 30;
-        let sybil = (honest as f32 * sybil_ratio) as usize;
+        let low_score = (honest as f32 * low_score_ratio) as usize;
         println!(
-            "Running: sybil attack ({} honest, {} sybils)...",
-            honest, sybil
+            "Running: low-score peers ({} baseline, {} low-score)...",
+            honest, low_score
         );
-        results.push(scenario_sybil_attack(honest, sybil));
+        results.push(scenario_low_score_peers(honest, low_score));
     }
 
     // Partition recovery
@@ -509,14 +509,14 @@ fn main() {
     println!("{}", "=".repeat(70));
     println!();
 
-    // Analyze Sybil resilience
+    // Analyze behavior with low-scoring peers.
     let baseline_delivery = results[0].delivery_rate;
     println!(
-        "Sybil Resilience (delivery rate vs baseline {:.1}%):",
+        "Low-score peer scenario (delivery rate vs baseline {:.1}%):",
         baseline_delivery * 100.0
     );
     for r in &results {
-        if r.scenario.contains("sybil") {
+        if r.scenario.contains("low_score") {
             let pct_of_baseline = (r.delivery_rate / baseline_delivery) * 100.0;
             let status = if pct_of_baseline >= 90.0 {
                 "PASS"

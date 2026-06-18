@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 
-/// Mesh configuration parameters (following gossipsub v1.1 defaults)
+/// Mesh configuration parameters for local graft/prune behavior.
 #[derive(Debug, Clone)]
 pub struct MeshConfig {
     pub d: usize,
@@ -54,6 +54,7 @@ impl Default for MeshConfig {
 pub struct MeshPeer {
     pub id: String,
     pub energy_score: f32,
+    /// Local usage and pressure-gradient heuristic, not a formal flow variable.
     pub conductivity: f32,
     pub pressure: f32,
     pub message_count: u64,
@@ -76,6 +77,8 @@ impl MeshPeer {
 
     pub fn score(&self) -> f32 {
         let activity_score = (self.message_count as f32 / 100.0).min(1.0);
+        // This weighted score is a local mesh-maintenance heuristic. It is not
+        // a trust score or an adversarial GossipSub peer score.
         let normalized_conductivity = self.conductivity.min(5.0) / 5.0;
         let pressure_score = 1.0 - (self.pressure.min(10.0) / 10.0);
 

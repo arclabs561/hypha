@@ -214,8 +214,8 @@ pub struct EvalScenario {
     pub fault_schedule: Vec<FaultEvent>,
     /// Percentage of nodes starting with low energy
     pub low_energy_percentage: f32,
-    /// Sybil:honest ratio (0 = no sybils)
-    pub sybil_ratio: f32,
+    /// Ratio of low-scoring peers included from the start.
+    pub low_score_ratio: f32,
 }
 
 impl Default for EvalScenario {
@@ -231,7 +231,7 @@ impl Default for EvalScenario {
             cooldown: Duration::from_secs(10),
             fault_schedule: vec![],
             low_energy_percentage: 0.0,
-            sybil_ratio: 0.0,
+            low_score_ratio: 0.0,
         }
     }
 }
@@ -258,7 +258,7 @@ impl EvalScenario {
             .collect()
     }
 
-    /// Network degradation attack (like Gossipsub report)
+    /// Network degradation scenario.
     pub fn degradation_attack(drop_probability: f32) -> Self {
         let inject_time = Duration::from_secs(20);
         Self {
@@ -292,12 +292,12 @@ impl EvalScenario {
         }
     }
 
-    /// Cold boot attack (all nodes start together under Sybil pressure)
-    pub fn cold_boot_attack(sybil_ratio: f32) -> Self {
+    /// Cold boot scenario with low-scoring peers present from the start.
+    pub fn cold_boot_low_score_pressure(low_score_ratio: f32) -> Self {
         Self {
-            name: format!("cold_boot_{}x_sybil", sybil_ratio as u32),
-            sybil_ratio,
-            warmup: Duration::ZERO, // No warmup - attack from start
+            name: format!("cold_boot_{}x_low_score", low_score_ratio as u32),
+            low_score_ratio,
+            warmup: Duration::ZERO,
             ..Default::default()
         }
     }

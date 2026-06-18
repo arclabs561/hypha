@@ -183,8 +183,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         all_runs.push(run);
     }
 
-    // 3. Degradation attacks
-    println!("\nDegradation Attacks:");
+    // 3. Degradation scenarios
+    println!("\nDegradation Scenarios:");
     for drop_pct in [10, 20, 30, 40, 50, 60, 70, 80, 90] {
         let run = run_scenario(
             &format!("degradation_{}pct", drop_pct),

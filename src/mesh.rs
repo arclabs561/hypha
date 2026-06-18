@@ -6,7 +6,7 @@
 //! - **D parameters**: Target mesh degree (D=6), bounds (D_low=4, D_high=12)
 //! - **Peer scoring**: Energy scores influence mesh membership
 //! - **Opportunistic grafting**: Recover from degraded mesh states
-//! - **Flood publishing**: Own messages bypass mesh for eclipse resistance
+//! - **Flood publishing**: Own messages can bypass mesh for broad fanout
 //!
 //! This module provides a simulation-friendly mesh layer that can be evaluated
 //! without running a full libp2p swarm.
