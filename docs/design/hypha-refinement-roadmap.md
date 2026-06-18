@@ -112,6 +112,10 @@ Progress 2026-06-18: ADR-0006 is proposed for splitting observed facts from
 computed scores, replacing exact-equality capability matching, and selecting
 one local bidding contract before public schema changes.
 
+Progress 2026-06-18: capability capacity matching is implemented, the two local
+bidding paths share the same energy/reach/capability gate, and `EnergyStatus`
+now carries optional observed facts while preserving legacy JSON compatibility.
+
 Consumer: task allocation, bridge code, and downstream applications consuming
 observations.
 
