@@ -1,11 +1,13 @@
 #![allow(clippy::needless_range_loop)]
 
-//! Mycelial Synchrony & Pressure-Aware Routing Experiment
+//! Synchrony and pressure-heuristic experiment
 //!
-//! Tests:
+//! Tests local heuristics:
 //! 1. Phase Alignment: Can nodes reach global synchrony (aligned pulse phases) through local alignment?
 //! 2. Pressure-Aware Routing: Do messages flow toward lower-pressure nodes?
-//! 3. Mycelial Conductivity: How do pressure gradients affect path thickening?
+//! 3. Conductivity heuristic: how do pressure gradients affect peer weights?
+//!
+//! This does not implement a formal Physarum flow model.
 
 use hypha::mesh::{MeshConfig, TopicMesh};
 use rand::{rng, Rng};
@@ -24,7 +26,7 @@ struct SynchronyResult {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("Running Mycelial Synchrony Experiment...");
+    println!("Running synchrony and pressure-heuristic experiment...");
 
     let node_count = 50;
     let mut meshes: Vec<TopicMesh> = (0..node_count)

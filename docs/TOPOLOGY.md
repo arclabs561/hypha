@@ -4,7 +4,7 @@
 
 Hypha models a deployment as a set of nodes that advertise capabilities and
 power state. The resulting topology is not hardcoded as "star" or "mesh"; it is
-derived from the energy and capability gradient available in the deployment.
+derived from the energy and capability inputs available in the deployment.
 
 A node with `Capability::Storage` and stable power is a natural sink. Nodes with
 `Capability::Sensing` are natural sources. When one sink dominates, the topology
@@ -39,8 +39,8 @@ from residual energy, communication cost, and role capability.
 If a deployment has one always-on storage node, election is trivial. Sources
 publish readings to that sink, and the sink owns durable storage and downstream
 fusion. MQTT or another simple uplink can be the right transport here. This
-shape is still hypha: it is what the capability gradient computes when one node
-is clearly best suited to hold state.
+shape is still hypha: it is the deployment shape implied when one node is
+clearly best suited to hold state.
 
 ### Multi-Sink
 
@@ -88,11 +88,11 @@ configuration or the consuming application.
 
 ## Trust Boundary
 
-The energy gradient proposes roles, but the trust boundary can veto them. A node
-with storage and power still must not become a sink for data it is not trusted to
-hold. Nodes should assert only their own observations, and peer observations
-must be treated as untrusted input until a consuming application validates or
-fuses them.
+Energy and capability inputs can propose roles, but the trust boundary can veto
+them. A node with storage and power still must not become a sink for data it is
+not trusted to hold. Nodes should assert only their own observations, and peer
+observations must be treated as untrusted input until a consuming application
+validates or fuses them.
 
 The spectrum is a map, not a mandate. Build the single-sink path first, add local
 buffering when outage resilience earns it, and leave multi-sink, sinkless, and
@@ -105,5 +105,5 @@ compute-bidding behavior latent until a deployment needs them.
 - Delay-tolerant networking: store-carry-forward behavior for intermittent
   links.
 - Gossip and CRDTs: eventual convergence without a central coordinator.
-- Hypha core model: `Metabolism` and `Capability` are the gradient that makes the
+- Hypha core model: `Metabolism` and `Capability` are the inputs that make the
   deployment shape explicit.

@@ -1,7 +1,7 @@
-//! Emergent Auction Live Experiment
+//! Toy live allocation heuristic
 //!
-//! Simulates a live mycelial network where tasks are allocated via
-//! pheromone diffusion and local bidding.
+//! Simulates local bidding over a sparse line. This is a heuristic demo, not a
+//! settled auction, consensus, or Physarum routing protocol.
 //!
 //! Nodes: 10
 //! Topology: Sparse line (0-1-2-3-4-5-6-7-8-9)
@@ -15,7 +15,7 @@ use tempfile::tempdir;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("Running Emergent Auction Live Experiment...");
+    println!("Running live allocation heuristic demo...");
 
     let node_count = 10;
     let tmp = tempdir()?;
@@ -57,7 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Stabilize mesh
-    println!("Stabilizing sparse mycelium...");
+    println!("Stabilizing sparse peer line...");
     for _ in 0..20 {
         for node in &nodes {
             let mut mesh = node.mesh.lock().unwrap();

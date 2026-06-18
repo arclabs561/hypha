@@ -12,7 +12,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Sweeping through the "Dead Node %" to find the Percolation Threshold
     for dead_percentage in [0, 20, 40, 60, 80] {
         println!(
-            "Evaluating Mycelium with {}% low-power nodes...",
+            "Evaluating heuristic bidding with {}% low-power nodes...",
             dead_percentage
         );
 
@@ -29,7 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut node = SporeNode::new(&path)?;
 
             if i < num_dead {
-                // Simulate a "Dying Spore"
+                // Simulate a low-power node.
                 let mut meta = node.metabolism.lock().unwrap();
                 if let Some(batt) = meta.as_any().downcast_mut::<hypha::BatteryMetabolism>() {
                     batt.voltage = 3.35;

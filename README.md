@@ -40,31 +40,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-Run a small allocation example:
+The examples are small demonstrations of current heuristics, not proofs of a
+distributed scheduling or routing model:
 
 ```bash
+cargo run --example mycelium_eval
 cargo run --example slime_mold_auction
 ```
 
-Example output:
-
-```text
-Running Slime Mold Auction Experiment...
-Wave 1: Task pheromone reached 4 nodes.
-Wave 2: Task pheromone reached 12 nodes.
-Wave 3: Task pheromone reached 24 nodes.
-Wave 4: Task pheromone reached 28 nodes.
-Wave 5: Task pheromone reached 30 nodes.
-
-Bidding Results (Top 5):
-  Bidder: node-3, Weighted Score: 1.0000
-  Bidder: node-27, Weighted Score: 0.6700
-  Bidder: node-24, Weighted Score: 0.5349
-  Bidder: node-18, Weighted Score: 0.4547
-  Bidder: node-0, Weighted Score: 0.3064
-
-Winner: node-3 - task successfully allocated via mycelial gradient.
-```
+The allocation examples are intentionally synthetic. They exercise local task
+bidding and diffusion-style scoring, but the mechanism is still a heuristic and
+should not be read as a formal Physarum, auction, or adversarial mesh protocol.
 
 ## Layout
 
@@ -87,6 +73,10 @@ the current ESP bridge path.
   wasmtime.
 - UCAN handling is a placeholder and must not be treated as authorization.
 - `hypha-core` is being kept small, but it is not fully no-std-clean yet.
+- Peer scores, conductivity, task diffusion, and allocation are prototype
+  heuristics. They do not yet carry the decay, validation penalties, causality
+  contracts, or measurements needed for stronger routing, security, or power
+  claims.
 - The firmware directories are experiments. Built images and signing keys are
   intentionally ignored because images may contain deployment credentials.
 

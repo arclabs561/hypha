@@ -1,14 +1,14 @@
-//! Slime Mold Task Allocation Experiment
+//! Toy diffusion-scored task allocation example
 //!
-//! Models tasks as "nutrients" that emit pheromones through the mycelial mesh.
-//! Nodes bid on tasks based on local pheromone intensity, which is shaped by
-//! path conductivity, energy scores, and pressure gradients.
+//! This is a synthetic heuristic demo retained for experimentation. It does not
+//! implement a Physarum flow model or a distributed auction protocol: there is
+//! no flow conservation, no conductivity decay, and no global bid consensus.
 
 use hypha::mesh::{MeshConfig, TopicMesh};
 use hypha::{Bid, Capability, Task};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("Running Slime Mold Auction Experiment...");
+    println!("Running diffusion-scored task allocation demo...");
 
     let node_count = 30;
     let mut meshes: Vec<TopicMesh> = (0..node_count)
@@ -49,16 +49,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "node-29".to_string(),
     );
 
-    println!("Injecting task at node-29. Pheromone diffusing through mesh...");
+    println!("Injecting task at node-29. Diffusion score spreading through mesh...");
 
-    // Simulate pheromone accumulation
-    let mut node_pheromones: Vec<f32> = vec![0.0; node_count];
-    node_pheromones[29] = 1.0;
+    // Simulate diffusion-score accumulation.
+    let mut node_scores: Vec<f32> = vec![0.0; node_count];
+    node_scores[29] = 1.0;
 
     for wave in 1..=5 {
-        let mut new_pheromones = vec![0.0; node_count];
+        let mut new_scores = vec![0.0; node_count];
         for i in 0..node_count {
-            if node_pheromones[i] > 0.01 {
+            if node_scores[i] > 0.01 {
                 let my_id = format!("node-{}", i);
                 let mesh_peers = meshes[i].mesh_peers.clone();
                 for peer_id in mesh_peers {
@@ -79,21 +79,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let pressure = meshes[peer_idx].local_pressure;
 
                         let diffused =
-                            task.diffuse(conductivity, energy, pressure) * node_pheromones[i];
-                        new_pheromones[peer_idx] = (new_pheromones[peer_idx] + diffused).min(1.0);
+                            task.diffuse(conductivity, energy, pressure) * node_scores[i];
+                        new_scores[peer_idx] = (new_scores[peer_idx] + diffused).min(1.0);
                     }
                 }
             }
         }
-        node_pheromones = new_pheromones;
-        let reached = node_pheromones.iter().filter(|&&p| p > 0.05).count();
-        println!("Wave {}: Task pheromone reached {} nodes.", wave, reached);
+        node_scores = new_scores;
+        let reached = node_scores.iter().filter(|&&p| p > 0.05).count();
+        println!("Wave {}: Task score reached {} nodes.", wave, reached);
     }
 
     // Final Bidding
     println!("\nBidding Results (Top 5):");
     let mut bids = Vec::new();
-    for (idx, &intensity) in node_pheromones.iter().enumerate() {
+    for (idx, &intensity) in node_scores.iter().enumerate() {
         if intensity > 0.05 {
             // Node checks if it has capability
             if idx % capabilities.len() == 0 {
@@ -107,7 +107,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let bid = Bid {
                     task_id: task.id.clone(),
                     bidder_id: format!("node-{}", idx),
-                    energy_score: score * intensity, // Bio-weighted bid
+                    energy_score: score * intensity,
                     cost_mah: 50.0,
                 };
                 bids.push(bid);
@@ -125,11 +125,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if let Some(winner) = bids.first() {
         println!(
-            "\nWinner: {} - task successfully allocated via mycelial gradient.",
+            "\nWinner: {} - task selected by the local diffusion heuristic.",
             winner.bidder_id
         );
     } else {
-        println!("\nFAILED: No suitable nodes reached by pheromone.");
+        println!("\nFAILED: No suitable nodes reached by the diffusion heuristic.");
     }
 
     Ok(())

@@ -39,6 +39,12 @@ does not yet earn. The transcript points to five families of work:
 
 ## Phase 1: Make Claims Boring
 
+Progress 2026-06-18: the README no longer foregrounds the slime-mold
+allocation output, `ARCHITECTURE.md` names the scoring/allocation/power
+limitations, `docs/TOPOLOGY.md` uses operational input language instead of
+"gradient computes" wording, and the allocation/synchrony examples now label
+themselves as heuristic demos.
+
 Consumer: readers, reviewers, and future agents changing the public API.
 
 Gate: README, examples, and docs no longer lead with slime-mold allocation or
