@@ -64,6 +64,10 @@ Reversibility: reversible. This is mostly documentation and naming hygiene.
 
 ## Phase 2: Measure The Power Story
 
+Progress 2026-06-18: `docs/design/esp32-c6-power-measurement.md` defines the
+bench matrix, required metadata, output shape, and gates. This does not satisfy
+the measurement gate yet; it only defines the protocol for doing so.
+
 Consumer: ESP32-C6 firmware and any future "power-aware" routing claim.
 
 Gate: one repeatable bench reports current or energy for at least three states:
