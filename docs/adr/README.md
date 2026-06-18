@@ -8,3 +8,4 @@ single chat session. Each record is one `NNNN-slug.md` file.
 | ID | Title | Status |
 |----|-------|--------|
 | [0001](0001-mechanisms-must-earn-bio-inspired-claims.md) | mechanisms must earn bio-inspired claims | Accepted |
+| [0002](0002-peer-scoring-is-a-local-heuristic.md) | peer scoring is a local heuristic | Proposed |
