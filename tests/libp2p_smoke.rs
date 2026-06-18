@@ -154,6 +154,7 @@ async fn test_status_gossip_adds_peer() -> Result<(), Box<dyn std::error::Error>
     let status = EnergyStatus {
         source_id: "node0".to_string(),
         energy_score: 0.9,
+        facts: None,
     };
     let bytes = serde_json::to_vec(&status)?;
     let pub_res = m0
@@ -282,6 +283,7 @@ async fn test_status_gossip_over_quic() -> Result<(), Box<dyn std::error::Error>
     let status = EnergyStatus {
         source_id: "node0".to_string(),
         energy_score: 0.9,
+        facts: None,
     };
     let bytes = serde_json::to_vec(&status)?;
     let pub_res = m0

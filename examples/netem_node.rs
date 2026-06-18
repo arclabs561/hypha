@@ -228,6 +228,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             let status = EnergyStatus {
                 source_id: "publisher".to_string(),
                 energy_score: 0.9,
+                facts: None,
             };
             let bytes = serde_json::to_vec(&status)?;
 

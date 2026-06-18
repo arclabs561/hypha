@@ -72,6 +72,7 @@ async fn test_gossip_storm_resilience() -> Result<(), Box<dyn std::error::Error>
         let payload = serde_json::to_vec(&EnergyStatus {
             source_id: "attacker".to_string(),
             energy_score: 0.1,
+            facts: None,
         })
         .unwrap();
 
@@ -104,6 +105,7 @@ async fn test_gossip_storm_resilience() -> Result<(), Box<dyn std::error::Error>
         let probe = serde_json::to_vec(&EnergyStatus {
             source_id: "observer".to_string(),
             energy_score: 0.9,
+            facts: None,
         })
         .unwrap();
 

@@ -121,6 +121,7 @@ async fn run_line(
     let status = EnergyStatus {
         source_id: "n0".to_string(),
         energy_score: 0.9,
+        facts: None,
     };
     let bytes = serde_json::to_vec(&status)?;
     let pub_res = m0

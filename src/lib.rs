@@ -17,8 +17,8 @@ pub mod mycelium;
 pub mod sync;
 
 pub use crate::core::{
-    BasicSensor, BatteryMetabolism, Bid, Capability, EnergyStatus, Metabolism, MockMetabolism,
-    PowerMode, Task, VirtualSensor,
+    BasicSensor, BatteryMetabolism, Bid, Capability, EnergyFacts, EnergyStatus, Metabolism,
+    MockMetabolism, PowerMode, Task, VirtualSensor,
 };
 
 use crate::eval::MetricsCollector;
@@ -338,11 +338,22 @@ impl SporeNode {
             tokio::select! {
                 _ = heartbeat.tick() => {
                     // 1. Energy Status Advertisement
-                    let energy = self.energy_score();
-                    let p = EnergyStatus {
-                        source_id: self.peer_id.to_string(),
-                        energy_score: energy,
+                    let (energy, is_mains, mah_remaining) = {
+                        let metabolism = self.metabolism.lock().unwrap();
+                        (
+                            metabolism.energy_score(),
+                            metabolism.is_mains_powered(),
+                            metabolism.remaining(),
+                        )
                     };
+                    let p = EnergyStatus::new(self.peer_id.to_string(), energy).with_facts(
+                        EnergyFacts {
+                            state_of_charge: Some(energy.clamp(0.0, 1.0)),
+                            is_mains: Some(is_mains),
+                            mah_remaining: Some(mah_remaining),
+                            projected_drain_mah_per_hour: None,
+                        },
+                    );
 
                     let phase = {
                         let mut mesh = self.mesh.lock().unwrap();

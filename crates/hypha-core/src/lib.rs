@@ -4,6 +4,6 @@ pub mod agent;
 pub mod metabolism;
 pub mod sensor;
 
-pub use agent::{Bid, Capability, EnergyStatus, Task};
+pub use agent::{Bid, Capability, EnergyFacts, EnergyStatus, Task};
 pub use metabolism::{BatteryMetabolism, Metabolism, MockMetabolism, PowerMode};
 pub use sensor::{BasicSensor, VirtualSensor};

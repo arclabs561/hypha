@@ -131,6 +131,7 @@ async fn test_malformed_status_json_does_not_crash_run_for(
     let good = serde_json::to_vec(&hypha::EnergyStatus {
         source_id: "pub".to_string(),
         energy_score: 0.9,
+        facts: None,
     })?;
     let pub_res = pub_my
         .swarm
@@ -353,6 +354,7 @@ fn test_replay_attack_duplicate_detection() {
         let status = hypha::EnergyStatus {
             source_id: "pub_replay".to_string(),
             energy_score: 0.99,
+            facts: None,
         };
         let bytes = serde_json::to_vec(&status).unwrap();
 

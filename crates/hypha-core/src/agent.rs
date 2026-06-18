@@ -22,6 +22,35 @@ impl Capability {
 pub struct EnergyStatus {
     pub source_id: String,
     pub energy_score: f32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub facts: Option<EnergyFacts>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+pub struct EnergyFacts {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub state_of_charge: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub is_mains: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mah_remaining: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub projected_drain_mah_per_hour: Option<f32>,
+}
+
+impl EnergyStatus {
+    pub fn new(source_id: String, energy_score: f32) -> Self {
+        Self {
+            source_id,
+            energy_score,
+            facts: None,
+        }
+    }
+
+    pub fn with_facts(mut self, facts: EnergyFacts) -> Self {
+        self.facts = Some(facts);
+        self
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
