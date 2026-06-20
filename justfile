@@ -39,6 +39,10 @@ esp-c6-validate-serial:
 esp-bridge-validate:
     bash scripts/validate_esp_bridge.sh
 
+# Summarize retained MQTT health payloads from stdin or files.
+hypha-health *args:
+    bash scripts/hypha_health_snapshot.sh {{args}}
+
 # Stream all C6 serial logs to /tmp/esp-debug.log.
 esp-c6-debug:
     bash scripts/esp_debug_monitor.sh

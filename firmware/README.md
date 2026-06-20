@@ -48,3 +48,14 @@ These are separate observations:
 - Placement fingerprint: RSSI and neighbor sets can suggest a room move, but
   the firmware should report observations; room labels belong in infra or the
   consuming application.
+
+For XIAO/IDF boards, inspect retained health instead of reading the LED alone:
+
+```bash
+mosquitto_sub -v -t 'hypha/+/health' -C 4 | just hypha-health
+```
+
+`healthy-dark` means the controllable LED is intentionally off in auto mode.
+`no-mqtt-peer-pulses` means the board has not heard MQTT firefly pulses from
+other boards; it is not the same thing as WiFi failure or direct ESP-NOW
+isolation.

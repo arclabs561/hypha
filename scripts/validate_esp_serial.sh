@@ -127,4 +127,4 @@ fi
 pkill -f 'espflash monitor.*esp32c6' 2>/dev/null || true
 sleep 1
 echo "validate_esp_serial: all $PASSED port(s) passed"
-echo "LED introspection: dim red = alone (no peers); Y/G/B = 1/2/3+ peers; boot identity color = match board to source_id on serial."
+echo "LED introspection: this validates older ESP-NOW/firefly boards. Warm orange/red means no direct ESP-NOW peers. XIAO/IDF boards use MQTT health; feed retained hypha/+/health payloads to: just hypha-health"

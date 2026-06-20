@@ -1,6 +1,7 @@
 fn main() {
     embuild::espidf::sysenv::output();
 
+    println!("cargo:rustc-check-cfg=cfg(esp_idf_mbedtls_certificate_bundle)");
     println!("cargo:rerun-if-env-changed=OTA_PUBKEY_HEX");
     println!("cargo:rerun-if-env-changed=OTA_PUBKEY_PATH");
     if let Ok(path) = std::env::var("OTA_PUBKEY_PATH") {
