@@ -7,7 +7,7 @@
 
 [package]
 name = "hypha_esp_c6_idf"
-version = "0.16.0"
+version = "0.16.1"
 edition = "2021"
 
 [build-dependencies]

@@ -10,8 +10,8 @@
 
 // Prototype for the boot-WiFi-delta self-flag: the pure decision core
 // lives here with its tests until 0.17.0 lifts it into hypha-core + wires the
-// esp wifi-scan. Kept here (not in the firmware crate) so the 0.16.0 binary is
-// byte-unchanged ahead of the flash.
+// esp wifi-scan. Kept here (not in the firmware crate) so the OTA rollout stays
+// focused on the health schema and observability changes.
 pub mod boot_move;
 
 // Scan-window desynchronization (DESYNC) prototype: the dual of the firefly's

@@ -13,7 +13,7 @@
 //!
 //! Pure decision core, host-tested. At 0.17.0 this rides into hypha-core beside
 //! the firefly and the firmware chooses coupling by role (LED keeps sync if
-//! desired; the scan scheduler uses desync). The 0.16.0 binary is unchanged.
+//! desired; the scan scheduler uses desync). Kept out of the OTA rollout.
 
 /// One DESYNC round on phases in [0,1) (one point on the unit cycle per node).
 /// Each node jumps a fraction `alpha` toward the midpoint of its two circular

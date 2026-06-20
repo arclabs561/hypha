@@ -16,7 +16,7 @@ Required fields:
 {
   "board": "hypha-fc84",
   "firmware_sha": "8406186",
-  "firmware_version": "0.16.0",
+  "firmware_version": "0.16.1",
   "mode": "dark_baseline",
   "power_source": "usb",
   "measurement_device": "meter model or sanitized label",

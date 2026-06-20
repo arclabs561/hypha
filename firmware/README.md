@@ -64,3 +64,19 @@ isolation.
 `power_source` is build-time configured (`POWER_SOURCE=usb|mains|battery|...`),
 not automatic battery detection. Automatic battery inference needs board-level
 voltage/current sensing hardware or a declared power-path input.
+
+## HTTP OTA signing
+
+`hypha_esp_c6_idf` accepts HTTP OTA only when the image has a signed manifest
+next to it. If the image URL is `.../firmware.bin`, the manifest URL is
+`.../firmware.bin.manifest.json`.
+
+After producing an IDF `firmware.bin`, sign it with:
+
+```bash
+just esp-c6-http-ota-sign /path/to/firmware.bin firmware/mesh_ota/keys/priv.pem
+```
+
+The signed manifest version must be strictly greater than the running firmware
+version. The current IDF firmware version is `0.16.1`; boards reporting
+`0.16.0` will accept a correctly signed `0.16.1` image.

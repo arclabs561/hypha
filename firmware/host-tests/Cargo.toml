@@ -4,8 +4,8 @@
 # test` there cannot run on the host; this standalone sibling crate (outside the
 # firmware workspace, no ancestor cargo/toolchain config) builds on the host
 # default target and #[path]-includes the pure modules. It is the host-test home
-# until a pure `hypha-core` lib is extracted (planned with 0.17.0, after the
-# 0.16.0 flash, so the about-to-ship firmware is not refactored pre-rollout).
+# until a pure `hypha-core` lib is extracted (planned with a later firmware
+# train, so the about-to-ship firmware is not refactored pre-rollout).
 [package]
 name = "hypha-host-tests"
 version = "0.0.0"

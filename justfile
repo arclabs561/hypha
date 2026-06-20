@@ -45,6 +45,10 @@ mesh-ota-build version="0.1.0":
 mesh-ota-verify:
     RUSTC_WRAPPER= cargo run --manifest-path firmware/mesh_ota/Cargo.toml -- --verify --manifest firmware/hypha_esp_c6/build/mesh_ota/manifest.json --pubkey firmware/hypha_esp_c6/build/mesh_ota/pubkey.hex
 
+# Sign an ESP-IDF HTTP OTA image. Writes firmware.bin.manifest.json next to the image.
+esp-c6-http-ota-sign bin key version="" out_dir="":
+    bash scripts/sign_http_ota.sh "{{bin}}" "{{key}}" "{{version}}" "{{out_dir}}"
+
 # Rebuild the ESP-NOW firmware with the staged OTA manifest/image embedded.
 mesh-ota-firmware:
     cd firmware/hypha_esp_c6 && RUSTC_WRAPPER= MESH_OTA_PUBKEY_PATH=build/mesh_ota/pubkey.hex MESH_OTA_MANIFEST_PATH=build/mesh_ota/manifest.json MESH_OTA_IMAGE_PATH=build/mesh_ota/firmware.bin cargo build --release --features led,mesh_ota
@@ -90,6 +94,7 @@ check:
     bash scripts/test_hypha_health_snapshot.sh
     bash scripts/test_mesh_doctor_tailscale.sh
     bash scripts/test_power_measurement_validator.sh
+    bash scripts/test_sign_http_ota.sh
 
 test:
     cargo test
