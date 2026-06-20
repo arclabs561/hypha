@@ -9,6 +9,7 @@ BROKER_PORT="${2:-${HYPHA_MQTT_PORT:-1883}}"
 HEALTH_COUNT="${HYPHA_HEALTH_COUNT:-8}"
 MQTT_SSH_HOST="${HYPHA_MQTT_SSH_HOST:-}"
 MQTT_SSH_BROKER_HOST="${HYPHA_MQTT_SSH_BROKER_HOST:-localhost}"
+OTA_URL="${HYPHA_OTA_URL:-http://192.168.1.36:8930/fw/hypha/firmware.bin}"
 
 have_cmd() {
   command -v "$1" >/dev/null 2>&1
@@ -62,6 +63,36 @@ if have_cmd nc; then
   fi
 else
   printf 'skip: nc not installed\n'
+fi
+
+section "ota server"
+if ! have_cmd curl; then
+  printf 'skip: curl not installed\n'
+else
+  image_code="$(curl -fsS -m 3 -o /dev/null -w '%{http_code}' "$OTA_URL" 2>/dev/null || true)"
+  if [[ $image_code == 200 ]]; then
+    printf 'ok: image reachable %s\n' "$OTA_URL"
+  else
+    printf 'fail: image not reachable %s (http=%s)\n' "$OTA_URL" "${image_code:-none}"
+  fi
+
+  manifest_url="${OTA_URL}.manifest.json"
+  manifest_json="$(curl -fsS -m 3 "$manifest_url" 2>/dev/null || true)"
+  if [[ -z $manifest_json ]]; then
+    printf 'fail: signed manifest missing %s\n' "$manifest_url"
+  elif have_cmd jq; then
+    manifest_version="$(jq -r '.v // empty' <<<"$manifest_json" 2>/dev/null || true)"
+    manifest_chunks="$(jq -r '.n // empty' <<<"$manifest_json" 2>/dev/null || true)"
+    manifest_hash="$(jq -r '.h // empty' <<<"$manifest_json" 2>/dev/null || true)"
+    if [[ -n $manifest_version && -n $manifest_chunks && -n $manifest_hash ]]; then
+      printf 'ok: manifest v=%s chunks=%s hash=%s\n' \
+        "$manifest_version" "$manifest_chunks" "${manifest_hash:0:12}"
+    else
+      printf 'fail: signed manifest malformed %s\n' "$manifest_url"
+    fi
+  else
+    printf 'ok: manifest reachable %s\n' "$manifest_url"
+  fi
 fi
 
 section "usb boards"

@@ -91,6 +91,7 @@ check:
     cargo fmt --all -- --check
     cargo clippy --all-targets -- -D warnings
     cargo test
+    bash -n scripts/mesh_doctor.sh scripts/sign_http_ota.sh
     bash scripts/test_hypha_health_snapshot.sh
     bash scripts/test_mesh_doctor_tailscale.sh
     bash scripts/test_power_measurement_validator.sh
