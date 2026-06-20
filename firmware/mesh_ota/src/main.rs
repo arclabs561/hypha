@@ -4,6 +4,7 @@
 //!   mesh_ota_sign --bin firmware.bin --version 1.0.0 --key privkey.pem
 //!   mesh_ota_sign --bin firmware.bin --version 1.0.0 --key privkey.pem --out-dir ./build
 //!   mesh_ota_sign --verify --manifest manifest.json --pubkey pubkey.hex
+//!   mesh_ota_sign --pubkey-from-key --key privkey.pem --out-dir ./build
 //!
 //! Reads privkey.pem (PKCS#8 or raw 32-byte seed hex). Writes:
 //!   - manifest.json: { "v", "h", "n", "sig" } for wire format
@@ -26,11 +27,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut opts = getopts::Options::new();
     opts.optopt("b", "bin", "firmware binary path", "PATH");
     opts.optopt("v", "version", "version string", "VER");
-    opts.optopt("k", "key", "private key path (PKCS#8 PEM or raw 32-byte seed hex)", "PATH");
-    opts.optopt("o", "out-dir", "output directory (default: same as bin)", "DIR");
+    opts.optopt(
+        "k",
+        "key",
+        "private key path (PKCS#8 PEM or raw 32-byte seed hex)",
+        "PATH",
+    );
+    opts.optopt(
+        "o",
+        "out-dir",
+        "output directory (default: same as bin)",
+        "DIR",
+    );
     opts.optopt("m", "manifest", "manifest.json path (for --verify)", "PATH");
     opts.optopt("p", "pubkey", "pubkey.hex path (for --verify)", "PATH");
     opts.optflag("", "verify", "verify manifest with pubkey");
+    opts.optflag("", "pubkey-from-key", "write pubkey.hex from --key");
     opts.optflag("h", "help", "print help");
 
     let m = opts.parse(&args[1..])?;
@@ -41,18 +53,46 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if m.opt_present("verify") {
-        let manifest_path: PathBuf = m.opt_str("manifest").ok_or("--verify requires --manifest")?.into();
-        let pubkey_path: PathBuf = m.opt_str("pubkey").ok_or("--verify requires --pubkey")?.into();
+        let manifest_path: PathBuf = m
+            .opt_str("manifest")
+            .ok_or("--verify requires --manifest")?
+            .into();
+        let pubkey_path: PathBuf = m
+            .opt_str("pubkey")
+            .ok_or("--verify requires --pubkey")?
+            .into();
         return verify_manifest(&manifest_path, &pubkey_path);
+    }
+
+    if m.opt_present("pubkey-from-key") {
+        let key_path: PathBuf = m
+            .opt_str("key")
+            .ok_or("--pubkey-from-key requires --key")?
+            .into();
+        let out_dir: PathBuf = m
+            .opt_str("out-dir")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("."));
+        fs::create_dir_all(&out_dir)?;
+        let signing_key = load_signing_key(&key_path)?;
+        let pubkey_path = out_dir.join("pubkey.hex");
+        fs::write(
+            &pubkey_path,
+            hex::encode(signing_key.verifying_key().as_bytes()),
+        )?;
+        eprintln!("wrote {}", pubkey_path.display());
+        return Ok(());
     }
 
     let bin_path: PathBuf = m.opt_str("bin").ok_or("missing --bin")?.into();
     let version = m.opt_str("version").unwrap_or_else(|| "0.0.0".into());
     let key_path: PathBuf = m.opt_str("key").ok_or("missing --key")?.into();
-    let out_dir: PathBuf = m
-        .opt_str("out-dir")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| bin_path.parent().unwrap_or(std::path::Path::new(".")).to_path_buf());
+    let out_dir: PathBuf = m.opt_str("out-dir").map(PathBuf::from).unwrap_or_else(|| {
+        bin_path
+            .parent()
+            .unwrap_or(std::path::Path::new("."))
+            .to_path_buf()
+    });
 
     let bin_data = read_file(&bin_path)?;
     let hash = Sha256::digest(&bin_data);
@@ -100,18 +140,35 @@ fn build_payload(version: &str, hash: &[u8], n_chunks: usize) -> Vec<u8> {
     payload
 }
 
-fn verify_manifest(manifest_path: &std::path::Path, pubkey_path: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
+fn verify_manifest(
+    manifest_path: &std::path::Path,
+    pubkey_path: &std::path::Path,
+) -> Result<(), Box<dyn std::error::Error>> {
     let manifest_json: serde_json::Value = serde_json::from_slice(&fs::read(manifest_path)?)?;
-    let v = manifest_json.get("v").and_then(|x| x.as_str()).ok_or("manifest missing v")?;
-    let h_hex = manifest_json.get("h").and_then(|x| x.as_str()).ok_or("manifest missing h")?;
-    let n = manifest_json.get("n").and_then(|x| x.as_u64()).ok_or("manifest missing n")? as usize;
-    let sig_b64 = manifest_json.get("sig").and_then(|x| x.as_str()).ok_or("manifest missing sig")?;
+    let v = manifest_json
+        .get("v")
+        .and_then(|x| x.as_str())
+        .ok_or("manifest missing v")?;
+    let h_hex = manifest_json
+        .get("h")
+        .and_then(|x| x.as_str())
+        .ok_or("manifest missing h")?;
+    let n = manifest_json
+        .get("n")
+        .and_then(|x| x.as_u64())
+        .ok_or("manifest missing n")? as usize;
+    let sig_b64 = manifest_json
+        .get("sig")
+        .and_then(|x| x.as_str())
+        .ok_or("manifest missing sig")?;
 
     let h = hex::decode(h_hex).map_err(|e| format!("hash hex: {}", e))?;
     if h.len() != 32 {
         return Err("hash must be 32 bytes".into());
     }
-    let sig_bytes = B64.decode(sig_b64).map_err(|e| format!("sig base64: {}", e))?;
+    let sig_bytes = B64
+        .decode(sig_b64)
+        .map_err(|e| format!("sig base64: {}", e))?;
     if sig_bytes.len() != 64 {
         return Err("signature must be 64 bytes".into());
     }
@@ -125,7 +182,9 @@ fn verify_manifest(manifest_path: &std::path::Path, pubkey_path: &std::path::Pat
     let verifying_key = VerifyingKey::from_bytes(pubkey_bytes.as_slice().try_into().unwrap())?;
 
     let payload = build_payload(v, &h, n);
-    verifying_key.verify(&payload, &sig).map_err(|_| "signature verification failed")?;
+    verifying_key
+        .verify(&payload, &sig)
+        .map_err(|_| "signature verification failed")?;
     eprintln!("OK manifest verified v={} n={}", v, n);
     Ok(())
 }
@@ -142,7 +201,9 @@ fn load_signing_key(path: &std::path::Path) -> Result<SigningKey, Box<dyn std::e
     // If PEM
     if data.starts_with(b"-----") {
         let pem = std::str::from_utf8(&data)?;
-        let der = pem::parse(pem).map_err(|e| format!("PEM parse: {}", e))?.contents;
+        let der = pem::parse(pem)
+            .map_err(|e| format!("PEM parse: {}", e))?
+            .contents;
         let key = ed25519_dalek::pkcs8::KeypairBytes::from_pkcs8_der(&der)
             .map_err(|e| format!("PKCS#8: {}", e))?;
         return Ok(SigningKey::from_bytes(&key.secret_key));

@@ -17,6 +17,13 @@ test -f "$TMP/out/firmware.bin.sig"
 test -f "$TMP/out/pubkey.hex"
 
 RUSTC_WRAPPER= cargo run --quiet --manifest-path "$ROOT/firmware/mesh_ota/Cargo.toml" -- \
+  --pubkey-from-key \
+  --key "$KEY" \
+  --out-dir "$TMP/derived" >/dev/null 2>&1
+
+cmp "$TMP/out/pubkey.hex" "$TMP/derived/pubkey.hex"
+
+RUSTC_WRAPPER= cargo run --quiet --manifest-path "$ROOT/firmware/mesh_ota/Cargo.toml" -- \
   --verify \
   --manifest "$TMP/out/firmware.bin.manifest.json" \
   --pubkey "$TMP/out/pubkey.hex" >/dev/null 2>&1
