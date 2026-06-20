@@ -36,11 +36,14 @@ cleanup() {
 }
 trap cleanup EXIT
 
-RUSTC_WRAPPER= cargo run --quiet --manifest-path "$ROOT/firmware/mesh_ota/Cargo.toml" -- \
-  --bin "$BIN" \
-  --version "$VERSION" \
-  --key "$KEY" \
-  --out-dir "$TMP" >/dev/null
+(
+  cd "$ROOT"
+  RUSTC_WRAPPER= cargo run --quiet --manifest-path "$ROOT/firmware/mesh_ota/Cargo.toml" -- \
+    --bin "$BIN" \
+    --version "$VERSION" \
+    --key "$KEY" \
+    --out-dir "$TMP" >/dev/null
+)
 
 base="$(basename "$BIN")"
 install -m 0644 "$TMP/manifest.json" "$OUT_DIR/$base.manifest.json"
