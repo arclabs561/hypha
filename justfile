@@ -35,6 +35,20 @@ esp-c6-flash-all:
 esp-c6-validate-serial:
     bash scripts/validate_esp_serial.sh
 
+# Build and sign the ESP-NOW mesh OTA application image.
+mesh-ota-build version="0.1.0":
+    mkdir -p firmware/hypha_esp_c6/build/mesh_ota
+    cd firmware/hypha_esp_c6 && RUSTC_WRAPPER= cargo espflash save-image --release --chip esp32c6 --features led,mesh_ota build/mesh_ota/firmware.bin
+    RUSTC_WRAPPER= cargo run --manifest-path firmware/mesh_ota/Cargo.toml -- --bin firmware/hypha_esp_c6/build/mesh_ota/firmware.bin --version "{{version}}" --key firmware/mesh_ota/keys/priv.pem --out-dir firmware/hypha_esp_c6/build/mesh_ota
+
+# Verify the staged ESP-NOW mesh OTA manifest against the staged public key.
+mesh-ota-verify:
+    RUSTC_WRAPPER= cargo run --manifest-path firmware/mesh_ota/Cargo.toml -- --verify --manifest firmware/hypha_esp_c6/build/mesh_ota/manifest.json --pubkey firmware/hypha_esp_c6/build/mesh_ota/pubkey.hex
+
+# Rebuild the ESP-NOW firmware with the staged OTA manifest/image embedded.
+mesh-ota-firmware:
+    cd firmware/hypha_esp_c6 && RUSTC_WRAPPER= MESH_OTA_PUBKEY_PATH=build/mesh_ota/pubkey.hex MESH_OTA_MANIFEST_PATH=build/mesh_ota/manifest.json MESH_OTA_IMAGE_PATH=build/mesh_ota/firmware.bin cargo build --release --features led,mesh_ota
+
 # Validate the host bridge against connected boards.
 esp-bridge-validate:
     bash scripts/validate_esp_bridge.sh

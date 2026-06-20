@@ -43,7 +43,7 @@
 
 **Phase 2 (partial):** Partition table `firmware/hypha_esp_c6/partitions_ota.csv` (nvs, otadata, phy_init, factory, ota_0, ota_1). Use with `espflash flash --partition-table partitions_ota.csv --bootloader <path>` when an OTA-capable bootloader is used. In-firmware: manifest verification on RX (feature `mesh_ota`); on OTA_READY, `ota_apply::write_ota_partition_and_reboot` writes image to ota_0 via ROM spiflash, writes otadata (boot ota_0), and calls `software_reset`. End-to-end device update is not yet proven.
 
-**Phase 1 (done):** From repo root: `just mesh-ota-keygen` (once), then `just mesh-ota-build` (builds firmware, saves image, signs; writes `manifest.json`, `firmware.sig`, `pubkey.hex` to `firmware/hypha_esp_c6/build/mesh_ota/`). `just mesh-ota-verify` verifies the manifest. To embed the pubkey in firmware: `MESH_OTA_PUBKEY_PATH=build/mesh_ota/pubkey.hex cargo build --release --features "led,mesh_ota"` from `firmware/hypha_esp_c6`, or `just mesh-ota-firmware`. Host test: `cargo test --manifest-path firmware/mesh_ota/Cargo.toml --test sign_verify`.
+**Phase 1 (done):** From repo root: `just mesh-ota-build` (builds firmware, saves the app image, signs; writes `manifest.json`, `firmware.sig`, `pubkey.hex` to `firmware/hypha_esp_c6/build/mesh_ota/`). `just mesh-ota-verify` verifies the manifest. To embed the staged pubkey, manifest, and image in firmware: `just mesh-ota-firmware`. Host test: `cargo test --manifest-path firmware/mesh_ota/Cargo.toml --test sign_verify`.
 
 ## Constraints
 
