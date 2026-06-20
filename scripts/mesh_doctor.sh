@@ -7,6 +7,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BROKER_HOST="${1:-${HYPHA_MQTT_HOST:-192.168.1.9}}"
 BROKER_PORT="${2:-${HYPHA_MQTT_PORT:-1883}}"
 HEALTH_COUNT="${HYPHA_HEALTH_COUNT:-8}"
+MQTT_SSH_HOST="${HYPHA_MQTT_SSH_HOST:-}"
+MQTT_SSH_BROKER_HOST="${HYPHA_MQTT_SSH_BROKER_HOST:-localhost}"
 
 have_cmd() {
   command -v "$1" >/dev/null 2>&1
@@ -16,22 +18,30 @@ section() {
   printf '\n%s\n' "$1"
 }
 
+local_mqtt_health() {
+  if have_cmd timeout; then
+    { timeout 5 mosquitto_sub -h "$BROKER_HOST" -p "$BROKER_PORT" -v -t 'hypha/+/health' -C "$HEALTH_COUNT" || true; } \
+      | bash "$ROOT/scripts/hypha_health_snapshot.sh"
+  else
+    mosquitto_sub -h "$BROKER_HOST" -p "$BROKER_PORT" -v -t 'hypha/+/health' -C "$HEALTH_COUNT" \
+      | bash "$ROOT/scripts/hypha_health_snapshot.sh"
+  fi
+}
+
+ssh_mqtt_health() {
+  local remote_cmd
+  printf -v remote_cmd 'timeout 5 mosquitto_sub -h %q -p %q -v -t %q -C %q || true' \
+    "$MQTT_SSH_BROKER_HOST" "$BROKER_PORT" 'hypha/+/health' "$HEALTH_COUNT"
+  ssh "$MQTT_SSH_HOST" "$remote_cmd" | bash "$ROOT/scripts/hypha_health_snapshot.sh"
+}
+
 section "tailscale"
 if have_cmd tailscale; then
   TS="$(tailscale status 2>&1 || true)"
   if [[ $TS == failed\ to\ connect* ]]; then
     printf 'unknown: tailscale status unavailable: %s\n' "$TS"
   else
-    printf '%s\n' "$TS" | awk '
-      /offline/ {
-        state=$0
-        sub(/^[[:space:]]*[0-9.]+[[:space:]]+/, "", state)
-        print "offline: " state
-        count++
-      }
-      END {
-        if (count == 0) print "ok: no offline peers reported"
-      }'
+    printf '%s\n' "$TS" | awk -f "$ROOT/scripts/mesh_doctor_tailscale.awk"
   fi
 else
   printf 'skip: tailscale not installed\n'
@@ -66,18 +76,17 @@ else
 fi
 
 section "mqtt health"
-if ! have_cmd mosquitto_sub; then
-  printf 'skip: mosquitto_sub not installed; feed retained payloads to: just hypha-health\n'
+if ! have_cmd nc; then
+  printf 'skip: nc not installed; cannot verify broker reachability\n'
 elif ! nc -z -G 2 "$BROKER_HOST" "$BROKER_PORT" >/dev/null 2>&1; then
   printf 'skip: broker unreachable\n'
+elif have_cmd mosquitto_sub; then
+  local_mqtt_health
+elif [[ -n $MQTT_SSH_HOST ]] && have_cmd ssh; then
+  printf 'via ssh: %s broker=%s\n' "$MQTT_SSH_HOST" "$MQTT_SSH_BROKER_HOST"
+  ssh_mqtt_health
 else
-  if have_cmd timeout; then
-    timeout 5 mosquitto_sub -h "$BROKER_HOST" -p "$BROKER_PORT" -v -t 'hypha/+/health' -C "$HEALTH_COUNT" \
-      | bash "$ROOT/scripts/hypha_health_snapshot.sh"
-  else
-    mosquitto_sub -h "$BROKER_HOST" -p "$BROKER_PORT" -v -t 'hypha/+/health' -C "$HEALTH_COUNT" \
-      | bash "$ROOT/scripts/hypha_health_snapshot.sh"
-  fi
+  printf 'skip: mosquitto_sub not installed; set HYPHA_MQTT_SSH_HOST to query through the broker host\n'
 fi
 
 section "fleet power"

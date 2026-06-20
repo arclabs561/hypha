@@ -7,6 +7,7 @@ trap 'rm -f "$TMP"' EXIT
 
 cat >"$TMP" <<'JSON'
 hypha/hypha-fc84/health {"board":"hypha-fc84","fw":"0.16.0","boot":"abc123ef","power_source":"usb","wifi_rssi":-62,"peer_pulses":3,"led":"000000","led_state":"dark","mode":"auto","ota_state":"not_newer","loop_max_ms":52}
+hypha/hypha-old/health {"board":"hypha-old","fw":"0.16.0","wifi_rssi":-70,"led":"000000","led_state":"dark","mode":"auto","loop_max_ms":62}
 JSON
 
 OUT="$(bash "$ROOT/scripts/hypha_health_snapshot.sh" "$TMP")"
@@ -17,5 +18,9 @@ grep -q 'hypha-fc84' <<<"$OUT"
 grep -q 'abc123ef' <<<"$OUT"
 grep -q 'usb' <<<"$OUT"
 grep -q 'healthy-dark' <<<"$OUT"
+grep -Eq 'hypha-old.*healthy-dark' <<<"$OUT"
+grep -Eq 'hypha-old.*legacy-no-boot-id' <<<"$OUT"
+grep -Eq 'hypha-old.*legacy-no-power-source' <<<"$OUT"
+grep -Eq 'hypha-old.*legacy-no-peer-pulses-field' <<<"$OUT"
 
 printf 'hypha-health snapshot parser: ok\n'

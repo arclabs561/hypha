@@ -48,7 +48,13 @@ while IFS= read -r line; do
         (if s("led_state") == "dark" and s("mode") == "auto" and s("led") == "000000"
          then "healthy-dark" else empty end),
         (if s("led_state") == "fault" then "mqtt-bus-down-led" else empty end),
-        (if n("peer_pulses") == 0 then "no-mqtt-peer-pulses" else empty end),
+        (if has("boot") | not then "legacy-no-boot-id" else empty end),
+        (if has("power_source") | not then "legacy-no-power-source" else empty end),
+        (if has("peer_pulses") and n("peer_pulses") == 0
+         then "no-mqtt-peer-pulses"
+         elif has("peer_pulses") | not
+         then "legacy-no-peer-pulses-field"
+         else empty end),
         (if n("wifi_rssi") < -75 then "weak-wifi" else empty end),
         (if n("loop_max_ms") > 250 then "loop-starved" else empty end),
         (if n("ota_failures") > 0 then "ota-failures" else empty end),
@@ -66,13 +72,13 @@ while IFS= read -r line; do
       (s("ota_state")),
       (n("loop_max_ms") | tostring),
       note
-    ] | @tsv
+    ] | join("\u001f")
   ' <<<"$json" 2>/dev/null); then
     printf 'warn: skipped malformed health line: %s\n' "$line" >&2
     status=1
     continue
   fi
-  IFS=$'\t' read -r board fw boot power led_state mode rssi peers ota loop notes <<<"$row"
+  IFS=$'\037' read -r board fw boot power led_state mode rssi peers ota loop notes <<<"$row"
   printf '%-18s %-7s %-8s %-10s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \
     "$board" "$fw" "$boot" "$power" "$led_state" "$mode" "$rssi" "$peers" "$ota" "$loop" "$notes"
 done < <(if [[ $# -gt 0 ]]; then cat "$@"; else cat; fi)
