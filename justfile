@@ -61,6 +61,14 @@ hypha-health *args:
 mesh-doctor broker="192.168.1.9" port="1883":
     bash scripts/mesh_doctor.sh "{{broker}}" "{{port}}"
 
+# Inspect host boot history and link-loss evidence after a power event.
+fleet-power-doctor:
+    bash scripts/fleet_power_doctor.sh
+
+# Ping Healthchecks.io with host, boot ID, and uptime. Set HEALTHCHECKS_URL.
+healthchecks-ping mode="":
+    bash scripts/healthchecks_ping.sh "{{mode}}"
+
 # Stream all C6 serial logs to /tmp/esp-debug.log.
 esp-c6-debug:
     bash scripts/esp_debug_monitor.sh

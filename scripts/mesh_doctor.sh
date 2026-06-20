@@ -79,3 +79,7 @@ else
       | bash "$ROOT/scripts/hypha_health_snapshot.sh"
   fi
 fi
+
+section "fleet power"
+printf 'run: just fleet-power-doctor\n'
+printf 'checks: boot history, abrupt previous boots, link-loss windows, UPS client presence\n'

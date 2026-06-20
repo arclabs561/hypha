@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# Inspect host boot history after a suspected power event.
+
+set -euo pipefail
+
+HOSTS="${HYPHA_FLEET_HOSTS:-arcanine omastar starmie dratini metagross snorlax}"
+SSH_TIMEOUT="${HYPHA_SSH_TIMEOUT:-5}"
+
+section() {
+  printf '\n== %s ==\n' "$1"
+}
+
+remote_probe='
+set -eu
+
+host="$(hostname 2>/dev/null || scutil --get LocalHostName 2>/dev/null || uname -n)"
+os="$(uname -s)"
+printf "host: %s\n" "$host"
+printf "os: %s\n" "$os"
+printf "now: %s\n" "$(date "+%F %T %z")"
+
+if [ "$os" = "Linux" ]; then
+  printf "uptime: %s\n" "$(uptime 2>/dev/null || true)"
+  if [ -r /proc/sys/kernel/random/boot_id ]; then
+    printf "boot_id: %s\n" "$(cat /proc/sys/kernel/random/boot_id)"
+  fi
+  if command -v who >/dev/null 2>&1; then
+    printf "boot_time: %s\n" "$(who -b 2>/dev/null | sed "s/^[[:space:]]*//")"
+  fi
+
+  if command -v journalctl >/dev/null 2>&1; then
+    printf "boots:\n"
+    journalctl --list-boots --no-pager 2>/dev/null | tail -4 || true
+
+    printf "previous_tail_shutdown_markers:\n"
+    journalctl -b -1 -n 40 --no-pager -o short-iso 2>/dev/null \
+      | grep -E "Reached target (System Power Off|Reboot|Shutdown)|systemd-shutdown|Powering Off|Rebooting|Shutting down" \
+      | tail -5 || true
+
+    printf "previous_tail:\n"
+    journalctl -b -1 -n 8 --no-pager -o short-iso 2>/dev/null || true
+
+    printf "previous_boot_link_loss:\n"
+    journalctl -b -1 --since "72 hours ago" --no-pager -o short-iso \
+      --grep "NIC Link is Down|Lost carrier|LinkChange: all links down|DHCP lease lost" \
+      2>/dev/null | tail -20 || true
+
+    if command -v upsc >/dev/null 2>&1; then
+      printf "ups_client: upsc present\n"
+    fi
+    if command -v apcaccess >/dev/null 2>&1; then
+      printf "ups_client: apcaccess present\n"
+    fi
+    systemctl --no-pager --type=service --state=running 2>/dev/null \
+      | grep -Ei "nut|ups|apc" || true
+  fi
+elif [ "$os" = "Darwin" ]; then
+  printf "uptime: %s\n" "$(uptime 2>/dev/null || true)"
+  printf "boot_time: %s\n" "$(sysctl -n kern.boottime 2>/dev/null || true)"
+  printf "recent_reboots:\n"
+  last reboot 2>/dev/null | head -5 || true
+  printf "recent_power_log:\n"
+  pmset -g log 2>/dev/null \
+    | grep -Ei "power|sleep|wake|shutdown|restart|failure" \
+    | tail -30 || true
+else
+  printf "uptime: %s\n" "$(uptime 2>/dev/null || true)"
+fi
+'
+
+for host in $HOSTS; do
+  section "$host"
+  if ! ssh -o BatchMode=yes -o ConnectTimeout="$SSH_TIMEOUT" "$host" "$remote_probe"; then
+    printf 'unreachable: ssh failed or timed out\n'
+  fi
+done
