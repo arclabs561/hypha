@@ -333,7 +333,7 @@ pub fn publish_health(
     let connects = stats.mqtt_connects.load(Ordering::Relaxed);
     let led_state = stats.led_state.load(Ordering::Relaxed) as usize;
     let payload = format!(
-        r#"{{"board":"{}","fw":"{}","uptime_s":{},"heap_free":{},"wifi_rssi":{},"rssi_err":{},"scan_windows":{},"adverts_seen":{},"mqtt_reconnects":{},"fires":{},"led":"{:06x}","led_state":"{}","mode":"{}","locate":{},"led_max":{},"cmd_ignored":{},"loop_max_ms":{}}}"#,
+        r#"{{"board":"{}","fw":"{}","uptime_s":{},"heap_free":{},"wifi_rssi":{},"rssi_err":{},"scan_windows":{},"adverts_seen":{},"mqtt_reconnects":{},"fires":{},"peer_pulses":{},"led":"{:06x}","led_state":"{}","mode":"{}","locate":{},"led_max":{},"cmd_ignored":{},"loop_max_ms":{},"ota_state":"{}","ota_checks":{},"ota_failures":{}}}"#,
         board_id,
         env!("CARGO_PKG_VERSION"),
         uptime_s,
@@ -348,6 +348,9 @@ pub fn publish_health(
         // local firefly fire count: telemetry compares this to received pulses
         // on hypha/sync/pulse to separate fire-rate from pulse-loss
         stats.fire.load(Ordering::Relaxed),
+        // received firefly pulses through MQTT. This is broker-mediated peer
+        // visibility, not direct ESP-NOW neighbor count.
+        stats.peer_pulses.load(Ordering::Relaxed),
         // actual rendered LED colour (0xRRGGBB) -- ground-truth hue in telemetry
         stats.led_rgb.load(Ordering::Relaxed),
         // which vocabulary state produced that colour: the "why is it that
@@ -360,6 +363,9 @@ pub fn publish_health(
         // worst main-loop period this window (ms): >100 means radio starvation,
         // the single-core scheduling bug; ~50 is healthy. The at-a-glance health.
         stats.loop_max_ms.load(Ordering::Relaxed),
+        crate::ota_security::ota_state_name(stats.ota_state.load(Ordering::Relaxed)),
+        stats.ota_checks.load(Ordering::Relaxed),
+        stats.ota_failures.load(Ordering::Relaxed),
     );
     client
         .publish(

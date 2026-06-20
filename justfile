@@ -18,7 +18,8 @@ esp-c6-board-info port="/dev/cu.usbmodem1101" before="usb-reset":
     port='{{port}}'; before='{{before}}'; cargo espflash board-info --chip esp32c6 --before "$before" --port "${port#port=}"
 
 # Build ESP32-C6 IDF firmware. Required env: WIFI_SSID, WIFI_PASS, MQTT_HOST.
-# Optional env: MQTT_PORT, MQTT_USER, MQTT_PASS, BOARD_ID, OTA_URL, POWER_SOURCE.
+# Optional env: MQTT_PORT, MQTT_USER, MQTT_PASS, BOARD_ID, OTA_URL, POWER_SOURCE,
+# OTA_PUBKEY_HEX or OTA_PUBKEY_PATH. OTA updates are skipped unless a pubkey is embedded.
 esp-c6-build:
     cd firmware/hypha_esp_c6_idf && cargo build --release
 

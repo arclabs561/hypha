@@ -53,7 +53,7 @@
 
 ## Relation to current OTA
 
-- **Current:** `hypha_esp_c6_idf` does HTTP OTA only (WiFi STA, no ESP-NOW). One device updated from server; others don’t get it from peers.
+- **Current:** `hypha_esp_c6_idf` does signed HTTP OTA only (WiFi STA, no ESP-NOW). One device updated from server; others don’t get it from peers. The server must publish `firmware.bin.manifest.json` next to `firmware.bin`, signed with the same manifest format as `mesh_ota_sign`; the firmware embeds `OTA_PUBKEY_HEX` or reads it at build time from `OTA_PUBKEY_PATH`.
 - **After mesh OTA:** Either the same esp-hal firmware (`hypha_esp_c6`) gets OTA partition + mesh OTA, or the idf build gains ESP-NOW and serves after HTTP OTA. Preferred for "one codebase" is to add OTA + mesh OTA to `hypha_esp_c6` so the same image does ESP-NOW mesh and can receive/serve firmware.
 
 ---

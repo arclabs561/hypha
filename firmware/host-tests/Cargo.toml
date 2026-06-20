@@ -14,3 +14,9 @@ publish = false
 
 [lib]
 path = "src/lib.rs"
+
+[dependencies]
+base64 = "0.21"
+ed25519-dalek = "2.1"
+hex = "0.4"
+hypha-ota = { path = "../../crates/hypha-ota" }

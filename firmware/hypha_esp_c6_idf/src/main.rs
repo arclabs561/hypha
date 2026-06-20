@@ -10,9 +10,11 @@
 //! (default "hypha-" + last two STA MAC bytes), BLE_ACTIVE=1 (active scan),
 //! POWER_SOURCE.
 //!
-//! For secure OTA use HTTPS and certificate verification: set OTA_URL to an https:// URL.
-//! This crate enables CONFIG_MBEDTLS_CERTIFICATE_BUNDLE via sdkconfig.defaults so the
-//! device verifies the server certificate when using https.
+//! OTA requires a signed manifest next to the image. Set OTA_PUBKEY_HEX or
+//! OTA_PUBKEY_PATH at build time; the device fetches `<OTA_URL>.manifest.json`,
+//! verifies its Ed25519 signature, then streams and hashes the image before
+//! committing it. HTTPS is still recommended for transport privacy and server
+//! authentication.
 //!
 //! Flash once via USB with the dual-slot OTA table (required for EspOta):
 //!   cargo espflash flash --release --partition-table partitions_ota.csv --monitor
@@ -23,6 +25,7 @@ mod ble;
 mod firefly;
 mod led;
 mod mqtt;
+pub(crate) mod ota_security;
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicI32, AtomicU32, AtomicU8, Ordering};
@@ -47,6 +50,7 @@ use esp_idf_svc::wifi::{BlockingWifi, EspWifi, WifiDeviceId};
 use esp_idf_svc::{eventloop::EspSystemEventLoop, nvs::EspDefaultNvsPartition};
 
 use log::{error, info};
+use sha2::{Digest, Sha256};
 
 const SSID: &str = env!("WIFI_SSID");
 const PASSWORD: &str = env!("WIFI_PASS");
@@ -59,6 +63,7 @@ const OTA_URL: &str = match option_env!("OTA_URL") {
 const OTA_CHECK_INTERVAL_SECS: u64 = 300; // 5 min
 const CHUNK_SIZE: usize = 4096;
 const HEALTH_INTERVAL_SECS: u64 = 60;
+const OTA_MANIFEST_MAX_BYTES: usize = 1024;
 
 /// Shared counters for the retained health topic (+ LED state inputs).
 #[derive(Default)]
@@ -103,6 +108,14 @@ pub struct Stats {
     /// single-core starvation bug (loop stalled ~9s under WiFi/BLE load instead
     /// of ~50ms) visible at a glance instead of inferred from cadence drift.
     pub loop_max_ms: AtomicU32,
+    /// Last OTA decision state. Health reports this directly so "why didn't it
+    /// update?" is a retained telemetry read, not a serial-log guess.
+    pub ota_state: AtomicU8,
+    /// OTA polls attempted since boot.
+    pub ota_checks: AtomicU32,
+    /// OTA checks or downloads that ended in an error after a signed manifest
+    /// was expected or accepted.
+    pub ota_failures: AtomicU32,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -128,7 +141,12 @@ fn main() -> anyhow::Result<()> {
     // sw-reset = the reset an OTA install ends with: show the green
     // "update applied" blinks once after the bloom.
     let updated = mqtt::reset_reason() == "sw-reset";
-    led::spawn(peripherals.rmt.channel0, peripherals.pins.gpio8, stats.clone(), updated);
+    led::spawn(
+        peripherals.rmt.channel0,
+        peripherals.pins.gpio8,
+        stats.clone(),
+        updated,
+    );
 
     let mut wifi = BlockingWifi::wrap(
         EspWifi::new(peripherals.modem, sys_loop.clone(), Some(nvs))?,
@@ -165,8 +183,12 @@ fn main() -> anyhow::Result<()> {
     let mut last_ota_check = std::time::Instant::now();
 
     // Check for OTA once soon after boot (so you don't wait 5 min for first update).
-    if let Err(e) = try_ota_update() {
-        info!("OTA check at boot: {:?} (will retry every {} min)", e, OTA_CHECK_INTERVAL_SECS / 60);
+    if let Err(e) = try_ota_update(&stats) {
+        info!(
+            "OTA check at boot: {:?} (will retry every {} min)",
+            e,
+            OTA_CHECK_INTERVAL_SECS / 60
+        );
     }
 
     let power_extra = option_env!("POWER_SOURCE")
@@ -263,12 +285,16 @@ fn main() -> anyhow::Result<()> {
                 stats.publishes.fetch_add(1, Ordering::Relaxed);
             }
 
-            if last_health.map_or(true, |t| t.elapsed() >= Duration::from_secs(HEALTH_INTERVAL_SECS))
-            {
+            if last_health.map_or(true, |t| {
+                t.elapsed() >= Duration::from_secs(HEALTH_INTERVAL_SECS)
+            }) {
                 last_health = Some(std::time::Instant::now());
-                if let Err(e) =
-                    mqtt::publish_health(&mut mqtt, &board_id, boot_time.elapsed().as_secs(), &stats)
-                {
+                if let Err(e) = mqtt::publish_health(
+                    &mut mqtt,
+                    &board_id,
+                    boot_time.elapsed().as_secs(),
+                    &stats,
+                ) {
                     error!("{:?}", e);
                 }
                 // Reset the per-window loop-stall high-water mark after reporting.
@@ -277,7 +303,7 @@ fn main() -> anyhow::Result<()> {
 
             if last_ota_check.elapsed() >= Duration::from_secs(OTA_CHECK_INTERVAL_SECS) {
                 last_ota_check = std::time::Instant::now();
-                if let Err(e) = try_ota_update() {
+                if let Err(e) = try_ota_update(&stats) {
                     error!("OTA check failed: {:?}", e);
                 }
             }
@@ -288,19 +314,6 @@ fn main() -> anyhow::Result<()> {
 }
 
 const FW_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-/// Parse a plain "X.Y.Z" version into a comparable tuple; None if malformed
-/// (treated as "do not update", consistent with the loop-proof skip defaults).
-fn parse_semver(s: &str) -> Option<(u32, u32, u32)> {
-    let mut it = s.split('.');
-    let major = it.next()?.parse().ok()?;
-    let minor = it.next()?.parse().ok()?;
-    let patch = it.next()?.parse().ok()?;
-    if it.next().is_some() {
-        return None; // more than three components -> not a plain X.Y.Z
-    }
-    Some((major, minor, patch))
-}
 
 /// Signals the BLE scan thread to yield the shared 2.4GHz radio during an OTA
 /// download. Without this the continuous BLE scan starves the HTTP transfer to
@@ -316,57 +329,237 @@ impl Drop for RadioYield {
     }
 }
 
-fn try_ota_update() -> anyhow::Result<()> {
+fn try_ota_update(stats: &Stats) -> anyhow::Result<()> {
+    stats.ota_checks.fetch_add(1, Ordering::Relaxed);
     info!("Checking OTA at {}", OTA_URL);
 
-    // Version gate: without it, any staged image re-installs every poll cycle
-    // forever (the pre-0.2.0 loop bug). The stage step writes firmware.bin.version
-    // next to the image; missing version file = no update (loop-proof default).
-    {
-        let mut client = HttpClient::wrap(EspHttpConnection::new(&HttpConfig::default())?);
-        let ver_url = format!("{}.version", OTA_URL);
-        let request = client.request(Method::Get, &ver_url, &[])?;
-        let mut response = request.submit()?;
-        if response.status() != 200 {
-            info!("OTA: no version file (status {}), skipping", response.status());
-            return Ok(());
+    let Some(pubkey_hex) = option_env!("OTA_PUBKEY_HEX") else {
+        stats
+            .ota_state
+            .store(ota_security::OTA_DISABLED, Ordering::Relaxed);
+        info!("OTA: no OTA_PUBKEY_HEX embedded, skipping unsigned update path");
+        return Ok(());
+    };
+    let pubkey = match ota_security::decode_pubkey_hex(pubkey_hex) {
+        Some(pubkey) => pubkey,
+        None => {
+            stats
+                .ota_state
+                .store(ota_security::OTA_BAD_KEY, Ordering::Relaxed);
+            stats.ota_failures.fetch_add(1, Ordering::Relaxed);
+            return Err(anyhow::anyhow!(
+                "OTA_PUBKEY_HEX must be a 32-byte Ed25519 pubkey"
+            ));
         }
-        let mut vbuf = [0u8; 64];
-        let n = io::try_read_full(&mut response, &mut vbuf).map_err(|e| e.0)?;
-        // non-UTF8 version file = skip, never update: "" would compare unequal
-        // and re-trigger the very download loop this gate exists to prevent
-        let staged = match core::str::from_utf8(&vbuf[..n]) {
-            Ok(s) => s.trim(),
-            Err(e) => {
-                info!("OTA: version file not UTF-8 ({}), skipping", e);
-                return Ok(());
-            }
-        };
-        // Only update to a STRICTLY NEWER version. Exact-match alone re-installs
-        // nothing (good) but an OLDER staged image would still trigger a
-        // downgrade every poll (the thrash hit during USB testing when the stage
-        // dir held an older version than a hand-flashed board). Unparseable
-        // versions skip, never update -- the loop-proof default.
-        match (parse_semver(staged), parse_semver(FW_VERSION)) {
-            (Some(s), Some(r)) if s > r => {
-                info!("OTA: staged {} > running {}, updating", staged, FW_VERSION);
-            }
-            (Some(_), Some(_)) => {
-                info!("OTA: staged {} not newer than running {}, skipping", staged, FW_VERSION);
-                return Ok(());
-            }
-            _ => {
-                info!("OTA: unparseable version (staged {:?}), skipping", staged);
-                return Ok(());
-            }
+    };
+
+    let manifest_url = ota_security::manifest_url_for(OTA_URL);
+    let manifest_bytes = match fetch_url_limited(&manifest_url, OTA_MANIFEST_MAX_BYTES) {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            stats
+                .ota_state
+                .store(ota_security::OTA_FETCH_ERROR, Ordering::Relaxed);
+            stats.ota_failures.fetch_add(1, Ordering::Relaxed);
+            return Err(e);
         }
+    };
+    if manifest_bytes.is_empty() {
+        stats
+            .ota_state
+            .store(ota_security::OTA_NO_MANIFEST, Ordering::Relaxed);
+        info!("OTA: no signed manifest at {}, skipping", manifest_url);
+        return Ok(());
+    }
+    let manifest = match ota_security::verify_signed_manifest(&manifest_bytes, &pubkey) {
+        Some(manifest) => manifest,
+        None => {
+            stats
+                .ota_state
+                .store(ota_security::OTA_BAD_MANIFEST, Ordering::Relaxed);
+            stats.ota_failures.fetch_add(1, Ordering::Relaxed);
+            return Err(anyhow::anyhow!("OTA signed manifest verification failed"));
+        }
+    };
+
+    // Only update to a STRICTLY NEWER signed version. Exact-match skips, and an
+    // older staged image cannot trigger a downgrade loop.
+    if ota_security::is_strictly_newer(&manifest.version, FW_VERSION) {
+        info!(
+            "OTA: signed staged {} > running {}, updating",
+            manifest.version, FW_VERSION
+        );
+    } else {
+        stats
+            .ota_state
+            .store(ota_security::OTA_NOT_NEWER, Ordering::Relaxed);
+        info!(
+            "OTA: signed staged {} not newer than running {}, skipping",
+            manifest.version, FW_VERSION
+        );
+        return Ok(());
     }
 
     // Yield the radio to the download (BLE scan pauses until this returns).
+    stats
+        .ota_state
+        .store(ota_security::OTA_DOWNLOADING, Ordering::Relaxed);
     OTA_ACTIVE.store(true, Ordering::Relaxed);
     let _radio_yield = RadioYield;
 
     let http_config = if OTA_URL.starts_with("https://") {
+        #[cfg(esp_idf_mbedtls_certificate_bundle)]
+        {
+            HttpConfig {
+                crt_bundle_attach: Some(esp_idf_svc::sys::esp_crt_bundle_attach),
+                use_global_ca_store: true,
+                ..Default::default()
+            }
+        }
+        #[cfg(not(esp_idf_mbedtls_certificate_bundle))]
+        {
+            error!("HTTPS OTA requires CONFIG_MBEDTLS_CERTIFICATE_BUNDLE (sdkconfig.defaults)");
+            stats
+                .ota_state
+                .store(ota_security::OTA_FETCH_ERROR, Ordering::Relaxed);
+            stats.ota_failures.fetch_add(1, Ordering::Relaxed);
+            return Err(anyhow::anyhow!(
+                "HTTPS OTA not available: certificate bundle not enabled"
+            ));
+        }
+    } else {
+        HttpConfig::default()
+    };
+
+    let connection = EspHttpConnection::new(&http_config).map_err(|e| {
+        stats
+            .ota_state
+            .store(ota_security::OTA_FETCH_ERROR, Ordering::Relaxed);
+        stats.ota_failures.fetch_add(1, Ordering::Relaxed);
+        anyhow::anyhow!("OTA image HTTP connection: {:?}", e)
+    })?;
+    let mut client = HttpClient::wrap(connection);
+    let request = client.request(Method::Get, OTA_URL, &[]).map_err(|e| {
+        stats
+            .ota_state
+            .store(ota_security::OTA_FETCH_ERROR, Ordering::Relaxed);
+        stats.ota_failures.fetch_add(1, Ordering::Relaxed);
+        anyhow::anyhow!("OTA image HTTP request: {:?}", e)
+    })?;
+    let mut response = request.submit().map_err(|e| {
+        stats
+            .ota_state
+            .store(ota_security::OTA_FETCH_ERROR, Ordering::Relaxed);
+        stats.ota_failures.fetch_add(1, Ordering::Relaxed);
+        anyhow::anyhow!("OTA image HTTP submit: {:?}", e)
+    })?;
+
+    let status = response.status();
+    if status != 200 {
+        stats
+            .ota_state
+            .store(ota_security::OTA_FETCH_ERROR, Ordering::Relaxed);
+        stats.ota_failures.fetch_add(1, Ordering::Relaxed);
+        return Err(anyhow::anyhow!(
+            "OTA image GET {} returned {}",
+            OTA_URL,
+            status
+        ));
+    }
+
+    info!("OTA: downloading firmware...");
+
+    let mut ota = EspOta::new().map_err(|e| {
+        stats
+            .ota_state
+            .store(ota_security::OTA_APPLY_ERROR, Ordering::Relaxed);
+        stats.ota_failures.fetch_add(1, Ordering::Relaxed);
+        anyhow::anyhow!("OTA init: {:?}", e)
+    })?;
+    let mut update = ota.initiate_update().map_err(|e| {
+        stats
+            .ota_state
+            .store(ota_security::OTA_APPLY_ERROR, Ordering::Relaxed);
+        stats.ota_failures.fetch_add(1, Ordering::Relaxed);
+        anyhow::anyhow!("OTA begin: {:?}", e)
+    })?;
+
+    let mut buf = [0u8; CHUNK_SIZE];
+    let mut total: usize = 0;
+    let mut hasher = Sha256::new();
+
+    loop {
+        let n = io::try_read_full(&mut response, &mut buf).map_err(|e| {
+            stats
+                .ota_state
+                .store(ota_security::OTA_FETCH_ERROR, Ordering::Relaxed);
+            stats.ota_failures.fetch_add(1, Ordering::Relaxed);
+            e.0
+        })?;
+        if n == 0 {
+            break;
+        }
+        update.write_all(&buf[..n]).map_err(|e| {
+            stats
+                .ota_state
+                .store(ota_security::OTA_APPLY_ERROR, Ordering::Relaxed);
+            stats.ota_failures.fetch_add(1, Ordering::Relaxed);
+            e
+        })?;
+        hasher.update(&buf[..n]);
+        total += n;
+        if total % (64 * 1024) < CHUNK_SIZE {
+            info!("OTA: {} bytes written", total);
+        }
+        // Yield the single core so IDLE runs and feeds the task watchdog: this
+        // hand-rolled download loop otherwise monopolizes the CPU once BLE is
+        // paused (OTA_ACTIVE), starving IDLE0 -> TWDT reboots mid-download.
+        thread::sleep(Duration::from_millis(1));
+    }
+
+    let actual_hash = hex::encode(hasher.finalize());
+    if actual_hash != manifest.hash_hex {
+        stats
+            .ota_state
+            .store(ota_security::OTA_HASH_MISMATCH, Ordering::Relaxed);
+        stats.ota_failures.fetch_add(1, Ordering::Relaxed);
+        return Err(anyhow::anyhow!(
+            "OTA image hash mismatch: got {}, signed {}",
+            actual_hash,
+            manifest.hash_hex
+        ));
+    }
+    let actual_chunks = hypha_ota::protocol::n_chunks_for_len(total);
+    if actual_chunks != manifest.n_chunks {
+        stats
+            .ota_state
+            .store(ota_security::OTA_CHUNK_MISMATCH, Ordering::Relaxed);
+        stats.ota_failures.fetch_add(1, Ordering::Relaxed);
+        return Err(anyhow::anyhow!(
+            "OTA chunk count mismatch: got {}, signed {}",
+            actual_chunks,
+            manifest.n_chunks
+        ));
+    }
+
+    if let Err(e) = update.complete() {
+        stats
+            .ota_state
+            .store(ota_security::OTA_APPLY_ERROR, Ordering::Relaxed);
+        stats.ota_failures.fetch_add(1, Ordering::Relaxed);
+        return Err(anyhow::anyhow!("OTA complete: {:?}", e));
+    }
+
+    stats
+        .ota_state
+        .store(ota_security::OTA_REBOOTING, Ordering::Relaxed);
+    info!("OTA: success, rebooting...");
+    thread::sleep(Duration::from_secs(1));
+    reset::restart();
+}
+
+fn fetch_url_limited(url: &str, max_bytes: usize) -> anyhow::Result<Vec<u8>> {
+    let http_config = if url.starts_with("https://") {
         #[cfg(esp_idf_mbedtls_certificate_bundle)]
         {
             HttpConfig {
@@ -387,46 +580,25 @@ fn try_ota_update() -> anyhow::Result<()> {
     };
 
     let mut client = HttpClient::wrap(EspHttpConnection::new(&http_config)?);
-    let request = client.request(Method::Get, OTA_URL, &[])?;
+    let request = client.request(Method::Get, url, &[])?;
     let mut response = request.submit()?;
-
-    let status = response.status();
-    if status != 200 {
-        info!("OTA: no update (status {})", status);
-        return Ok(());
+    if response.status() == 404 {
+        return Ok(Vec::new());
     }
-
-    info!("OTA: downloading firmware...");
-
-    let mut ota = EspOta::new().map_err(|e| anyhow::anyhow!("OTA init: {:?}", e))?;
-    let mut update = ota
-        .initiate_update()
-        .map_err(|e| anyhow::anyhow!("OTA begin: {:?}", e))?;
-
-    let mut buf = [0u8; CHUNK_SIZE];
-    let mut total: usize = 0;
-
-    loop {
-        let n = io::try_read_full(&mut response, &mut buf).map_err(|e| e.0)?;
-        if n == 0 {
-            break;
-        }
-        update.write_all(&buf[..n])?;
-        total += n;
-        if total % (64 * 1024) < CHUNK_SIZE {
-            info!("OTA: {} bytes written", total);
-        }
-        // Yield the single core so IDLE runs and feeds the task watchdog: this
-        // hand-rolled download loop otherwise monopolizes the CPU once BLE is
-        // paused (OTA_ACTIVE), starving IDLE0 -> TWDT reboots mid-download.
-        thread::sleep(Duration::from_millis(1));
+    if response.status() != 200 {
+        return Err(anyhow::anyhow!(
+            "GET {} returned {}",
+            url,
+            response.status()
+        ));
     }
-
-    update.complete().map_err(|e| anyhow::anyhow!("OTA complete: {:?}", e))?;
-
-    info!("OTA: success, rebooting...");
-    thread::sleep(Duration::from_secs(1));
-    reset::restart();
+    let mut buf = vec![0u8; max_bytes + 1];
+    let n = io::try_read_full(&mut response, &mut buf).map_err(|e| e.0)?;
+    if n > max_bytes {
+        return Err(anyhow::anyhow!("GET {} exceeded {} bytes", url, max_bytes));
+    }
+    buf.truncate(n);
+    Ok(buf)
 }
 
 fn connect_wifi(wifi: &mut BlockingWifi<EspWifi<'static>>) -> anyhow::Result<()> {
