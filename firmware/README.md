@@ -35,7 +35,7 @@ Hypha firmware currently has two C6 lines with different transport meanings:
   amber slow breath means the MQTT bus has been unreachable for more than 120 s.
   Retained health reports `boot`, configured `power_source`, `led_state`,
   `led`, `wifi_rssi`, `mqtt_reconnects`, `peer_pulses`, `ota_state`,
-  `ota_checks`, and `ota_failures`.
+  `ota_checks`, `ota_failures`, and `placement_state`.
 
 These are separate observations:
 
@@ -46,9 +46,11 @@ These are separate observations:
 - Mesh delivery: a message reached a destination, possibly through relays. That
   must be measured by route, relay, or payload evidence, not by direct peer
   count alone.
-- Placement fingerprint: RSSI and neighbor sets can suggest a room move, but
-  the firmware should report observations; room labels belong in infra or the
-  consuming application.
+- Placement fingerprint: on boot, the XIAO/IDF firmware scans visible WiFi
+  AP BSSIDs/RSSI, compares against the previous boot's NVS-stored fingerprint,
+  then reports `placement_state` (`no_baseline`, `stable`, `moved`,
+  `inconclusive`, or an error). This is a self-observation, not a room label;
+  room names belong in infra or the consuming application.
 
 For XIAO/IDF boards, inspect retained health instead of reading the LED alone:
 

@@ -33,8 +33,8 @@ json_from_line() {
 
 need_cmd jq
 
-printf '%-18s %-7s %-8s %-10s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \
-  board fw boot power led_state mode rssi peers ota loop notes
+printf '%-18s %-7s %-8s %-10s %-13s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \
+  board fw boot power placement led_state mode rssi peers ota loop notes
 
 status=0
 while IFS= read -r line; do
@@ -58,13 +58,19 @@ while IFS= read -r line; do
         (if n("wifi_rssi") < -75 then "weak-wifi" else empty end),
         (if n("loop_max_ms") > 250 then "loop-starved" else empty end),
         (if n("ota_failures") > 0 then "ota-failures" else empty end),
-        (if (s("ota_state") | test("bad|mismatch|error")) then "ota-attention" else empty end)
+        (if (s("ota_state") | test("bad|mismatch|error")) then "ota-attention" else empty end),
+        (if s("placement_state") == "moved" then "placement-moved"
+         elif s("placement_state") == "inconclusive" then "placement-inconclusive"
+         elif (s("placement_state") | test("error$")) then "placement-attention"
+         else empty end),
+        (if has("placement_state") | not then "legacy-no-placement" else empty end)
       ] | if length == 0 then "ok" else join(",") end;
     [
       (s("board")),
       (s("fw")),
       (s("boot")),
       (s("power_source")),
+      (s("placement_state")),
       (s("led_state")),
       (s("mode")),
       (n("wifi_rssi") | tostring),
@@ -78,9 +84,9 @@ while IFS= read -r line; do
     status=1
     continue
   fi
-  IFS=$'\037' read -r board fw boot power led_state mode rssi peers ota loop notes <<<"$row"
-  printf '%-18s %-7s %-8s %-10s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \
-    "$board" "$fw" "$boot" "$power" "$led_state" "$mode" "$rssi" "$peers" "$ota" "$loop" "$notes"
+  IFS=$'\037' read -r board fw boot power placement led_state mode rssi peers ota loop notes <<<"$row"
+  printf '%-18s %-7s %-8s %-10s %-13s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \
+    "$board" "$fw" "$boot" "$power" "$placement" "$led_state" "$mode" "$rssi" "$peers" "$ota" "$loop" "$notes"
 done < <(if [[ $# -gt 0 ]]; then cat "$@"; else cat; fi)
 
 exit "$status"

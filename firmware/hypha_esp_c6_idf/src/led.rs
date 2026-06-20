@@ -137,13 +137,13 @@ pub fn spawn(
 
 /// Per-cycle phase accumulators (all wrap to stay small: no f32 erosion).
 struct Phases {
-    boot: f32,    // 0..1 once over BOOT_BLOOM_S, then pegged
-    locate: f32,  // locate blink cycles
-    breath: f32,  // metabolism breath cycles
-    pulse: f32,   // version double-pulse cycles (4 s)
-    amber: f32,   // fault breath cycles (3 s)
-    wheel: f32,   // carousel position in seconds, wrapped per full rotation
-    update: f32,  // seconds into the green update-ok blinks
+    boot: f32,   // 0..1 once over BOOT_BLOOM_S, then pegged
+    locate: f32, // locate blink cycles
+    breath: f32, // metabolism breath cycles
+    pulse: f32,  // version double-pulse cycles (4 s)
+    amber: f32,  // fault breath cycles (3 s)
+    wheel: f32,  // carousel position in seconds, wrapped per full rotation
+    update: f32, // seconds into the green update-ok blinks
 }
 
 fn led_loop(mut tx: TxRmtDriver<'static>, stats: Arc<Stats>, updated: bool) {
@@ -226,7 +226,14 @@ fn led_loop(mut tx: TxRmtDriver<'static>, stats: Arc<Stats>, updated: bool) {
             // Operator find-me: outranks everything, including "off" and a
             // night cap of 0 — it is the one explicitly requested signal.
             let on = ph.locate < LOCATE_DUTY;
-            (ST_LOCATE, if on { (LOCATE_VAL, 0.0, LOCATE_VAL) } else { (0.0, 0.0, 0.0) })
+            (
+                ST_LOCATE,
+                if on {
+                    (LOCATE_VAL, 0.0, LOCATE_VAL)
+                } else {
+                    (0.0, 0.0, 0.0)
+                },
+            )
         } else if ph.boot < 1.0 {
             // Boot: an exponential "ignition" — accelerating hue spin, spark
             // envelope. Deliberately unique; the one loud "I (re)started".
@@ -240,7 +247,14 @@ fn led_loop(mut tx: TxRmtDriver<'static>, stats: Arc<Stats>, updated: bool) {
             // (replaces the ambient version-hue wave, which hashed into
             // arbitrary hues and collided with locate's magenta on 0.15.0).
             let on = (ph.update / UPDATE_BLINK_S).fract() < 0.5;
-            (ST_UPDATED, if on { hsv(120.0, 0.9, 24.0 * scale) } else { (0.0, 0.0, 0.0) })
+            (
+                ST_UPDATED,
+                if on {
+                    hsv(120.0, 0.9, 24.0 * scale)
+                } else {
+                    (0.0, 0.0, 0.0)
+                },
+            )
         } else if mode == MODE_OFF {
             (ST_OFF, (0.0, 0.0, 0.0))
         } else if crate::OTA_ACTIVE.load(Ordering::Relaxed) {

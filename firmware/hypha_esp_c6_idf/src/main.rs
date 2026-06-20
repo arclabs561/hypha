@@ -26,6 +26,7 @@ mod firefly;
 mod led;
 mod mqtt;
 pub(crate) mod ota_security;
+mod placement;
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicI32, AtomicU32, AtomicU8, Ordering};
@@ -47,7 +48,10 @@ use esp_idf_svc::http::client::{Configuration as HttpConfig, EspHttpConnection};
 use esp_idf_svc::log::EspLogger;
 use esp_idf_svc::ota::EspOta;
 use esp_idf_svc::wifi::{BlockingWifi, EspWifi, WifiDeviceId};
-use esp_idf_svc::{eventloop::EspSystemEventLoop, nvs::EspDefaultNvsPartition};
+use esp_idf_svc::{
+    eventloop::EspSystemEventLoop,
+    nvs::{EspDefaultNvsPartition, EspNvs},
+};
 
 use log::{error, info};
 use sha2::{Digest, Sha256};
@@ -116,6 +120,14 @@ pub struct Stats {
     /// OTA checks or downloads that ended in an error after a signed manifest
     /// was expected or accepted.
     pub ota_failures: AtomicU32,
+    /// Boot-time WiFi fingerprint verdict. It says whether this board's AP
+    /// environment changed since the previous boot; infra maps evidence to room.
+    pub placement_state: AtomicU8,
+    pub placement_aps: AtomicU32,
+    pub placement_baseline_aps: AtomicU32,
+    pub placement_common: AtomicU32,
+    pub placement_shifted: AtomicU32,
+    pub placement_jaccard_milli: AtomicU32,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -149,12 +161,13 @@ fn main() -> anyhow::Result<()> {
     );
 
     let mut wifi = BlockingWifi::wrap(
-        EspWifi::new(peripherals.modem, sys_loop.clone(), Some(nvs))?,
+        EspWifi::new(peripherals.modem, sys_loop.clone(), Some(nvs.clone()))?,
         sys_loop,
     )?;
 
     connect_wifi(&mut wifi)?;
     let wifi_ms = boot_time.elapsed().as_millis();
+    observe_placement(&mut wifi, nvs.clone(), &stats);
 
     let mac = wifi.wifi().get_mac(WifiDeviceId::Sta)?;
     let source_id = format!("esp-c6-{:02x}{:02x}", mac[4], mac[5]);
@@ -243,7 +256,7 @@ fn main() -> anyhow::Result<()> {
 
         // Announce the boot once the bus is up (retained; lets watch see boots).
         if !boot_announced && stats.mqtt_connected.load(Ordering::Relaxed) {
-            if mqtt::publish_boot(&mut mqtt, &board_id, &boot_id, wifi_ms).is_ok() {
+            if mqtt::publish_boot(&mut mqtt, &board_id, &boot_id, wifi_ms, &stats).is_ok() {
                 boot_announced = true;
             }
         }
@@ -620,4 +633,88 @@ fn connect_wifi(wifi: &mut BlockingWifi<EspWifi<'static>>) -> anyhow::Result<()>
     wifi.wait_netif_up()?;
     info!("Wifi netif up");
     Ok(())
+}
+
+fn observe_placement(
+    wifi: &mut BlockingWifi<EspWifi<'static>>,
+    nvs_partition: EspDefaultNvsPartition,
+    stats: &Stats,
+) {
+    let aps = match wifi.scan() {
+        Ok(aps) => aps,
+        Err(e) => {
+            stats
+                .placement_state
+                .store(placement::State::ScanError.code(), Ordering::Relaxed);
+            error!("placement scan failed: {:?}", e);
+            return;
+        }
+    };
+    let now = placement::select_stored(
+        aps.into_iter()
+            .map(|ap| placement::Ap {
+                bssid: placement::pack_bssid(ap.bssid),
+                rssi: ap.signal_strength,
+            })
+            .collect(),
+    );
+    stats
+        .placement_aps
+        .store(now.len() as u32, Ordering::Relaxed);
+
+    let mut nvs = match EspNvs::new(nvs_partition, "hypha", true) {
+        Ok(nvs) => nvs,
+        Err(e) => {
+            stats
+                .placement_state
+                .store(placement::State::StoreError.code(), Ordering::Relaxed);
+            error!("placement nvs open failed: {:?}", e);
+            return;
+        }
+    };
+
+    let mut buf = [0u8; placement::STORAGE_MAX_BYTES];
+    let previous = match nvs.get_raw("wifi_fp", &mut buf) {
+        Ok(Some(bytes)) => placement::decode(bytes),
+        Ok(None) => None,
+        Err(e) => {
+            stats
+                .placement_state
+                .store(placement::State::StoreError.code(), Ordering::Relaxed);
+            error!("placement nvs read failed: {:?}", e);
+            None
+        }
+    };
+
+    if let Some(prev) = previous {
+        stats
+            .placement_baseline_aps
+            .store(prev.len() as u32, Ordering::Relaxed);
+        let verdict = placement::evaluate(&prev, &now, placement::DEFAULT);
+        stats
+            .placement_common
+            .store(verdict.common as u32, Ordering::Relaxed);
+        stats
+            .placement_shifted
+            .store(verdict.shifted as u32, Ordering::Relaxed);
+        stats.placement_jaccard_milli.store(
+            (verdict.jaccard_similarity.clamp(0.0, 1.0) * 1000.0) as u32,
+            Ordering::Relaxed,
+        );
+        stats
+            .placement_state
+            .store(placement::verdict_state(&verdict).code(), Ordering::Relaxed);
+    } else {
+        stats
+            .placement_state
+            .store(placement::State::NoBaseline.code(), Ordering::Relaxed);
+        stats.placement_jaccard_milli.store(1000, Ordering::Relaxed);
+    }
+
+    if let Err(e) = nvs.set_raw("wifi_fp", &placement::encode(&now)) {
+        stats
+            .placement_state
+            .store(placement::State::StoreError.code(), Ordering::Relaxed);
+        error!("placement nvs write failed: {:?}", e);
+    }
 }

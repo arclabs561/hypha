@@ -8,11 +8,10 @@
 //! helpers (HSV, dither, `json_field`) are still entangled with esp-dep imports
 //! in their files and need the `hypha-core` extraction first.
 
-// Prototype for the boot-WiFi-delta self-flag: the pure decision core
-// lives here with its tests until 0.17.0 lifts it into hypha-core + wires the
-// esp wifi-scan. Kept here (not in the firmware crate) so the OTA rollout stays
-// focused on the health schema and observability changes.
-pub mod boot_move;
+// Boot-WiFi-delta self-flag: host-test the pure firmware module while the
+// device crate itself is pinned to the ESP target.
+#[path = "../../hypha_esp_c6_idf/src/placement.rs"]
+pub mod placement;
 
 // Scan-window desynchronization (DESYNC) prototype: the dual of the firefly's
 // sync coupling, for spreading scan windows. Same lift-at-0.17.0 status.
