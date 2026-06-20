@@ -43,6 +43,7 @@ The doctor prints, per host:
 - previous journal tail
 - recent network link-loss evidence
 - whether common UPS clients (`upsc`, `apcaccess`) or UPS services are present
+- Wake-on-LAN and AC-restore evidence (`ethtool` on Linux, `pmset` on macOS)
 
 Interpretation:
 
@@ -51,6 +52,9 @@ Interpretation:
   power loss or forced cutoff.
 - Multiple hosts stopping within seconds are one power failure domain until
   proved otherwise.
+- Wake-on-LAN only helps after the network path returns and another host is up
+  to send the packet. AC-restore/auto-restart is the stronger setting for hosts
+  that should come back without another machine intervening.
 
 ## Healthchecks
 

@@ -53,6 +53,18 @@ if [ "$os" = "Linux" ]; then
     fi
     systemctl --no-pager --type=service --state=running 2>/dev/null \
       | grep -Ei "nut|ups|apc" || true
+
+    printf "wake_on_lan:\n"
+    if command -v ethtool >/dev/null 2>&1; then
+      for path in /sys/class/net/*; do
+        iface="${path##*/}"
+        [ "$iface" = "lo" ] && continue
+        ethtool "$iface" 2>/dev/null \
+          | awk -v iface="$iface" "/Wake-on:/ {print iface \": \" \$0}"
+      done
+    else
+      printf "ethtool missing\n"
+    fi
   fi
 elif [ "$os" = "Darwin" ]; then
   printf "uptime: %s\n" "$(uptime 2>/dev/null || true)"
@@ -63,6 +75,9 @@ elif [ "$os" = "Darwin" ]; then
   pmset -g log 2>/dev/null \
     | grep -Ei "power|sleep|wake|shutdown|restart|failure" \
     | tail -30 || true
+  printf "wake_and_restore_settings:\n"
+  pmset -g custom 2>/dev/null \
+    | grep -Ei "womp|autorestart|powernap|standby|hibernatemode" || true
 else
   printf "uptime: %s\n" "$(uptime 2>/dev/null || true)"
 fi
