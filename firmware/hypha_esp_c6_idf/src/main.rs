@@ -292,6 +292,7 @@ fn main() -> anyhow::Result<()> {
                 if let Err(e) = mqtt::publish_health(
                     &mut mqtt,
                     &board_id,
+                    &boot_id,
                     boot_time.elapsed().as_secs(),
                     &stats,
                 ) {

@@ -83,6 +83,7 @@ check:
     cargo fmt --all -- --check
     cargo clippy --all-targets -- -D warnings
     cargo test
+    bash scripts/test_hypha_health_snapshot.sh
 
 test:
     cargo test

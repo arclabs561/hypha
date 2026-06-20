@@ -326,16 +326,20 @@ pub fn publish_adverts(
 pub fn publish_health(
     client: &mut EspMqttClient<'static>,
     board_id: &str,
+    boot_id: &str,
     uptime_s: u64,
     stats: &Stats,
 ) -> anyhow::Result<()> {
     let heap_free = unsafe { esp_idf_svc::sys::esp_get_free_heap_size() };
     let connects = stats.mqtt_connects.load(Ordering::Relaxed);
     let led_state = stats.led_state.load(Ordering::Relaxed) as usize;
+    let power_source = option_env!("POWER_SOURCE").unwrap_or("unknown");
     let payload = format!(
-        r#"{{"board":"{}","fw":"{}","uptime_s":{},"heap_free":{},"wifi_rssi":{},"rssi_err":{},"scan_windows":{},"adverts_seen":{},"mqtt_reconnects":{},"fires":{},"peer_pulses":{},"led":"{:06x}","led_state":"{}","mode":"{}","locate":{},"led_max":{},"cmd_ignored":{},"loop_max_ms":{},"ota_state":"{}","ota_checks":{},"ota_failures":{}}}"#,
+        r#"{{"board":"{}","fw":"{}","boot":"{}","power_source":"{}","uptime_s":{},"heap_free":{},"wifi_rssi":{},"rssi_err":{},"scan_windows":{},"adverts_seen":{},"mqtt_reconnects":{},"fires":{},"peer_pulses":{},"led":"{:06x}","led_state":"{}","mode":"{}","locate":{},"led_max":{},"cmd_ignored":{},"loop_max_ms":{},"ota_state":"{}","ota_checks":{},"ota_failures":{}}}"#,
         board_id,
         env!("CARGO_PKG_VERSION"),
+        boot_id,
+        power_source,
         uptime_s,
         heap_free,
         // last-known reading; never a 0 sentinel, which aliases a failed read
