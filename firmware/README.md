@@ -33,8 +33,9 @@ Hypha firmware currently has two C6 lines with different transport meanings:
 - `hypha_esp_c6_idf` (XIAO/MQTT boards): WiFi STA connects to the AP, MQTT
   connects to the broker, and board-to-board firefly pulses go through MQTT. An
   amber slow breath means the MQTT bus has been unreachable for more than 120 s.
-  Retained health reports `led_state`, `led`, `wifi_rssi`, `mqtt_reconnects`,
-  `peer_pulses`, `ota_state`, `ota_checks`, and `ota_failures`.
+  Retained health reports `boot`, configured `power_source`, `led_state`,
+  `led`, `wifi_rssi`, `mqtt_reconnects`, `peer_pulses`, `ota_state`,
+  `ota_checks`, and `ota_failures`.
 
 These are separate observations:
 
@@ -59,3 +60,7 @@ mosquitto_sub -v -t 'hypha/+/health' -C 4 | just hypha-health
 `no-mqtt-peer-pulses` means the board has not heard MQTT firefly pulses from
 other boards; it is not the same thing as WiFi failure or direct ESP-NOW
 isolation.
+
+`power_source` is build-time configured (`POWER_SOURCE=usb|mains|battery|...`),
+not automatic battery detection. Automatic battery inference needs board-level
+voltage/current sensing hardware or a declared power-path input.
