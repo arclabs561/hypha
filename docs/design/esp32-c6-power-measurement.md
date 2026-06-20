@@ -79,22 +79,37 @@ node as if they provide the same service. They are different roles.
 
 ## Output File
 
-Store each run as `measurements/power/<date>-<board>-<mode>.json` or keep it
-outside git if it contains private network identifiers. A sanitized summary can
-be committed with this shape:
+Store each run as `docs/measurements/power/<date>-<board>-<mode>.json` or keep
+it outside git if it contains private network identifiers. A sanitized summary
+can be committed with this shape and checked with
+`just power-measurement-validate`:
 
 ```json
 {
   "board": "hypha-fc84",
   "firmware_sha": "<git sha>",
   "firmware_version": "0.16.0",
-  "mode": "wifi_max_modem",
-  "duration_s": 600,
+  "mode": "dark_baseline",
+  "power_source": "usb",
+  "measurement_device": "meter model or sanitized label",
+  "wifi_ap": "sanitized ap label or hash",
+  "rssi_min": -66,
+  "rssi_max": -58,
+  "wifi_power_save": "none",
+  "mqtt_path": "broker label or sanitized path",
+  "publish_interval_s": 30,
+  "led_mode": "off",
+  "led_max": 0,
+  "ble_scan": "on",
+  "sample_duration_s": 600,
+  "sample_rate_hz": 1,
+  "warmup_s": 60,
   "mean_current_ma": 0.0,
   "p95_current_ma": 0.0,
   "delivered_observations": 0,
   "publish_failures": 0,
   "energy_mj_per_observation": 0.0,
+  "raw_trace": "external:/path-or-note",
   "notes": "sanitized"
 }
 ```

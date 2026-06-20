@@ -69,6 +69,10 @@ fleet-power-doctor:
 healthchecks-ping mode="":
     bash scripts/healthchecks_ping.sh "{{mode}}"
 
+# Validate sanitized ESP32-C6 power measurement summaries.
+power-measurement-validate *paths:
+    python3 scripts/validate_power_measurement.py {{paths}}
+
 # Stream all C6 serial logs to /tmp/esp-debug.log.
 esp-c6-debug:
     bash scripts/esp_debug_monitor.sh
@@ -84,6 +88,7 @@ check:
     cargo clippy --all-targets -- -D warnings
     cargo test
     bash scripts/test_hypha_health_snapshot.sh
+    bash scripts/test_power_measurement_validator.sh
 
 test:
     cargo test
