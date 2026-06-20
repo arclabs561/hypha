@@ -38,7 +38,7 @@ trap cleanup EXIT
 
 (
   cd "$ROOT"
-  RUSTC_WRAPPER= cargo run --quiet --manifest-path "$ROOT/firmware/mesh_ota/Cargo.toml" -- \
+  CARGO_TARGET_DIR="$TMP/cargo-target" RUSTC_WRAPPER= cargo run --quiet --manifest-path "$ROOT/firmware/mesh_ota/Cargo.toml" -- \
     --bin "$BIN" \
     --version "$VERSION" \
     --key "$KEY" \
