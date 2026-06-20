@@ -57,6 +57,10 @@ esp-bridge-validate:
 hypha-health *args:
     bash scripts/hypha_health_snapshot.sh {{args}}
 
+# Inspect Tailscale, broker reachability, USB boards, and retained MQTT health.
+mesh-doctor broker="192.168.1.9" port="1883":
+    bash scripts/mesh_doctor.sh "{{broker}}" "{{port}}"
+
 # Stream all C6 serial logs to /tmp/esp-debug.log.
 esp-c6-debug:
     bash scripts/esp_debug_monitor.sh
