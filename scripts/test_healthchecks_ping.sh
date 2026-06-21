@@ -12,7 +12,7 @@ SH
 
 cat >"$TMP/uname" <<'SH'
 #!/usr/bin/env bash
-printf 'Darwin\n'
+printf '%s\n' "${HYPHA_TEST_UNAME:-Darwin}"
 SH
 
 cat >"$TMP/sysctl" <<'SH'
@@ -88,5 +88,25 @@ grep -q '^host=charizard$' "$TMP/payload"
 grep -q '^os=Darwin$' "$TMP/payload"
 grep -q '^boot_id=unknown$' "$TMP/payload"
 grep -q '^uptime_s=123$' "$TMP/payload"
+
+mkdir -p "$TMP/proc/sys/kernel/random"
+printf 'boot-123\n' >"$TMP/proc/sys/kernel/random/boot_id"
+printf '456.78 0.00\n' >"$TMP/proc/uptime"
+
+OUT="$(
+  HYPHA_TEST_CURL_URL="$TMP/url-linux" \
+    HYPHA_TEST_CURL_PAYLOAD="$TMP/payload-linux" \
+    HYPHA_TEST_UNAME="Linux" \
+    HYPHA_PROC_ROOT="$TMP/proc" \
+    HEALTHCHECKS_URL="https://hc-ping.com/uuid" \
+    PATH="$TMP:$PATH" \
+    bash "$ROOT/scripts/healthchecks_ping.sh"
+)"
+
+grep -q 'ok: pinged charizard' <<<"$OUT"
+grep -qx 'https://hc-ping.com/uuid' "$TMP/url-linux"
+grep -q '^os=Linux$' "$TMP/payload-linux"
+grep -q '^boot_id=boot-123$' "$TMP/payload-linux"
+grep -q '^uptime_s=456$' "$TMP/payload-linux"
 
 printf 'healthchecks ping wrapper: ok\n'
