@@ -93,6 +93,7 @@ check:
     cargo test
     bash -n scripts/mesh_doctor.sh scripts/sign_http_ota.sh
     bash scripts/test_hypha_health_snapshot.sh
+    bash scripts/test_mesh_doctor_ota_health.sh
     bash scripts/test_mesh_doctor_tailscale.sh
     bash scripts/test_power_measurement_validator.sh
     bash scripts/test_sign_http_ota.sh
