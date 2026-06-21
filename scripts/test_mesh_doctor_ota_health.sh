@@ -47,6 +47,7 @@ OUT="$(
 )"
 
 grep -q 'ok: manifest v=0.16.1' <<<"$OUT"
+grep -q 'retained health is last-known state' <<<"$OUT"
 grep -Eq 'hypha-good.*healthy-dark' <<<"$OUT"
 grep -Eq 'hypha-old.*fw-not-ota-version' <<<"$OUT"
 grep -Eq 'hypha-old.*weak-wifi' <<<"$OUT"

@@ -72,6 +72,7 @@ OUT="$(
 )"
 
 grep -q 'via ssh: broker-host broker=broker.lan' <<<"$OUT"
+grep -q 'retained health is last-known state' <<<"$OUT"
 if grep -q 'secret' <<<"$OUT"; then
   printf 'mesh doctor output leaked mqtt password\n' >&2
   exit 1

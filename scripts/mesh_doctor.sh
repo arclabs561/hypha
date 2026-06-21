@@ -124,6 +124,7 @@ else
 fi
 
 section "mqtt health"
+printf 'note: retained health is last-known state; absence of fresh publish timestamps means it is not a liveness proof\n'
 if ! have_cmd nc; then
   printf 'skip: nc not installed; cannot verify broker reachability\n'
 elif ! nc -z -G 2 "$BROKER_HOST" "$BROKER_PORT" >/dev/null 2>&1; then
