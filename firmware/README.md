@@ -80,6 +80,11 @@ telemetry, so a blank OTA column should not be read as a successful check.
 `no-mqtt-peer-pulses` means the board has not heard MQTT firefly pulses from
 other boards; it is not the same thing as WiFi failure or direct ESP-NOW
 isolation.
+`rssi-read-errors` means the firmware could not read WiFi RSSI during at least
+one health window.
+`mqtt-reconnected` means the MQTT client reconnected after its first connection.
+`cmd-ignored` means the board received at least one command that was invalid or
+not addressed to that board.
 `no-health-payloads` means the broker query returned no retained health payloads
 to summarize.
 

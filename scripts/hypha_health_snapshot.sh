@@ -73,6 +73,9 @@ if [[ -s $payloads ]]; then
          then "legacy-no-peer-pulses-field"
          else empty end),
         (if n("wifi_rssi") < -75 then "weak-wifi" else empty end),
+        (if n("rssi_err") > 0 then "rssi-read-errors" else empty end),
+        (if n("mqtt_reconnects") > 0 then "mqtt-reconnected" else empty end),
+        (if n("cmd_ignored") > 0 then "cmd-ignored" else empty end),
         (if n("loop_max_ms") > 250 then "loop-starved" else empty end),
         (if n("ota_failures") > 0 then "ota-failures" else empty end),
         (if has("ota_state") | not then "legacy-no-ota-state" else empty end),
