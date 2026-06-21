@@ -10,7 +10,10 @@ KEY="$ROOT/firmware/mesh_ota/keys/priv.pem"
 
 printf 'test firmware image' >"$BIN"
 
-bash "$ROOT/scripts/sign_http_ota.sh" "$BIN" "$KEY" "9.9.9" "$TMP/out" >/dev/null 2>&1
+(
+  cd "$ROOT/firmware/hypha_esp_c6_idf"
+  bash "$ROOT/scripts/sign_http_ota.sh" "$BIN" "$KEY" "9.9.9" "$TMP/out" >/dev/null 2>&1
+)
 
 test -f "$TMP/out/firmware.bin.manifest.json"
 test -f "$TMP/out/firmware.bin.sig"
