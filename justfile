@@ -91,6 +91,7 @@ check:
     cargo fmt --all -- --check
     cargo clippy --all-targets -- -D warnings
     cargo test
+    cargo test --manifest-path firmware/host-tests/Cargo.toml
     bash -n scripts/mesh_doctor.sh scripts/sign_http_ota.sh
     bash scripts/test_hypha_health_snapshot.sh
     bash scripts/test_mesh_doctor_ota_health.sh

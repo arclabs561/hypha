@@ -21,6 +21,8 @@ jobs:
         run: cargo check --all-targets
       - name: test
         run: cargo test
+      - name: firmware host tests
+        run: cargo test --manifest-path firmware/host-tests/Cargo.toml
       - name: fmt
         run: cargo fmt --all -- --check
       - name: clippy
