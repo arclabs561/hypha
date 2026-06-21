@@ -34,8 +34,9 @@ json_from_line() {
 need_cmd jq
 
 payloads="$(mktemp -t hypha-health-payloads.XXXXXX)"
+observed="$(mktemp -t hypha-health-observed.XXXXXX)"
 cleanup() {
-  rm -f "$payloads"
+  rm -f "$payloads" "$observed"
 }
 trap cleanup EXIT
 
@@ -62,6 +63,7 @@ while IFS= read -r line; do
     continue
   fi
   printf '%s\n' "$compact" >>"$payloads"
+  jq -r '.board // empty' <<<"$compact" >>"$observed"
 done < <(if [[ $# -gt 0 ]]; then cat "$@"; else cat; fi)
 
 printf '%-18s %-7s %-8s %-8s %-4s %-10s %-13s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \
@@ -144,6 +146,17 @@ if [[ -s $payloads ]]; then
 else
   printf '%-18s %-7s %-8s %-8s %-4s %-10s %-13s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \
     none "" "" "" "" "" "" "" "" "" "" "" "" "no-health-payloads"
+fi
+
+if [[ -n ${HYPHA_EXPECTED_BOARDS:-} ]]; then
+  expected="${HYPHA_EXPECTED_BOARDS//,/ }"
+  for board in $expected; do
+    [[ -n $board ]] || continue
+    if ! grep -Fxq "$board" "$observed"; then
+      printf '%-18s %-7s %-8s %-8s %-4s %-10s %-13s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \
+        "$board" "" "" "" "0" "" "" "" "" "" "" "" "" "missing-expected-health"
+    fi
+  done
 fi
 
 exit "$status"

@@ -23,7 +23,11 @@ hypha/hypha-good/health {"board":"hypha-good","fw":"0.16.1","led":"000000","led_
 hypha/hypha-bad/health not-json
 BADJSON
 
-OUT="$(HYPHA_EXPECTED_FW=0.16.1 bash "$ROOT/scripts/hypha_health_snapshot.sh" "$TMP")"
+OUT="$(
+  HYPHA_EXPECTED_FW=0.16.1 \
+    HYPHA_EXPECTED_BOARDS="hypha-fc84,hypha-missing" \
+    bash "$ROOT/scripts/hypha_health_snapshot.sh" "$TMP"
+)"
 EMPTY_OUT="$(bash "$ROOT/scripts/hypha_health_snapshot.sh" /dev/null)"
 NO_EXPECT_OUT="$(bash "$ROOT/scripts/hypha_health_snapshot.sh" "$TMP")"
 OLD_LINE="$(grep '^hypha-old' <<<"$OUT")"
@@ -34,6 +38,7 @@ grep -q 'seen' <<<"$OUT"
 grep -q 'power' <<<"$OUT"
 grep -q 'hypha-fc84' <<<"$OUT"
 grep -q 'hypha-topic-only' <<<"$OUT"
+grep -Eq 'hypha-missing.* 0 .*missing-expected-health' <<<"$OUT"
 grep -q 'abc123ef' <<<"$OUT"
 grep -q '1300' <<<"$OUT"
 grep -Eq 'hypha-fc84.* 2 .*live-uptime-advanced' <<<"$OUT"

@@ -66,6 +66,9 @@ HYPHA_MQTT_SSH_HOST=<broker-ssh-host> HYPHA_MQTT_SSH_BROKER_HOST=<broker-lan-ip>
 ```
 
 For brokers with credentials, set `HYPHA_MQTT_USER` and `HYPHA_MQTT_PASS`.
+To flag boards expected by a private deployment inventory, set
+`HYPHA_EXPECTED_BOARDS` to a comma- or space-separated board id list before
+running `just mesh-doctor`.
 
 `healthy-dark` means the controllable LED is intentionally off in auto mode.
 `seen` is the number of health samples observed for that board in the current
@@ -73,6 +76,8 @@ doctor run. `live-uptime-advanced` means multiple samples had the same boot ID
 and the later sample reported higher `uptime_s`; that is a live-activity hint.
 `uptime-not-advancing` means multiple samples were observed but the reported
 uptime did not increase.
+`missing-expected-health` means a board listed in `HYPHA_EXPECTED_BOARDS` did
+not appear in the current health query.
 `freshness-unknown` means the retained payload came from legacy firmware that
 does not report `uptime_s`; treat it as last-known state, not proof the board is
 currently alive.
