@@ -83,6 +83,10 @@ def validate_summary(path: Path) -> list[str]:
         if data["warmup_s"] >= data["sample_duration_s"]:
             errors.append("warmup_s: must be < sample_duration_s")
 
+    raw_trace = data.get("raw_trace")
+    if isinstance(raw_trace, str) and not raw_trace.startswith("external:"):
+        errors.append("raw_trace: must start with external:")
+
     if is_number(data.get("rssi_min")) and is_number(data.get("rssi_max")):
         if data["rssi_min"] > data["rssi_max"]:
             errors.append("rssi_min: must be <= rssi_max")

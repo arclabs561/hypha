@@ -64,7 +64,7 @@ cat >"$BAD" <<'JSON'
   "delivered_observations": 0,
   "publish_failures": 0,
   "energy_mj_per_observation": 1.0,
-  "raw_trace": "external:/tmp/private-trace.csv",
+  "raw_trace": "tmp/private-trace.csv",
   "notes": "sanitized"
 }
 JSON
@@ -79,6 +79,7 @@ grep -q 'publish_interval_s: required positive number' "$BAD_OUT"
 grep -q 'sample_rate_hz: required positive number' "$BAD_OUT"
 grep -q 'led_max: must be <= 255' "$BAD_OUT"
 grep -q 'warmup_s: must be < sample_duration_s' "$BAD_OUT"
+grep -q 'raw_trace: must start with external:' "$BAD_OUT"
 grep -q 'rssi_min: must be <= rssi_max' "$BAD_OUT"
 grep -q 'mean_current_ma: must be <= p95_current_ma' "$BAD_OUT"
 grep -q 'energy_mj_per_observation: must be 0' "$BAD_OUT"
