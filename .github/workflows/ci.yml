@@ -11,8 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: install native deps (libudev for the serialport crate)
-        run: sudo apt-get update && sudo apt-get install -y libudev-dev pkg-config
+      - name: install native deps
+        run: sudo apt-get update && sudo apt-get install -y jq libudev-dev pkg-config
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
@@ -23,6 +23,15 @@ jobs:
         run: cargo test
       - name: firmware host tests
         run: cargo test --manifest-path firmware/host-tests/Cargo.toml
+      - name: operator script tests
+        run: |
+          bash -n scripts/mesh_doctor.sh scripts/sign_http_ota.sh
+          bash scripts/test_hypha_health_snapshot.sh
+          bash scripts/test_mesh_doctor_ota_health.sh
+          bash scripts/test_mesh_doctor_tailscale.sh
+          bash scripts/test_fleet_power_doctor.sh
+          bash scripts/test_power_measurement_validator.sh
+          bash scripts/test_sign_http_ota.sh
       - name: fmt
         run: cargo fmt --all -- --check
       - name: clippy
