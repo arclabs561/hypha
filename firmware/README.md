@@ -130,5 +130,5 @@ just esp-c6-http-ota-sign /path/to/firmware.bin firmware/mesh_ota/keys/priv.pem
 ```
 
 The signed manifest version must be strictly greater than the running firmware
-version. The current IDF firmware version is `0.16.2`; boards reporting
-`0.16.1` will accept a correctly signed `0.16.2` image.
+version. The current IDF firmware version is `0.16.3`; boards reporting
+`0.16.2` will accept a correctly signed `0.16.3` image.
