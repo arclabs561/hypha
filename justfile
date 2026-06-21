@@ -77,6 +77,10 @@ healthchecks-ping mode="":
 power-measurement-validate *paths:
     python3 scripts/validate_power_measurement.py {{paths}}
 
+# Print a sanitized ESP32-C6 power measurement summary template.
+power-measurement-template:
+    @python3 scripts/validate_power_measurement.py --template
+
 # Stream all C6 serial logs to /tmp/esp-debug.log.
 esp-c6-debug:
     bash scripts/esp_debug_monitor.sh

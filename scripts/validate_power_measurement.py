@@ -41,6 +41,34 @@ REQUIRED_POSITIVE_FIELDS = {
     "sample_rate_hz",
 }
 
+SUMMARY_TEMPLATE = {
+    "board": "hypha-board-id",
+    "firmware_sha": "git-sha",
+    "firmware_version": "0.0.0",
+    "mode": "baseline_active",
+    "power_source": "usb",
+    "measurement_device": "meter-or-sanitized-label",
+    "wifi_ap": "sanitized-ap-label-or-hash",
+    "rssi_min": -70,
+    "rssi_max": -50,
+    "wifi_power_save": "none",
+    "mqtt_path": "sanitized-broker",
+    "publish_interval_s": 30,
+    "led_mode": "auto",
+    "led_max": 255,
+    "ble_scan": "on",
+    "sample_duration_s": 600,
+    "sample_rate_hz": 1,
+    "warmup_s": 60,
+    "mean_current_ma": 0.0,
+    "p95_current_ma": 0.0,
+    "delivered_observations": 0,
+    "publish_failures": 0,
+    "energy_mj_per_observation": 0.0,
+    "raw_trace": "external:replace-with-private-trace-reference",
+    "notes": "sanitized",
+}
+
 
 def is_number(value: Any) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
@@ -107,8 +135,15 @@ def validate_summary(path: Path) -> list[str]:
 
 
 def main(argv: list[str]) -> int:
+    if len(argv) == 2 and argv[1] == "--template":
+        print(json.dumps(SUMMARY_TEMPLATE, indent=2))
+        return 0
+
     if len(argv) < 2:
-        print("usage: validate_power_measurement.py <summary.json> [...]", file=sys.stderr)
+        print(
+            "usage: validate_power_measurement.py --template | <summary.json> [...]",
+            file=sys.stderr,
+        )
         return 2
 
     status = 0

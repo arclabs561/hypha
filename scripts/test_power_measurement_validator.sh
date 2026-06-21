@@ -3,9 +3,10 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GOOD="$(mktemp -t hypha-power-good.XXXXXX.json)"
+TEMPLATE="$(mktemp -t hypha-power-template.XXXXXX.json)"
 BAD="$(mktemp -t hypha-power-bad.XXXXXX.json)"
 BAD_OUT="$(mktemp -t hypha-power-bad-out.XXXXXX)"
-trap 'rm -f "$GOOD" "$BAD" "$BAD_OUT"' EXIT
+trap 'rm -f "$GOOD" "$TEMPLATE" "$BAD" "$BAD_OUT"' EXIT
 
 cat >"$GOOD" <<'JSON'
 {
@@ -38,6 +39,9 @@ cat >"$GOOD" <<'JSON'
 JSON
 
 python3 "$ROOT/scripts/validate_power_measurement.py" "$GOOD" >/dev/null
+python3 "$ROOT/scripts/validate_power_measurement.py" --template >"$TEMPLATE"
+python3 "$ROOT/scripts/validate_power_measurement.py" "$TEMPLATE" >/dev/null
+grep -q '"raw_trace": "external:' "$TEMPLATE"
 
 cat >"$BAD" <<'JSON'
 {

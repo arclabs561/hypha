@@ -10,6 +10,12 @@ Validate summaries before committing:
 just power-measurement-validate docs/measurements/power/*.json
 ```
 
+Start a new sanitized summary with:
+
+```sh
+just power-measurement-template > docs/measurements/power/<date>-<board>-<mode>.json
+```
+
 Required fields:
 
 ```json
