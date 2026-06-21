@@ -44,3 +44,6 @@ Required fields:
 
 `energy_mj_per_observation` is the summary metric. Current by mode is supporting
 evidence, not the claim by itself.
+`publish_interval_s`, `sample_duration_s`, and `sample_rate_hz` must be positive.
+`warmup_s` must be shorter than `sample_duration_s`. `led_max` is the firmware
+brightness cap and must be in `0..255`.

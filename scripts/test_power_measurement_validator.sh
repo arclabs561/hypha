@@ -52,12 +52,12 @@ cat >"$BAD" <<'JSON'
   "rssi_max": -70,
   "wifi_power_save": "none",
   "mqtt_path": "sanitized-broker",
-  "publish_interval_s": 30,
+  "publish_interval_s": 0,
   "led_mode": "off",
-  "led_max": 0,
+  "led_max": 300,
   "ble_scan": "on",
-  "sample_duration_s": 600,
-  "sample_rate_hz": 1,
+  "sample_duration_s": 60,
+  "sample_rate_hz": 0,
   "warmup_s": 60,
   "mean_current_ma": 20.0,
   "p95_current_ma": 10.0,
@@ -75,6 +75,10 @@ if python3 "$ROOT/scripts/validate_power_measurement.py" "$BAD" >"$BAD_OUT" 2>&1
 fi
 
 grep -q 'board: required non-empty string' "$BAD_OUT"
+grep -q 'publish_interval_s: required positive number' "$BAD_OUT"
+grep -q 'sample_rate_hz: required positive number' "$BAD_OUT"
+grep -q 'led_max: must be <= 255' "$BAD_OUT"
+grep -q 'warmup_s: must be < sample_duration_s' "$BAD_OUT"
 grep -q 'rssi_min: must be <= rssi_max' "$BAD_OUT"
 grep -q 'mean_current_ma: must be <= p95_current_ma' "$BAD_OUT"
 grep -q 'energy_mj_per_observation: must be 0' "$BAD_OUT"

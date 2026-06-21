@@ -26,16 +26,19 @@ REQUIRED_STRING_FIELDS = {
 }
 
 REQUIRED_NONNEGATIVE_FIELDS = {
-    "publish_interval_s",
     "led_max",
-    "sample_duration_s",
-    "sample_rate_hz",
     "warmup_s",
     "mean_current_ma",
     "p95_current_ma",
     "delivered_observations",
     "publish_failures",
     "energy_mj_per_observation",
+}
+
+REQUIRED_POSITIVE_FIELDS = {
+    "publish_interval_s",
+    "sample_duration_s",
+    "sample_rate_hz",
 }
 
 
@@ -63,10 +66,22 @@ def validate_summary(path: Path) -> list[str]:
         if not is_number(value) or value < 0:
             errors.append(f"{field}: required non-negative number")
 
+    for field in sorted(REQUIRED_POSITIVE_FIELDS):
+        value = data.get(field)
+        if not is_number(value) or value <= 0:
+            errors.append(f"{field}: required positive number")
+
     for field in ("rssi_min", "rssi_max"):
         value = data.get(field)
         if not is_number(value):
             errors.append(f"{field}: required number")
+
+    if is_number(data.get("led_max")) and data["led_max"] > 255:
+        errors.append("led_max: must be <= 255")
+
+    if is_number(data.get("warmup_s")) and is_number(data.get("sample_duration_s")):
+        if data["warmup_s"] >= data["sample_duration_s"]:
+            errors.append("warmup_s: must be < sample_duration_s")
 
     if is_number(data.get("rssi_min")) and is_number(data.get("rssi_max")):
         if data["rssi_min"] > data["rssi_max"]:
