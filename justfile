@@ -92,12 +92,13 @@ check:
     cargo clippy --all-targets -- -D warnings
     cargo test
     cargo test --manifest-path firmware/host-tests/Cargo.toml
-    bash -n scripts/mesh_doctor.sh scripts/sign_http_ota.sh
+    bash -n scripts/mesh_doctor.sh scripts/sign_http_ota.sh scripts/healthchecks_ping.sh
     bash scripts/test_hypha_health_snapshot.sh
     bash scripts/test_mesh_doctor_ota_health.sh
     bash scripts/test_mesh_doctor_ssh_mqtt.sh
     bash scripts/test_mesh_doctor_tailscale.sh
     bash scripts/test_fleet_power_doctor.sh
+    bash scripts/test_healthchecks_ping.sh
     bash scripts/test_power_measurement_validator.sh
     bash scripts/test_sign_http_ota.sh
 
