@@ -80,6 +80,8 @@ telemetry, so a blank OTA column should not be read as a successful check.
 `no-mqtt-peer-pulses` means the board has not heard MQTT firefly pulses from
 other boards; it is not the same thing as WiFi failure or direct ESP-NOW
 isolation.
+`no-health-payloads` means the broker query returned no retained health payloads
+to summarize.
 
 `power_source` is build-time configured (`POWER_SOURCE=usb|mains|battery|...`),
 not automatic battery detection. Automatic battery inference needs board-level

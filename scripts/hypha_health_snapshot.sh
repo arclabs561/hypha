@@ -108,6 +108,9 @@ if [[ -s $payloads ]]; then
     printf '%-18s %-7s %-8s %-8s %-10s %-13s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \
       "$board" "$fw" "$boot" "$uptime" "$power" "$placement" "$led_state" "$mode" "$rssi" "$peers" "$ota" "$loop" "$notes"
   done
+else
+  printf '%-18s %-7s %-8s %-8s %-10s %-13s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \
+    none "" "" "" "" "" "" "" "" "" "" "" "no-health-payloads"
 fi
 
 exit "$status"

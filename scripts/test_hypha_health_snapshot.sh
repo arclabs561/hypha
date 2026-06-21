@@ -13,6 +13,7 @@ hypha/hypha-old/health {"board":"hypha-old","fw":"0.16.0","wifi_rssi":-70,"led":
 JSON
 
 OUT="$(HYPHA_EXPECTED_FW=0.16.1 bash "$ROOT/scripts/hypha_health_snapshot.sh" "$TMP")"
+EMPTY_OUT="$(bash "$ROOT/scripts/hypha_health_snapshot.sh" /dev/null)"
 
 grep -q 'boot' <<<"$OUT"
 grep -q 'uptime' <<<"$OUT"
@@ -38,5 +39,6 @@ grep -Eq 'hypha-old.*legacy-no-peer-pulses-field' <<<"$OUT"
 grep -Eq 'hypha-old.*legacy-no-ota-state' <<<"$OUT"
 grep -Eq 'hypha-old.*legacy-no-placement' <<<"$OUT"
 grep -Eq 'hypha-unknown.*power-source-unknown' <<<"$OUT"
+grep -Eq '^none .*no-health-payloads' <<<"$EMPTY_OUT"
 
 printf 'hypha-health snapshot parser: ok\n'
