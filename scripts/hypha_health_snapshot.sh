@@ -66,6 +66,7 @@ if [[ -s $payloads ]]; then
         (if has("boot") | not then "legacy-no-boot-id" else empty end),
         (if has("uptime_s") | not then "freshness-unknown" else empty end),
         (if has("power_source") | not then "legacy-no-power-source" else empty end),
+        (if s("power_source") == "unknown" then "power-source-unknown" else empty end),
         (if has("peer_pulses") and n("peer_pulses") == 0
          then "no-mqtt-peer-pulses"
          elif has("peer_pulses") | not

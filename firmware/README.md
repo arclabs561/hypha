@@ -71,6 +71,8 @@ For brokers with credentials, set `HYPHA_MQTT_USER` and `HYPHA_MQTT_PASS`.
 `freshness-unknown` means the retained payload came from legacy firmware that
 does not report `uptime_s`; treat it as last-known state, not proof the board is
 currently alive.
+`power-source-unknown` means the firmware reports the field but the build did
+not set a specific `POWER_SOURCE`.
 `fw-not-ota-version` means `just mesh-doctor` found a signed OTA manifest and
 the board's reported firmware version does not match it.
 `legacy-no-ota-state` means the board did not report secure OTA decision
