@@ -25,11 +25,11 @@ esp-c6-build:
 
 # Flash one ESP32-C6 over USB with the dual-slot OTA partition table.
 esp-c6-flash port="/dev/cu.usbmodem1101":
-    port='{{port}}'; port="${port#port=}"; cargo espflash board-info --chip esp32c6 --before usb-reset --port "$port"; cd firmware/hypha_esp_c6_idf && cargo espflash flash --release --chip esp32c6 --before usb-reset --port "$port" --partition-table partitions_ota.csv --monitor
+    port='{{port}}'; port="${port#port=}"; cargo espflash board-info --chip esp32c6 --before usb-reset --port "$port"; cd firmware/hypha_esp_c6_idf && cargo espflash flash --release --chip esp32c6 --before usb-reset --port "$port" --partition-table partitions_ota.csv --erase-parts otadata --monitor
 
 # Flash every /dev/cu.usbmodem* ESP32-C6. Use without BOARD_ID so firmware derives unique IDs from MAC.
 esp-c6-flash-all:
-    bash -c 'set -euo pipefail; found=0; for port in /dev/cu.usbmodem*; do [[ -e "$port" ]] || continue; found=1; echo "probing $port"; cargo espflash board-info --chip esp32c6 --before usb-reset --port "$port"; echo "flashing $port"; (cd firmware/hypha_esp_c6_idf && cargo espflash flash --release --chip esp32c6 --before usb-reset --port "$port" --partition-table partitions_ota.csv); done; [[ "$found" -eq 1 ]] || { echo "no /dev/cu.usbmodem* ports found" >&2; exit 1; }'
+    bash -c 'set -euo pipefail; found=0; for port in /dev/cu.usbmodem*; do [[ -e "$port" ]] || continue; found=1; echo "probing $port"; cargo espflash board-info --chip esp32c6 --before usb-reset --port "$port"; echo "flashing $port"; (cd firmware/hypha_esp_c6_idf && cargo espflash flash --release --chip esp32c6 --before usb-reset --port "$port" --partition-table partitions_ota.csv --erase-parts otadata); done; [[ "$found" -eq 1 ]] || { echo "no /dev/cu.usbmodem* ports found" >&2; exit 1; }'
 
 # Validate C6 serial output from connected boards.
 esp-c6-validate-serial:

@@ -41,7 +41,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use esp_idf_svc::hal::gpio::OutputPin;
+use esp_idf_svc::hal::gpio::{Output, OutputPin, PinDriver};
 use esp_idf_svc::hal::peripheral::Peripheral;
 use esp_idf_svc::hal::rmt::config::TransmitConfig;
 use esp_idf_svc::hal::rmt::{FixedLengthSignal, PinState, Pulse, RmtChannel, TxRmtDriver};
@@ -135,6 +135,49 @@ pub fn spawn(
         .spawn(move || led_loop(driver, stats, updated));
 }
 
+pub fn spawn_xiao_user_led(
+    pin: impl Peripheral<P = impl OutputPin> + 'static,
+    stats: Arc<Stats>,
+    updated: bool,
+) {
+    if option_env!("LED_OFF") == Some("1") {
+        return;
+    }
+    let driver = match PinDriver::output(pin) {
+        Ok(d) => d,
+        Err(e) => {
+            warn!("LED disabled (GPIO init failed: {:?})", e);
+            return;
+        }
+    };
+    let _ = thread::Builder::new()
+        .name("led".into())
+        .stack_size(4096)
+        .spawn(move || led_loop(driver, stats, updated));
+}
+
+trait LedOutput {
+    fn write(&mut self, rgb: Rgb, dith: &mut [f32; 3]) -> anyhow::Result<()>;
+}
+
+impl LedOutput for TxRmtDriver<'static> {
+    fn write(&mut self, rgb: Rgb, dith: &mut [f32; 3]) -> anyhow::Result<()> {
+        write_dithered(self, rgb, dith)
+    }
+}
+
+impl<T: OutputPin> LedOutput for PinDriver<'static, T, Output> {
+    fn write(&mut self, rgb: Rgb, _dith: &mut [f32; 3]) -> anyhow::Result<()> {
+        let lit = rgb.0.max(rgb.1).max(rgb.2) >= 1.0;
+        if lit {
+            self.set_high()?;
+        } else {
+            self.set_low()?;
+        }
+        Ok(())
+    }
+}
+
 /// Per-cycle phase accumulators (all wrap to stay small: no f32 erosion).
 struct Phases {
     boot: f32,   // 0..1 once over BOOT_BLOOM_S, then pegged
@@ -146,7 +189,7 @@ struct Phases {
     update: f32, // seconds into the green update-ok blinks
 }
 
-fn led_loop(mut tx: TxRmtDriver<'static>, stats: Arc<Stats>, updated: bool) {
+fn led_loop(mut tx: impl LedOutput, stats: Arc<Stats>, updated: bool) {
     let ver_hue = version_hue();
     let mut last_tick = Instant::now();
     let mut last_connected = Instant::now();
@@ -283,7 +326,7 @@ fn led_loop(mut tx: TxRmtDriver<'static>, stats: Arc<Stats>, updated: bool) {
         stats.led_rgb.store(pack, Ordering::Relaxed);
         stats.led_state.store(state, Ordering::Relaxed);
 
-        if let Err(e) = write_dithered(&mut tx, rgb, &mut dith) {
+        if let Err(e) = tx.write(rgb, &mut dith) {
             warn!("LED write failed: {:?}", e);
         }
         thread::sleep(Duration::from_millis(TICK_MS));

@@ -153,12 +153,15 @@ fn main() -> anyhow::Result<()> {
     // sw-reset = the reset an OTA install ends with: show the green
     // "update applied" blinks once after the bloom.
     let updated = mqtt::reset_reason() == "sw-reset";
-    led::spawn(
-        peripherals.rmt.channel0,
-        peripherals.pins.gpio8,
-        stats.clone(),
-        updated,
-    );
+    match option_env!("LED_BACKEND") {
+        Some("ws2812") => led::spawn(
+            peripherals.rmt.channel0,
+            peripherals.pins.gpio8,
+            stats.clone(),
+            updated,
+        ),
+        _ => led::spawn_xiao_user_led(peripherals.pins.gpio15, stats.clone(), updated),
+    }
 
     let mut wifi = BlockingWifi::wrap(
         EspWifi::new(peripherals.modem, sys_loop.clone(), Some(nvs.clone()))?,

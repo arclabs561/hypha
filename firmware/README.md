@@ -102,6 +102,21 @@ to summarize.
 not automatic battery detection. Automatic battery inference needs board-level
 voltage/current sensing hardware or a declared power-path input.
 
+## XIAO ESP32C6 LED backend
+
+The XIAO ESP32C6 boards use the onboard orange user light on GPIO15. The red
+indicator near the USB connector is a hardware battery-charge indicator, not a
+firmware status LED: with USB and no battery it may turn on briefly and then
+turn off. There is no separate RGB status LED on the bare board. The IDF
+firmware therefore defaults to a one-bit GPIO LED backend: locate and diagnostic
+pages blink the orange user light, while retained health still reports the RGB
+vocabulary state the renderer intended. Builds for external WS2812 RGB hardware
+can opt back into the older GPIO8/RMT path with `LED_BACKEND=ws2812`.
+
+`healthy-dark` is still the normal XIAO idle state. If `locate` is true in
+health, the orange user light should blink. If it does not, suspect the LED
+backend or board hardware, not WiFi or MQTT.
+
 ## HTTP OTA signing
 
 `hypha_esp_c6_idf` accepts HTTP OTA only when the image has a signed manifest
@@ -115,5 +130,5 @@ just esp-c6-http-ota-sign /path/to/firmware.bin firmware/mesh_ota/keys/priv.pem
 ```
 
 The signed manifest version must be strictly greater than the running firmware
-version. The current IDF firmware version is `0.16.1`; boards reporting
-`0.16.0` will accept a correctly signed `0.16.1` image.
+version. The current IDF firmware version is `0.16.2`; boards reporting
+`0.16.1` will accept a correctly signed `0.16.2` image.
