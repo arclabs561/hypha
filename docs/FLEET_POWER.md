@@ -92,7 +92,10 @@ services run:
 
 ```bash
 umask 077
+cp docs/examples/healthchecks.env.tpl healthchecks.env.tpl
+# edit the op:// reference to the host-specific Healthchecks.io item
 op inject -i healthchecks.env.tpl -o healthchecks.env
+chmod 0600 healthchecks.env
 ```
 
 1Password CLI is acceptable for interactive provisioning. It is not a runtime
