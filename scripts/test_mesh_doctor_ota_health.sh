@@ -43,7 +43,7 @@ SH
 chmod 0755 "$TMP/mosquitto_sub"
 
 OUT="$(
-  PATH="$TMP:$PATH" HYPHA_HEALTH_COUNT=2 bash "$ROOT/scripts/mesh_doctor.sh" 192.0.2.1 1883
+  PATH="$TMP:$PATH" HYPHA_HEALTH_COUNT=2 HYPHA_EXPECTED_BOARDS="hypha-good,hypha-missing" bash "$ROOT/scripts/mesh_doctor.sh" 192.0.2.1 1883
 )"
 
 grep -q 'ok: manifest v=0.16.1' <<<"$OUT"
@@ -51,5 +51,6 @@ grep -q 'retained health is last-known state' <<<"$OUT"
 grep -Eq 'hypha-good.*healthy-dark' <<<"$OUT"
 grep -Eq 'hypha-old.*fw-not-ota-version' <<<"$OUT"
 grep -Eq 'hypha-old.*weak-wifi' <<<"$OUT"
+grep -Eq 'hypha-missing.*missing-expected-health' <<<"$OUT"
 
 printf 'mesh doctor ota health integration: ok\n'
