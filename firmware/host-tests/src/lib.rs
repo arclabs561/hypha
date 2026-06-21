@@ -78,34 +78,22 @@ mod ota_security_tests {
 
     #[test]
     fn ota_state_names_are_stable_for_health() {
-        assert_eq!(
-            ota_security::ota_state_name(ota_security::OTA_DISABLED),
-            "disabled"
-        );
-        assert_eq!(
-            ota_security::ota_state_name(ota_security::OTA_NO_MANIFEST),
-            "no_manifest"
-        );
-        assert_eq!(
-            ota_security::ota_state_name(ota_security::OTA_BAD_MANIFEST),
-            "bad_manifest"
-        );
-        assert_eq!(
-            ota_security::ota_state_name(ota_security::OTA_BAD_KEY),
-            "bad_key"
-        );
-        assert_eq!(
-            ota_security::ota_state_name(ota_security::OTA_FETCH_ERROR),
-            "fetch_error"
-        );
-        assert_eq!(
-            ota_security::ota_state_name(ota_security::OTA_HASH_MISMATCH),
-            "hash_mismatch"
-        );
-        assert_eq!(
-            ota_security::ota_state_name(ota_security::OTA_APPLY_ERROR),
-            "apply_error"
-        );
+        for (state, name) in [
+            (ota_security::OTA_IDLE, "idle"),
+            (ota_security::OTA_DISABLED, "disabled"),
+            (ota_security::OTA_NO_MANIFEST, "no_manifest"),
+            (ota_security::OTA_BAD_KEY, "bad_key"),
+            (ota_security::OTA_BAD_MANIFEST, "bad_manifest"),
+            (ota_security::OTA_NOT_NEWER, "not_newer"),
+            (ota_security::OTA_DOWNLOADING, "downloading"),
+            (ota_security::OTA_FETCH_ERROR, "fetch_error"),
+            (ota_security::OTA_HASH_MISMATCH, "hash_mismatch"),
+            (ota_security::OTA_CHUNK_MISMATCH, "chunk_mismatch"),
+            (ota_security::OTA_APPLY_ERROR, "apply_error"),
+            (ota_security::OTA_REBOOTING, "rebooting"),
+        ] {
+            assert_eq!(ota_security::ota_state_name(state), name);
+        }
         assert_eq!(ota_security::ota_state_name(255), "unknown");
     }
 
