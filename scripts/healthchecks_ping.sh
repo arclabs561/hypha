@@ -5,6 +5,7 @@ set -euo pipefail
 
 MODE="${1:-}"
 PING_URL="${HEALTHCHECKS_URL:-}"
+PROC_ROOT="${HYPHA_PROC_ROOT:-/proc}"
 
 if [[ -z $PING_URL ]]; then
   printf 'error: HEALTHCHECKS_URL is required\n' >&2
@@ -29,12 +30,12 @@ os="$(uname -s)"
 boot_id="unknown"
 uptime_s="unknown"
 
-if [[ -r /proc/sys/kernel/random/boot_id ]]; then
-  boot_id="$(cat /proc/sys/kernel/random/boot_id)"
+if [[ -r "$PROC_ROOT/sys/kernel/random/boot_id" ]]; then
+  boot_id="$(cat "$PROC_ROOT/sys/kernel/random/boot_id")"
 fi
 
-if [[ -r /proc/uptime ]]; then
-  uptime_s="$(cut -d. -f1 /proc/uptime)"
+if [[ -r "$PROC_ROOT/uptime" ]]; then
+  uptime_s="$(cut -d. -f1 "$PROC_ROOT/uptime")"
 elif [[ $os == Darwin ]]; then
   boot_epoch="$(
     sysctl -n kern.boottime 2>/dev/null \

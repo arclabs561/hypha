@@ -76,6 +76,7 @@ grep -q 'mode must be one of' "$TMP/mode.err"
 OUT="$(
   HYPHA_TEST_CURL_URL="$TMP/url" \
     HYPHA_TEST_CURL_PAYLOAD="$TMP/payload" \
+    HYPHA_PROC_ROOT="$TMP/proc-missing" \
     HEALTHCHECKS_URL="https://hc-ping.com/uuid/" \
     PATH="$TMP:$PATH" \
     bash "$ROOT/scripts/healthchecks_ping.sh" start
