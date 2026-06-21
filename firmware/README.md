@@ -34,7 +34,7 @@ Hypha firmware currently has two C6 lines with different transport meanings:
   connects to the broker, and board-to-board firefly pulses go through MQTT. An
   amber slow breath means the MQTT bus has been unreachable for more than 120 s.
   Retained health reports `boot`, configured `power_source`, `led_state`,
-  `led`, `wifi_rssi`, `mqtt_reconnects`, `peer_pulses`, `ota_state`,
+  `led`, `uptime_s`, `wifi_rssi`, `mqtt_reconnects`, `peer_pulses`, `ota_state`,
   `ota_checks`, `ota_failures`, and `placement_state`.
 
 These are separate observations:
@@ -59,6 +59,9 @@ mosquitto_sub -v -t 'hypha/+/health' -C 4 | just hypha-health
 ```
 
 `healthy-dark` means the controllable LED is intentionally off in auto mode.
+`freshness-unknown` means the retained payload came from legacy firmware that
+does not report `uptime_s`; treat it as last-known state, not proof the board is
+currently alive.
 `no-mqtt-peer-pulses` means the board has not heard MQTT firefly pulses from
 other boards; it is not the same thing as WiFi failure or direct ESP-NOW
 isolation.

@@ -33,8 +33,8 @@ json_from_line() {
 
 need_cmd jq
 
-printf '%-18s %-7s %-8s %-10s %-13s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \
-  board fw boot power placement led_state mode rssi peers ota loop notes
+printf '%-18s %-7s %-8s %-8s %-10s %-13s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \
+  board fw boot uptime power placement led_state mode rssi peers ota loop notes
 
 status=0
 while IFS= read -r line; do
@@ -49,6 +49,7 @@ while IFS= read -r line; do
          then "healthy-dark" else empty end),
         (if s("led_state") == "fault" then "mqtt-bus-down-led" else empty end),
         (if has("boot") | not then "legacy-no-boot-id" else empty end),
+        (if has("uptime_s") | not then "freshness-unknown" else empty end),
         (if has("power_source") | not then "legacy-no-power-source" else empty end),
         (if has("peer_pulses") and n("peer_pulses") == 0
          then "no-mqtt-peer-pulses"
@@ -69,6 +70,7 @@ while IFS= read -r line; do
       (s("board")),
       (s("fw")),
       (s("boot")),
+      (if has("uptime_s") then (n("uptime_s") | tostring) else "" end),
       (s("power_source")),
       (s("placement_state")),
       (s("led_state")),
@@ -84,9 +86,9 @@ while IFS= read -r line; do
     status=1
     continue
   fi
-  IFS=$'\037' read -r board fw boot power placement led_state mode rssi peers ota loop notes <<<"$row"
-  printf '%-18s %-7s %-8s %-10s %-13s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \
-    "$board" "$fw" "$boot" "$power" "$placement" "$led_state" "$mode" "$rssi" "$peers" "$ota" "$loop" "$notes"
+  IFS=$'\037' read -r board fw boot uptime power placement led_state mode rssi peers ota loop notes <<<"$row"
+  printf '%-18s %-7s %-8s %-8s %-10s %-13s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \
+    "$board" "$fw" "$boot" "$uptime" "$power" "$placement" "$led_state" "$mode" "$rssi" "$peers" "$ota" "$loop" "$notes"
 done < <(if [[ $# -gt 0 ]]; then cat "$@"; else cat; fi)
 
 exit "$status"
