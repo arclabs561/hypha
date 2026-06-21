@@ -42,11 +42,26 @@ trap cleanup EXIT
 status=0
 while IFS= read -r line; do
   [[ -n $line ]] || continue
+  topic=""
+  if [[ $line != \{* ]]; then
+    topic="${line%% *}"
+  fi
   json=$(json_from_line "$line")
-  if ! jq -c . <<<"$json" >>"$payloads" 2>/dev/null; then
+  if ! compact="$(
+    jq -c --arg topic "$topic" '
+      def topic_board:
+        (try ($topic | capture("^hypha/(?<board>[^/]+)/health$").board) catch "");
+      if ((.board // "") == "") and topic_board != ""
+      then . + {board: topic_board}
+      else .
+      end
+    ' <<<"$json" 2>/dev/null
+  )"; then
     printf 'warn: skipped malformed health line: %s\n' "$line" >&2
     status=1
+    continue
   fi
+  printf '%s\n' "$compact" >>"$payloads"
 done < <(if [[ $# -gt 0 ]]; then cat "$@"; else cat; fi)
 
 printf '%-18s %-7s %-8s %-8s %-10s %-13s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \

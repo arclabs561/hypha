@@ -3,14 +3,23 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP="$(mktemp -t hypha-health.XXXXXX)"
-trap 'rm -f "$TMP"' EXIT
+BAD="$(mktemp -t hypha-health-bad.XXXXXX)"
+BAD_OUT="$(mktemp -t hypha-health-bad-out.XXXXXX)"
+BAD_ERR="$(mktemp -t hypha-health-bad-err.XXXXXX)"
+trap 'rm -f "$TMP" "$BAD" "$BAD_OUT" "$BAD_ERR"' EXIT
 
 cat >"$TMP" <<'JSON'
 hypha/hypha-fc84/health {"board":"hypha-fc84","fw":"0.16.0","boot":"abc123ef","uptime_s":1234,"power_source":"usb","wifi_rssi":-62,"peer_pulses":3,"led":"000000","led_state":"dark","mode":"auto","ota_state":"not_newer","loop_max_ms":52,"placement_state":"moved","placement_aps":7,"placement_baseline_aps":6,"placement_common":2,"placement_shifted":2,"placement_jaccard_milli":250}
 hypha/hypha-fc84/health {"board":"hypha-fc84","fw":"0.16.0","boot":"abc123ef","uptime_s":1300,"power_source":"usb","wifi_rssi":-61,"peer_pulses":5,"led":"000000","led_state":"dark","mode":"auto","ota_state":"not_newer","loop_max_ms":53,"placement_state":"moved","placement_aps":7,"placement_baseline_aps":6,"placement_common":2,"placement_shifted":2,"placement_jaccard_milli":250}
 hypha/hypha-unknown/health {"board":"hypha-unknown","fw":"0.16.1","boot":"unkboot","uptime_s":120,"power_source":"unknown","wifi_rssi":-55,"rssi_err":1,"peer_pulses":2,"mqtt_reconnects":3,"led":"000000","led_state":"dark","mode":"auto","cmd_ignored":2,"ota_state":"not_newer","loop_max_ms":42,"placement_state":"stable"}
 hypha/hypha-old/health {"board":"hypha-old","fw":"0.16.0","wifi_rssi":-70,"led":"000000","led_state":"dark","mode":"auto","loop_max_ms":62}
+hypha/hypha-topic-only/health {"fw":"0.16.1","wifi_rssi":-64,"led":"000000","led_state":"dark","mode":"auto","loop_max_ms":52}
 JSON
+
+cat >"$BAD" <<'BADJSON'
+hypha/hypha-good/health {"board":"hypha-good","fw":"0.16.1","led":"000000","led_state":"dark","mode":"auto"}
+hypha/hypha-bad/health not-json
+BADJSON
 
 OUT="$(HYPHA_EXPECTED_FW=0.16.1 bash "$ROOT/scripts/hypha_health_snapshot.sh" "$TMP")"
 EMPTY_OUT="$(bash "$ROOT/scripts/hypha_health_snapshot.sh" /dev/null)"
@@ -21,6 +30,7 @@ grep -q 'boot' <<<"$OUT"
 grep -q 'uptime' <<<"$OUT"
 grep -q 'power' <<<"$OUT"
 grep -q 'hypha-fc84' <<<"$OUT"
+grep -q 'hypha-topic-only' <<<"$OUT"
 grep -q 'abc123ef' <<<"$OUT"
 grep -q '1300' <<<"$OUT"
 if [[ $(grep -c '^hypha-fc84' <<<"$OUT") -ne 1 ]]; then
@@ -53,5 +63,11 @@ grep -Eq 'hypha-unknown.*rssi-read-errors' <<<"$OUT"
 grep -Eq 'hypha-unknown.*mqtt-reconnected' <<<"$OUT"
 grep -Eq 'hypha-unknown.*cmd-ignored' <<<"$OUT"
 grep -Eq '^none .*no-health-payloads' <<<"$EMPTY_OUT"
+if bash "$ROOT/scripts/hypha_health_snapshot.sh" "$BAD" >"$BAD_OUT" 2>"$BAD_ERR"; then
+  echo "expected malformed health input to return nonzero" >&2
+  exit 1
+fi
+grep -q 'hypha-good' "$BAD_OUT"
+grep -q 'warn: skipped malformed health line' "$BAD_ERR"
 
 printf 'hypha-health snapshot parser: ok\n'
