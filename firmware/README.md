@@ -64,6 +64,8 @@ does not report `uptime_s`; treat it as last-known state, not proof the board is
 currently alive.
 `fw-not-ota-version` means `just mesh-doctor` found a signed OTA manifest and
 the board's reported firmware version does not match it.
+`legacy-no-ota-state` means the board did not report secure OTA decision
+telemetry, so a blank OTA column should not be read as a successful check.
 `no-mqtt-peer-pulses` means the board has not heard MQTT firefly pulses from
 other boards; it is not the same thing as WiFi failure or direct ESP-NOW
 isolation.

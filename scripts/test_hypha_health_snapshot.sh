@@ -29,6 +29,7 @@ grep -Eq 'hypha-old.*legacy-no-boot-id' <<<"$OUT"
 grep -Eq 'hypha-old.*freshness-unknown' <<<"$OUT"
 grep -Eq 'hypha-old.*legacy-no-power-source' <<<"$OUT"
 grep -Eq 'hypha-old.*legacy-no-peer-pulses-field' <<<"$OUT"
+grep -Eq 'hypha-old.*legacy-no-ota-state' <<<"$OUT"
 grep -Eq 'hypha-old.*legacy-no-placement' <<<"$OUT"
 
 printf 'hypha-health snapshot parser: ok\n'

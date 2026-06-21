@@ -61,6 +61,7 @@ while IFS= read -r line; do
         (if n("wifi_rssi") < -75 then "weak-wifi" else empty end),
         (if n("loop_max_ms") > 250 then "loop-starved" else empty end),
         (if n("ota_failures") > 0 then "ota-failures" else empty end),
+        (if has("ota_state") | not then "legacy-no-ota-state" else empty end),
         (if (s("ota_state") | test("bad|mismatch|error")) then "ota-attention" else empty end),
         (if s("placement_state") == "moved" then "placement-moved"
          elif s("placement_state") == "inconclusive" then "placement-inconclusive"
