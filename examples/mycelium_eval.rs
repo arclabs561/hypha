@@ -53,7 +53,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let mut successful_bids = 0;
         for node in &nodes {
-            if node.evaluate_task(&task, successful_bids).is_some() {
+            if node
+                .evaluate_task_with_quorum(&task, successful_bids)
+                .is_some()
+            {
                 successful_bids += 1;
             }
         }

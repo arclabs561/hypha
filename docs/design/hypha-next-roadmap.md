@@ -2,7 +2,7 @@
 status: proposal
 scope: hypha next implementation sequence
 grounded_in: ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, docs/design/hypha-refinement-roadmap.md, docs/design/esp32-c6-power-measurement.md, docs/FLEET_POWER.md, firmware/README.md
-review_trigger: revisit after ADR-0006 is accepted or rejected, after the first committed power measurement run, or before adding a new transport, trust boundary, or sleep role.
+review_trigger: revisit after the ADR-0006 naming migration lands, after the first committed power measurement run, or before adding a new transport, trust boundary, or sleep role.
 ---
 
 # Design: Hypha Next Roadmap
@@ -16,13 +16,13 @@ and verified in tests, and firmware docs distinguish WiFi, MQTT, ESP-NOW peers,
 mesh delivery, and placement fingerprints.
 
 The architectural state is less finished than the test state. ADR-0001 through
-ADR-0005 are accepted guardrails. They deliberately downgrade peer scoring,
+ADR-0006 are accepted guardrails. They deliberately downgrade peer scoring,
 conductivity, firefly, and tasks to local heuristics or telemetry until their
-missing mechanisms are added. ADR-0006 is still proposed, but much of its
-lowest-risk implementation already exists: `EnergyStatus` can carry optional
-facts, compute and storage capabilities use capacity matching, and tests cover
-those semantics. The remaining coordination work is to settle the public
-contract before widening the task API.
+missing mechanisms are added. The lowest-risk ADR-0006 implementation already
+exists: `EnergyStatus` can carry optional facts, compute and storage
+capabilities use capacity matching, and tests cover those semantics. The
+remaining coordination work is to keep the public contract narrow before
+widening the task API.
 
 The power story has a protocol, not evidence. `docs/measurements/power/` has a
 schema and validator but no committed run summaries. That means ESP32-C6 sleep,
@@ -57,9 +57,12 @@ Reversibility: reversible. This is scripts, tests, and docs.
 
 Consumer: task allocation, examples, bridge code, and future firmware messages.
 
+Progress 2026-06-21: ADR-0006 is accepted. Code now exposes explicit
+`evaluate_task_with_quorum` and `process_task_bundle_best_bid` names while
+keeping compatibility wrappers for the old method names.
+
 Work:
 
-- Decide whether ADR-0006 is accepted as written or split into smaller ADRs.
 - Name the local bidding contract. `evaluate_task` and `process_task_bundle`
   can coexist only if docs and names make their different roles explicit.
 - Decide the sensing vocabulary path: closed enum, stable URI labels, or exact
@@ -67,9 +70,9 @@ Work:
 - Keep task/state causality out of scope unless a real consumer needs tasks to
   reference shared state.
 
-Gate: ADR-0006 has accepted status, or a replacement ADR exists. Schema
-compatibility tests and examples describe one local bidding contract instead of
-two half-named auction stories.
+Gate: schema compatibility tests and examples describe the current task plane
+as local advisory heuristics, not a distributed auction. Any new public task
+schema change cites ADR-0006 or a superseding ADR.
 
 Reversibility: partially reversible. Public schema changes are harder to
 unwind than docs and tests.
@@ -134,10 +137,10 @@ and deployment promises are not.
 
 ### Coordination contract
 
-Question: accept ADR-0006 as one ADR, or split it?
+Question: keep ADR-0006 as one contract, or split sensing vocabulary and
+task/state causality later?
 
-Recommended: accept ADR-0006 after tightening the text to reflect already-built
-capacity matching and optional energy facts. Split later only if sensing
+Recommended: keep ADR-0006 as the current contract. Split later only if sensing
 vocabulary or task/state causality becomes a real consumer requirement.
 
 ### OTA path

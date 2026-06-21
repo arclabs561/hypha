@@ -138,9 +138,11 @@ impl SporeNode {
         self.metabolism.lock().unwrap().energy_score()
     }
 
-    /// Local bidding heuristic: only bid if energy is available and the local
-    /// caller reports few competing bids.
-    pub fn evaluate_task(&self, task: &Task, known_bids: usize) -> Option<Bid> {
+    /// Local quorum-count bidding heuristic.
+    ///
+    /// The caller supplies only a count of known competing bids. This is an
+    /// advisory local silence rule, not a distributed auction protocol.
+    pub fn evaluate_task_with_quorum(&self, task: &Task, known_bids: usize) -> Option<Bid> {
         let score = self.energy_score();
 
         // If 3+ healthy nodes are already bidding, lower-energy nodes stay silent.
@@ -149,6 +151,11 @@ impl SporeNode {
         }
 
         self.local_bid_for_task(task, score)
+    }
+
+    /// Compatibility wrapper for the quorum-count local bidding heuristic.
+    pub fn evaluate_task(&self, task: &Task, known_bids: usize) -> Option<Bid> {
+        self.evaluate_task_with_quorum(task, known_bids)
     }
 
     pub fn heartbeat_interval(&self) -> Duration {
@@ -236,8 +243,16 @@ impl SporeNode {
         false
     }
 
-    /// Local task-bundle bidding heuristic.
-    pub fn process_task_bundle(&self, task: &Task, known_bids: &mut Vec<Bid>) -> Option<Bid> {
+    /// Local best-bid bidding heuristic.
+    ///
+    /// The caller supplies and owns the bid vector. This method may append this
+    /// node's bid when it beats the caller-local best known bid, but it does not
+    /// coordinate consensus or commitment with other nodes.
+    pub fn process_task_bundle_best_bid(
+        &self,
+        task: &Task,
+        known_bids: &mut Vec<Bid>,
+    ) -> Option<Bid> {
         let score = self.energy_score();
         let my_id = self.peer_id.to_string();
 
@@ -274,6 +289,11 @@ impl SporeNode {
         };
         known_bids.push(bid.clone());
         Some(bid)
+    }
+
+    /// Compatibility wrapper for the caller-local best-bid heuristic.
+    pub fn process_task_bundle(&self, task: &Task, known_bids: &mut Vec<Bid>) -> Option<Bid> {
+        self.process_task_bundle_best_bid(task, known_bids)
     }
 
     /// Construct a `Mycelium` swarm bound to this node's persisted identity.
@@ -610,14 +630,14 @@ mod eval_suite {
         };
 
         // 1. No other bidders -> Spore bids (energy 1.0)
-        assert!(node.evaluate_task(&task, 0).is_some());
+        assert!(node.evaluate_task_with_quorum(&task, 0).is_some());
 
         // 2. 5 other bidders already exist -> Spore stays silent to save energy
         // Simulate low battery by modifying mock
         metabolism.lock().unwrap().energy = 0.3; // Low battery equivalent
 
         assert!(
-            node.evaluate_task(&task, 5).is_none(),
+            node.evaluate_task_with_quorum(&task, 5).is_none(),
             "Should stay silent due to quorum"
         );
     }

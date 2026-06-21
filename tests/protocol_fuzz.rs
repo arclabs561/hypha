@@ -41,7 +41,7 @@ proptest! {
         ];
 
         // This should never panic, even with weird floats
-        let _ = node.process_task_bundle(&task, &mut known_bids);
+        let _ = node.process_task_bundle_best_bid(&task, &mut known_bids);
     }
 
     #[test]

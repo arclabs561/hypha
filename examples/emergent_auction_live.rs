@@ -85,7 +85,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let my_id = format!("node-{}", i);
             let bids = bid_history.entry(task.id.clone()).or_default();
 
-            if let Some(bid) = nodes[i].process_task_bundle(&task, bids) {
+            if let Some(bid) = nodes[i].process_task_bundle_best_bid(&task, bids) {
                 println!("  Node {} bid: Weighted Score {:.4}", i, bid.energy_score);
             }
 

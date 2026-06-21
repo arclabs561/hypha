@@ -12,4 +12,4 @@ single chat session. Each record is one `NNNN-slug.md` file.
 | [0003](0003-conductivity-is-a-usage-heuristic.md) | conductivity is a usage heuristic | Accepted |
 | [0004](0004-firefly-is-telemetry-until-measured.md) | firefly is telemetry until measured | Accepted |
 | [0005](0005-tasks-do-not-reference-state-versions.md) | tasks do not reference state versions | Accepted |
-| [0006](0006-coordinate-with-typed-facts-and-one-bidding-contract.md) | coordinate with typed facts and one bidding contract | Proposed |
+| [0006](0006-coordinate-with-typed-facts-and-one-bidding-contract.md) | coordinate with typed facts and one bidding contract | Accepted |

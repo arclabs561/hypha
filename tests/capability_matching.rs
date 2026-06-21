@@ -34,7 +34,7 @@ fn evaluate_task_accepts_sufficient_compute_capacity() {
     let (_tmp, node) = compute_node(101, 1.0);
     let task = compute_task(50);
 
-    let bid = node.evaluate_task(&task, 0).unwrap();
+    let bid = node.evaluate_task_with_quorum(&task, 0).unwrap();
 
     assert_eq!(bid.task_id, "compute-50");
     assert_eq!(bid.energy_score, 1.0);
@@ -45,7 +45,7 @@ fn evaluate_task_rejects_insufficient_compute_capacity() {
     let (_tmp, node) = compute_node(49, 1.0);
     let task = compute_task(50);
 
-    assert!(node.evaluate_task(&task, 0).is_none());
+    assert!(node.evaluate_task_with_quorum(&task, 0).is_none());
 }
 
 #[test]
@@ -54,7 +54,7 @@ fn process_task_bundle_accepts_sufficient_compute_capacity() {
     let task = compute_task(50);
     let mut bids = Vec::new();
 
-    let bid = node.process_task_bundle(&task, &mut bids).unwrap();
+    let bid = node.process_task_bundle_best_bid(&task, &mut bids).unwrap();
 
     assert_eq!(bid.task_id, "compute-50");
     assert_eq!(bids.len(), 1);
@@ -67,7 +67,9 @@ fn process_task_bundle_rejects_insufficient_compute_capacity() {
     let task = compute_task(50);
     let mut bids = Vec::new();
 
-    assert!(node.process_task_bundle(&task, &mut bids).is_none());
+    assert!(node
+        .process_task_bundle_best_bid(&task, &mut bids)
+        .is_none());
     assert!(bids.is_empty());
 }
 
@@ -82,7 +84,9 @@ fn process_task_bundle_still_respects_better_known_bid() {
         cost_mah: 1.0,
     }];
 
-    assert!(node.process_task_bundle(&task, &mut bids).is_none());
+    assert!(node
+        .process_task_bundle_best_bid(&task, &mut bids)
+        .is_none());
     assert_eq!(bids.len(), 1);
 }
 
@@ -97,7 +101,9 @@ fn process_task_bundle_compares_the_reach_adjusted_bid_score() {
         cost_mah: 1.0,
     }];
 
-    assert!(node.process_task_bundle(&task, &mut bids).is_none());
+    assert!(node
+        .process_task_bundle_best_bid(&task, &mut bids)
+        .is_none());
     assert_eq!(bids.len(), 1);
 }
 
@@ -112,7 +118,7 @@ fn process_task_bundle_ignores_non_finite_known_bid_scores() {
         cost_mah: 1.0,
     }];
 
-    let bid = node.process_task_bundle(&task, &mut bids).unwrap();
+    let bid = node.process_task_bundle_best_bid(&task, &mut bids).unwrap();
 
     assert_eq!(bid.energy_score, 1.0);
     assert_eq!(bids.len(), 2);
@@ -123,7 +129,7 @@ fn evaluate_task_rejects_too_little_reach() {
     let (_tmp, node) = compute_node(100, 1.0);
     let task = compute_task_with_reach(50, 0.09);
 
-    assert!(node.evaluate_task(&task, 0).is_none());
+    assert!(node.evaluate_task_with_quorum(&task, 0).is_none());
 }
 
 #[test]
@@ -132,7 +138,9 @@ fn process_task_bundle_rejects_low_energy_before_bidding() {
     let task = compute_task(50);
     let mut bids = Vec::new();
 
-    assert!(node.process_task_bundle(&task, &mut bids).is_none());
+    assert!(node
+        .process_task_bundle_best_bid(&task, &mut bids)
+        .is_none());
     assert!(bids.is_empty());
 }
 
@@ -155,8 +163,28 @@ fn sensing_capabilities_remain_exact_labels() {
         "src".to_string(),
     );
 
-    assert!(node.evaluate_task(&matching, 0).is_some());
-    assert!(node.evaluate_task(&synonym, 0).is_none());
+    assert!(node.evaluate_task_with_quorum(&matching, 0).is_some());
+    assert!(node.evaluate_task_with_quorum(&synonym, 0).is_none());
+}
+
+#[test]
+fn compatibility_bidding_names_delegate_to_named_heuristics() {
+    let (_tmp_a, node_a) = compute_node(100, 1.0);
+    let task = compute_task(50);
+
+    let old_quorum = node_a.evaluate_task(&task, 0).unwrap();
+    let named_quorum = node_a.evaluate_task_with_quorum(&task, 0).unwrap();
+    assert_eq!(old_quorum.energy_score, named_quorum.energy_score);
+
+    let (_tmp_b, node_b) = compute_node(100, 1.0);
+    let mut old_bids = Vec::new();
+    let mut named_bids = Vec::new();
+    let old_best = node_b.process_task_bundle(&task, &mut old_bids).unwrap();
+    let named_best = node_b
+        .process_task_bundle_best_bid(&task, &mut named_bids)
+        .unwrap();
+    assert_eq!(old_best.energy_score, named_best.energy_score);
+    assert_eq!(old_bids.len(), named_bids.len());
 }
 
 proptest! {

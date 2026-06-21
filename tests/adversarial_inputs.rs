@@ -34,7 +34,7 @@ fn test_process_task_bundle_does_not_panic_on_nan_bids() {
     ];
 
     // This should not panic. If it does, the test fails.
-    node.process_task_bundle(&task, &mut bids);
+    node.process_task_bundle_best_bid(&task, &mut bids);
 }
 
 async fn capture_listen_addr(

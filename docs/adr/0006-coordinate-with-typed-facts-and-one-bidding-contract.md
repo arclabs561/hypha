@@ -1,6 +1,6 @@
 ---
 id: 0006
-status: proposed
+status: accepted
 governs: crates/hypha-core/src/agent.rs, src/lib.rs, examples/**, tests/schema_compat.rs, docs/**
 why: Hypha's current task coordination surface compresses energy, capability, alert, and bidding semantics into primitive values and two different local bidding functions.
 rejected: keeping exact-equality capabilities as the long-term contract; treating sender-provided energy scores as facts; presenting quorum and best-bid logic as one auction protocol.
@@ -13,7 +13,7 @@ review_trigger: revisit before changing the public Task, Bid, Capability, Energy
 
 # ADR-0006: coordinate with typed facts and one bidding contract
 
-**Status**: Proposed
+**Status**: Accepted
 **Date**: 2026-06-18
 **Deciders**: arc
 
@@ -112,3 +112,16 @@ governed by ADR-0002 and ADR-0004.
 
 Extends ADR-0005 by keeping the task plane local and advisory while defining
 what must be clarified before that plane becomes a stable coordination API.
+
+## Update (2026-06-21)
+
+Accepted as the coordination contract for the prototype API. Part of the
+decision has already landed: `EnergyStatus` carries optional observed facts
+while preserving legacy JSON compatibility, and compute/storage capabilities
+use capacity matching rather than exact equality.
+
+The remaining implementation obligation is naming and migration. The two local
+bidding paths may coexist only as explicitly different heuristics:
+quorum-count silence and caller-local best-bid comparison. They are not one
+distributed auction protocol, and examples should use names that make that
+boundary visible.
