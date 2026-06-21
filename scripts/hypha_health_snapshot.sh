@@ -33,14 +33,27 @@ json_from_line() {
 
 need_cmd jq
 
-printf '%-18s %-7s %-8s %-8s %-10s %-13s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \
-  board fw boot uptime power placement led_state mode rssi peers ota loop notes
+payloads="$(mktemp -t hypha-health-payloads.XXXXXX)"
+cleanup() {
+  rm -f "$payloads"
+}
+trap cleanup EXIT
 
 status=0
 while IFS= read -r line; do
   [[ -n $line ]] || continue
   json=$(json_from_line "$line")
-  if ! row=$(jq -r '
+  if ! jq -c . <<<"$json" >>"$payloads" 2>/dev/null; then
+    printf 'warn: skipped malformed health line: %s\n' "$line" >&2
+    status=1
+  fi
+done < <(if [[ $# -gt 0 ]]; then cat "$@"; else cat; fi)
+
+printf '%-18s %-7s %-8s %-8s %-10s %-13s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \
+  board fw boot uptime power placement led_state mode rssi peers ota loop notes
+
+if [[ -s $payloads ]]; then
+  jq -s -r '
     def n($k): (.[$k] // 0);
     def s($k): (.[$k] // "");
     def note:
@@ -69,29 +82,31 @@ while IFS= read -r line; do
          else empty end),
         (if has("placement_state") | not then "legacy-no-placement" else empty end)
       ] | if length == 0 then "ok" else join(",") end;
-    [
-      (s("board")),
-      (s("fw")),
-      (s("boot")),
-      (if has("uptime_s") then (n("uptime_s") | tostring) else "" end),
-      (s("power_source")),
-      (s("placement_state")),
-      (s("led_state")),
-      (s("mode")),
-      (n("wifi_rssi") | tostring),
-      (n("peer_pulses") | tostring),
-      (s("ota_state")),
-      (n("loop_max_ms") | tostring),
-      note
-    ] | join("\u001f")
-  ' <<<"$json" 2>/dev/null); then
-    printf 'warn: skipped malformed health line: %s\n' "$line" >&2
-    status=1
-    continue
-  fi
-  IFS=$'\037' read -r board fw boot uptime power placement led_state mode rssi peers ota loop notes <<<"$row"
-  printf '%-18s %-7s %-8s %-8s %-10s %-13s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \
-    "$board" "$fw" "$boot" "$uptime" "$power" "$placement" "$led_state" "$mode" "$rssi" "$peers" "$ota" "$loop" "$notes"
-done < <(if [[ $# -gt 0 ]]; then cat "$@"; else cat; fi)
+    def row:
+      [
+        (s("board")),
+        (s("fw")),
+        (s("boot")),
+        (if has("uptime_s") then (n("uptime_s") | tostring) else "" end),
+        (s("power_source")),
+        (s("placement_state")),
+        (s("led_state")),
+        (s("mode")),
+        (n("wifi_rssi") | tostring),
+        (n("peer_pulses") | tostring),
+        (s("ota_state")),
+        (n("loop_max_ms") | tostring),
+        note
+      ] | join("\u001f");
+    reduce .[] as $item ({}; .[$item.board // ""] = $item)
+    | [.[]]
+    | sort_by(.board // "")
+    | .[]
+    | row
+  ' "$payloads" | while IFS=$'\037' read -r board fw boot uptime power placement led_state mode rssi peers ota loop notes; do
+    printf '%-18s %-7s %-8s %-8s %-10s %-13s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \
+      "$board" "$fw" "$boot" "$uptime" "$power" "$placement" "$led_state" "$mode" "$rssi" "$peers" "$ota" "$loop" "$notes"
+  done
+fi
 
 exit "$status"

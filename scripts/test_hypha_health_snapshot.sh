@@ -7,6 +7,7 @@ trap 'rm -f "$TMP"' EXIT
 
 cat >"$TMP" <<'JSON'
 hypha/hypha-fc84/health {"board":"hypha-fc84","fw":"0.16.0","boot":"abc123ef","uptime_s":1234,"power_source":"usb","wifi_rssi":-62,"peer_pulses":3,"led":"000000","led_state":"dark","mode":"auto","ota_state":"not_newer","loop_max_ms":52,"placement_state":"moved","placement_aps":7,"placement_baseline_aps":6,"placement_common":2,"placement_shifted":2,"placement_jaccard_milli":250}
+hypha/hypha-fc84/health {"board":"hypha-fc84","fw":"0.16.0","boot":"abc123ef","uptime_s":1300,"power_source":"usb","wifi_rssi":-61,"peer_pulses":5,"led":"000000","led_state":"dark","mode":"auto","ota_state":"not_newer","loop_max_ms":53,"placement_state":"moved","placement_aps":7,"placement_baseline_aps":6,"placement_common":2,"placement_shifted":2,"placement_jaccard_milli":250}
 hypha/hypha-old/health {"board":"hypha-old","fw":"0.16.0","wifi_rssi":-70,"led":"000000","led_state":"dark","mode":"auto","loop_max_ms":62}
 JSON
 
@@ -17,7 +18,11 @@ grep -q 'uptime' <<<"$OUT"
 grep -q 'power' <<<"$OUT"
 grep -q 'hypha-fc84' <<<"$OUT"
 grep -q 'abc123ef' <<<"$OUT"
-grep -q '1234' <<<"$OUT"
+grep -q '1300' <<<"$OUT"
+if [[ $(grep -c '^hypha-fc84' <<<"$OUT") -ne 1 ]]; then
+  echo "expected duplicate board health rows to collapse to the latest payload" >&2
+  exit 1
+fi
 grep -q 'usb' <<<"$OUT"
 grep -q 'placement' <<<"$OUT"
 grep -Eq 'hypha-fc84.*moved' <<<"$OUT"
