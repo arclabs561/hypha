@@ -14,6 +14,8 @@ JSON
 
 OUT="$(HYPHA_EXPECTED_FW=0.16.1 bash "$ROOT/scripts/hypha_health_snapshot.sh" "$TMP")"
 EMPTY_OUT="$(bash "$ROOT/scripts/hypha_health_snapshot.sh" /dev/null)"
+NO_EXPECT_OUT="$(bash "$ROOT/scripts/hypha_health_snapshot.sh" "$TMP")"
+OLD_LINE="$(grep '^hypha-old' <<<"$OUT")"
 
 grep -q 'boot' <<<"$OUT"
 grep -q 'uptime' <<<"$OUT"
@@ -30,12 +32,20 @@ grep -q 'placement' <<<"$OUT"
 grep -Eq 'hypha-fc84.*moved' <<<"$OUT"
 grep -Eq 'hypha-fc84.*placement-moved' <<<"$OUT"
 grep -Eq 'hypha-fc84.*fw-not-ota-version' <<<"$OUT"
+if grep -q 'fw-not-ota-version' <<<"$NO_EXPECT_OUT"; then
+  echo "expected fw-not-ota-version only when HYPHA_EXPECTED_FW is set" >&2
+  exit 1
+fi
 grep -q 'healthy-dark' <<<"$OUT"
 grep -Eq 'hypha-old.*healthy-dark' <<<"$OUT"
 grep -Eq 'hypha-old.*legacy-no-boot-id' <<<"$OUT"
 grep -Eq 'hypha-old.*freshness-unknown' <<<"$OUT"
 grep -Eq 'hypha-old.*legacy-no-power-source' <<<"$OUT"
 grep -Eq 'hypha-old.*legacy-no-peer-pulses-field' <<<"$OUT"
+if [[ $OLD_LINE == *' auto   -70   0 '* ]]; then
+  echo "expected missing peer_pulses to render blank, not as zero" >&2
+  exit 1
+fi
 grep -Eq 'hypha-old.*legacy-no-ota-state' <<<"$OUT"
 grep -Eq 'hypha-old.*legacy-no-placement' <<<"$OUT"
 grep -Eq 'hypha-unknown.*power-source-unknown' <<<"$OUT"

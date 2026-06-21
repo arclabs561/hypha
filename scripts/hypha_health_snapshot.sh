@@ -60,7 +60,7 @@ if [[ -s $payloads ]]; then
       [
         (if s("led_state") == "dark" and s("mode") == "auto" and s("led") == "000000"
          then "healthy-dark" else empty end),
-        (if env.HYPHA_EXPECTED_FW != "" and s("fw") != "" and s("fw") != env.HYPHA_EXPECTED_FW
+        (if (env.HYPHA_EXPECTED_FW // "") != "" and s("fw") != "" and s("fw") != env.HYPHA_EXPECTED_FW
          then "fw-not-ota-version" else empty end),
         (if s("led_state") == "fault" then "mqtt-bus-down-led" else empty end),
         (if has("boot") | not then "legacy-no-boot-id" else empty end),
@@ -96,10 +96,10 @@ if [[ -s $payloads ]]; then
         (s("placement_state")),
         (s("led_state")),
         (s("mode")),
-        (n("wifi_rssi") | tostring),
-        (n("peer_pulses") | tostring),
+        (if has("wifi_rssi") then (n("wifi_rssi") | tostring) else "" end),
+        (if has("peer_pulses") then (n("peer_pulses") | tostring) else "" end),
         (s("ota_state")),
-        (n("loop_max_ms") | tostring),
+        (if has("loop_max_ms") then (n("loop_max_ms") | tostring) else "" end),
         note
       ] | join("\u001f");
     reduce .[] as $item ({}; .[$item.board // ""] = $item)
