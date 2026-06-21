@@ -10,7 +10,7 @@ hypha/hypha-fc84/health {"board":"hypha-fc84","fw":"0.16.0","boot":"abc123ef","u
 hypha/hypha-old/health {"board":"hypha-old","fw":"0.16.0","wifi_rssi":-70,"led":"000000","led_state":"dark","mode":"auto","loop_max_ms":62}
 JSON
 
-OUT="$(bash "$ROOT/scripts/hypha_health_snapshot.sh" "$TMP")"
+OUT="$(HYPHA_EXPECTED_FW=0.16.1 bash "$ROOT/scripts/hypha_health_snapshot.sh" "$TMP")"
 
 grep -q 'boot' <<<"$OUT"
 grep -q 'uptime' <<<"$OUT"
@@ -22,6 +22,7 @@ grep -q 'usb' <<<"$OUT"
 grep -q 'placement' <<<"$OUT"
 grep -Eq 'hypha-fc84.*moved' <<<"$OUT"
 grep -Eq 'hypha-fc84.*placement-moved' <<<"$OUT"
+grep -Eq 'hypha-fc84.*fw-not-ota-version' <<<"$OUT"
 grep -q 'healthy-dark' <<<"$OUT"
 grep -Eq 'hypha-old.*healthy-dark' <<<"$OUT"
 grep -Eq 'hypha-old.*legacy-no-boot-id' <<<"$OUT"

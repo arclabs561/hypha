@@ -10,6 +10,7 @@ HEALTH_COUNT="${HYPHA_HEALTH_COUNT:-8}"
 MQTT_SSH_HOST="${HYPHA_MQTT_SSH_HOST:-}"
 MQTT_SSH_BROKER_HOST="${HYPHA_MQTT_SSH_BROKER_HOST:-localhost}"
 OTA_URL="${HYPHA_OTA_URL:-http://192.168.1.36:8930/fw/hypha/firmware.bin}"
+EXPECTED_FW_VERSION=""
 
 have_cmd() {
   command -v "$1" >/dev/null 2>&1
@@ -22,10 +23,10 @@ section() {
 local_mqtt_health() {
   if have_cmd timeout; then
     { timeout 5 mosquitto_sub -h "$BROKER_HOST" -p "$BROKER_PORT" -v -t 'hypha/+/health' -C "$HEALTH_COUNT" || true; } \
-      | bash "$ROOT/scripts/hypha_health_snapshot.sh"
+      | HYPHA_EXPECTED_FW="$EXPECTED_FW_VERSION" bash "$ROOT/scripts/hypha_health_snapshot.sh"
   else
     mosquitto_sub -h "$BROKER_HOST" -p "$BROKER_PORT" -v -t 'hypha/+/health' -C "$HEALTH_COUNT" \
-      | bash "$ROOT/scripts/hypha_health_snapshot.sh"
+      | HYPHA_EXPECTED_FW="$EXPECTED_FW_VERSION" bash "$ROOT/scripts/hypha_health_snapshot.sh"
   fi
 }
 
@@ -33,7 +34,8 @@ ssh_mqtt_health() {
   local remote_cmd
   printf -v remote_cmd 'timeout 5 mosquitto_sub -h %q -p %q -v -t %q -C %q || true' \
     "$MQTT_SSH_BROKER_HOST" "$BROKER_PORT" 'hypha/+/health' "$HEALTH_COUNT"
-  ssh "$MQTT_SSH_HOST" "$remote_cmd" | bash "$ROOT/scripts/hypha_health_snapshot.sh"
+  ssh "$MQTT_SSH_HOST" "$remote_cmd" \
+    | HYPHA_EXPECTED_FW="$EXPECTED_FW_VERSION" bash "$ROOT/scripts/hypha_health_snapshot.sh"
 }
 
 section "tailscale"
@@ -85,6 +87,7 @@ else
     manifest_chunks="$(jq -r '.n // empty' <<<"$manifest_json" 2>/dev/null || true)"
     manifest_hash="$(jq -r '.h // empty' <<<"$manifest_json" 2>/dev/null || true)"
     if [[ -n $manifest_version && -n $manifest_chunks && -n $manifest_hash ]]; then
+      EXPECTED_FW_VERSION="$manifest_version"
       printf 'ok: manifest v=%s chunks=%s hash=%s\n' \
         "$manifest_version" "$manifest_chunks" "${manifest_hash:0:12}"
     else

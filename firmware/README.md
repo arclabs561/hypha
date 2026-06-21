@@ -62,6 +62,8 @@ mosquitto_sub -v -t 'hypha/+/health' -C 4 | just hypha-health
 `freshness-unknown` means the retained payload came from legacy firmware that
 does not report `uptime_s`; treat it as last-known state, not proof the board is
 currently alive.
+`fw-not-ota-version` means `just mesh-doctor` found a signed OTA manifest and
+the board's reported firmware version does not match it.
 `no-mqtt-peer-pulses` means the board has not heard MQTT firefly pulses from
 other boards; it is not the same thing as WiFi failure or direct ESP-NOW
 isolation.

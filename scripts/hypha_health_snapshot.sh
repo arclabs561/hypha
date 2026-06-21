@@ -47,6 +47,8 @@ while IFS= read -r line; do
       [
         (if s("led_state") == "dark" and s("mode") == "auto" and s("led") == "000000"
          then "healthy-dark" else empty end),
+        (if env.HYPHA_EXPECTED_FW != "" and s("fw") != "" and s("fw") != env.HYPHA_EXPECTED_FW
+         then "fw-not-ota-version" else empty end),
         (if s("led_state") == "fault" then "mqtt-bus-down-led" else empty end),
         (if has("boot") | not then "legacy-no-boot-id" else empty end),
         (if has("uptime_s") | not then "freshness-unknown" else empty end),
