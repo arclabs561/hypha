@@ -9,6 +9,8 @@ BROKER_PORT="${2:-${HYPHA_MQTT_PORT:-1883}}"
 HEALTH_COUNT="${HYPHA_HEALTH_COUNT:-8}"
 MQTT_SSH_HOST="${HYPHA_MQTT_SSH_HOST:-}"
 MQTT_SSH_BROKER_HOST="${HYPHA_MQTT_SSH_BROKER_HOST:-localhost}"
+MQTT_USER_VALUE="${HYPHA_MQTT_USER:-${MQTT_USER:-}}"
+MQTT_PASS_VALUE="${HYPHA_MQTT_PASS:-${MQTT_PASS:-}}"
 OTA_URL="${HYPHA_OTA_URL:-http://192.168.1.36:8930/fw/hypha/firmware.bin}"
 EXPECTED_FW_VERSION=""
 
@@ -21,19 +23,31 @@ section() {
 }
 
 local_mqtt_health() {
+  local auth_args=()
+  [[ -n $MQTT_USER_VALUE ]] && auth_args+=("-u" "$MQTT_USER_VALUE")
+  [[ -n $MQTT_PASS_VALUE ]] && auth_args+=("-P" "$MQTT_PASS_VALUE")
+
   if have_cmd timeout; then
-    { timeout 5 mosquitto_sub -h "$BROKER_HOST" -p "$BROKER_PORT" -v -t 'hypha/+/health' -C "$HEALTH_COUNT" || true; } \
+    { timeout 5 mosquitto_sub -h "$BROKER_HOST" -p "$BROKER_PORT" "${auth_args[@]}" -v -t 'hypha/+/health' -C "$HEALTH_COUNT" || true; } \
       | HYPHA_EXPECTED_FW="$EXPECTED_FW_VERSION" bash "$ROOT/scripts/hypha_health_snapshot.sh"
   else
-    mosquitto_sub -h "$BROKER_HOST" -p "$BROKER_PORT" -v -t 'hypha/+/health' -C "$HEALTH_COUNT" \
+    mosquitto_sub -h "$BROKER_HOST" -p "$BROKER_PORT" "${auth_args[@]}" -v -t 'hypha/+/health' -C "$HEALTH_COUNT" \
       | HYPHA_EXPECTED_FW="$EXPECTED_FW_VERSION" bash "$ROOT/scripts/hypha_health_snapshot.sh"
   fi
 }
 
 ssh_mqtt_health() {
   local remote_cmd
-  printf -v remote_cmd 'timeout 5 mosquitto_sub -h %q -p %q -v -t %q -C %q || true' \
-    "$MQTT_SSH_BROKER_HOST" "$BROKER_PORT" 'hypha/+/health' "$HEALTH_COUNT"
+  printf -v remote_cmd 'timeout 5 mosquitto_sub -h %q -p %q' \
+    "$MQTT_SSH_BROKER_HOST" "$BROKER_PORT"
+  if [[ -n $MQTT_USER_VALUE ]]; then
+    printf -v remote_cmd '%s -u %q' "$remote_cmd" "$MQTT_USER_VALUE"
+  fi
+  if [[ -n $MQTT_PASS_VALUE ]]; then
+    printf -v remote_cmd '%s -P %q' "$remote_cmd" "$MQTT_PASS_VALUE"
+  fi
+  printf -v remote_cmd '%s -v -t %q -C %q || true' \
+    "$remote_cmd" 'hypha/+/health' "$HEALTH_COUNT"
   ssh "$MQTT_SSH_HOST" "$remote_cmd" \
     | HYPHA_EXPECTED_FW="$EXPECTED_FW_VERSION" bash "$ROOT/scripts/hypha_health_snapshot.sh"
 }

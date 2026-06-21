@@ -58,6 +58,15 @@ For XIAO/IDF boards, inspect retained health instead of reading the LED alone:
 mosquitto_sub -v -t 'hypha/+/health' -C 4 | just hypha-health
 ```
 
+If the local machine does not have `mosquitto_sub`, `just mesh-doctor` can read
+through a host that does:
+
+```bash
+HYPHA_MQTT_SSH_HOST=<broker-ssh-host> HYPHA_MQTT_SSH_BROKER_HOST=<broker-lan-ip> just mesh-doctor
+```
+
+For brokers with credentials, set `HYPHA_MQTT_USER` and `HYPHA_MQTT_PASS`.
+
 `healthy-dark` means the controllable LED is intentionally off in auto mode.
 `freshness-unknown` means the retained payload came from legacy firmware that
 does not report `uptime_s`; treat it as last-known state, not proof the board is
