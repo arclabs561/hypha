@@ -14,6 +14,8 @@ hypha/hypha-fc84/health {"board":"hypha-fc84","fw":"0.16.0","boot":"abc123ef","u
 hypha/hypha-unknown/health {"board":"hypha-unknown","fw":"0.16.1","boot":"unkboot","uptime_s":120,"power_source":"unknown","wifi_rssi":-55,"rssi_err":1,"peer_pulses":2,"mqtt_reconnects":3,"led":"000000","led_state":"dark","mode":"auto","cmd_ignored":2,"ota_state":"not_newer","loop_max_ms":42,"placement_state":"stable"}
 hypha/hypha-old/health {"board":"hypha-old","fw":"0.16.0","wifi_rssi":-70,"led":"000000","led_state":"dark","mode":"auto","loop_max_ms":62}
 hypha/hypha-topic-only/health {"fw":"0.16.1","wifi_rssi":-64,"led":"000000","led_state":"dark","mode":"auto","loop_max_ms":52}
+hypha/hypha-stale/health {"board":"hypha-stale","fw":"0.16.1","boot":"stale123","uptime_s":900,"power_source":"usb","wifi_rssi":-60,"peer_pulses":1,"led":"000000","led_state":"dark","mode":"auto","ota_state":"not_newer","loop_max_ms":51,"placement_state":"stable"}
+hypha/hypha-stale/health {"board":"hypha-stale","fw":"0.16.1","boot":"stale123","uptime_s":900,"power_source":"usb","wifi_rssi":-60,"peer_pulses":1,"led":"000000","led_state":"dark","mode":"auto","ota_state":"not_newer","loop_max_ms":51,"placement_state":"stable"}
 JSON
 
 cat >"$BAD" <<'BADJSON'
@@ -28,11 +30,14 @@ OLD_LINE="$(grep '^hypha-old' <<<"$OUT")"
 
 grep -q 'boot' <<<"$OUT"
 grep -q 'uptime' <<<"$OUT"
+grep -q 'seen' <<<"$OUT"
 grep -q 'power' <<<"$OUT"
 grep -q 'hypha-fc84' <<<"$OUT"
 grep -q 'hypha-topic-only' <<<"$OUT"
 grep -q 'abc123ef' <<<"$OUT"
 grep -q '1300' <<<"$OUT"
+grep -Eq 'hypha-fc84.* 2 .*live-uptime-advanced' <<<"$OUT"
+grep -Eq 'hypha-stale.* 2 .*uptime-not-advancing' <<<"$OUT"
 if [[ $(grep -c '^hypha-fc84' <<<"$OUT") -ne 1 ]]; then
   echo "expected duplicate board health rows to collapse to the latest payload" >&2
   exit 1

@@ -64,8 +64,8 @@ while IFS= read -r line; do
   printf '%s\n' "$compact" >>"$payloads"
 done < <(if [[ $# -gt 0 ]]; then cat "$@"; else cat; fi)
 
-printf '%-18s %-7s %-8s %-8s %-10s %-13s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \
-  board fw boot uptime power placement led_state mode rssi peers ota loop notes
+printf '%-18s %-7s %-8s %-8s %-4s %-10s %-13s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \
+  board fw boot uptime seen power placement led_state mode rssi peers ota loop notes
 
 if [[ -s $payloads ]]; then
   jq -s -r '
@@ -80,6 +80,15 @@ if [[ -s $payloads ]]; then
         (if s("led_state") == "fault" then "mqtt-bus-down-led" else empty end),
         (if has("boot") | not then "legacy-no-boot-id" else empty end),
         (if has("uptime_s") | not then "freshness-unknown" else empty end),
+        (if n("_seen") > 1
+            and has("uptime_s")
+            and (._first_uptime | type == "number")
+            and s("boot") == s("_first_boot")
+            and n("uptime_s") > n("_first_uptime")
+         then "live-uptime-advanced"
+         elif n("_seen") > 1 and has("uptime_s")
+         then "uptime-not-advancing"
+         else empty end),
         (if has("power_source") | not then "legacy-no-power-source" else empty end),
         (if s("power_source") == "unknown" then "power-source-unknown" else empty end),
         (if has("peer_pulses") and n("peer_pulses") == 0
@@ -107,6 +116,7 @@ if [[ -s $payloads ]]; then
         (s("fw")),
         (s("boot")),
         (if has("uptime_s") then (n("uptime_s") | tostring) else "" end),
+        (n("_seen") | tostring),
         (s("power_source")),
         (s("placement_state")),
         (s("led_state")),
@@ -117,18 +127,23 @@ if [[ -s $payloads ]]; then
         (if has("loop_max_ms") then (n("loop_max_ms") | tostring) else "" end),
         note
       ] | join("\u001f");
-    reduce .[] as $item ({}; .[$item.board // ""] = $item)
-    | [.[]]
-    | sort_by(.board // "")
+    sort_by(.board // "")
+    | group_by(.board // "")
     | .[]
+    | . as $group
+    | ($group[-1] + {
+        _seen: ($group | length),
+        _first_uptime: ($group[0].uptime_s // null),
+        _first_boot: ($group[0].boot // "")
+      })
     | row
-  ' "$payloads" | while IFS=$'\037' read -r board fw boot uptime power placement led_state mode rssi peers ota loop notes; do
-    printf '%-18s %-7s %-8s %-8s %-10s %-13s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \
-      "$board" "$fw" "$boot" "$uptime" "$power" "$placement" "$led_state" "$mode" "$rssi" "$peers" "$ota" "$loop" "$notes"
+  ' "$payloads" | while IFS=$'\037' read -r board fw boot uptime seen power placement led_state mode rssi peers ota loop notes; do
+    printf '%-18s %-7s %-8s %-8s %-4s %-10s %-13s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \
+      "$board" "$fw" "$boot" "$uptime" "$seen" "$power" "$placement" "$led_state" "$mode" "$rssi" "$peers" "$ota" "$loop" "$notes"
   done
 else
-  printf '%-18s %-7s %-8s %-8s %-10s %-13s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \
-    none "" "" "" "" "" "" "" "" "" "" "" "no-health-payloads"
+  printf '%-18s %-7s %-8s %-8s %-4s %-10s %-13s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \
+    none "" "" "" "" "" "" "" "" "" "" "" "" "no-health-payloads"
 fi
 
 exit "$status"
