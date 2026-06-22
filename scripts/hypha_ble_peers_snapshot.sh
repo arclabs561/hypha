@@ -24,8 +24,10 @@ json_from_line() {
 need_cmd jq
 
 payloads="$(mktemp -t hypha-ble-peers.XXXXXX)"
+observed_sources="$(mktemp -t hypha-ble-sources.XXXXXX)"
+observed_peers="$(mktemp -t hypha-ble-peers-seen.XXXXXX)"
 cleanup() {
-  rm -f "$payloads"
+  rm -f "$payloads" "$observed_sources" "$observed_peers"
 }
 trap cleanup EXIT
 
@@ -87,12 +89,27 @@ if [[ -s $payloads ]]; then
   if [[ -n $rows ]]; then
     while IFS=$'\t' read -r source peer rssi seen notes; do
       printf '%-18s %-18s %-5s %-4s %s\n' "$source" "$peer" "$rssi" "$seen" "$notes"
+      printf '%s\n' "$source" >>"$observed_sources"
+      printf '%s\n' "$peer" >>"$observed_peers"
     done <<<"$rows"
   else
     printf '%-18s %-18s %-5s %-4s %s\n' none "" "" "" "no-direct-peer-adverts"
   fi
 else
   printf '%-18s %-18s %-5s %-4s %s\n' none "" "" "" "no-ble-payloads"
+fi
+
+if [[ -n ${HYPHA_EXPECTED_BOARDS:-} ]]; then
+  expected="${HYPHA_EXPECTED_BOARDS//,/ }"
+  for board in $expected; do
+    [[ -n $board ]] || continue
+    if ! grep -Fxq "$board" "$observed_sources"; then
+      printf '%-18s %-18s %-5s %-4s %s\n' "$board" "" "" "0" "no-direct-out"
+    fi
+    if ! grep -Fxq "$board" "$observed_peers"; then
+      printf '%-18s %-18s %-5s %-4s %s\n' "none" "$board" "" "0" "not-directly-heard"
+    fi
+  done
 fi
 
 exit "$status"

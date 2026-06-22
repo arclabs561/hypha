@@ -25,4 +25,15 @@ EOF
 )"
 grep -q 'no-direct-peer-adverts' <<<"$EMPTY"
 
+EXPECTED="$(
+  HYPHA_EXPECTED_BOARDS="hypha-a,hypha-b,hypha-d" \
+    bash "$ROOT/scripts/hypha_ble_peers_snapshot.sh" <<'EOF'
+hypha/hypha-a/ble {"board":"hypha-a","adverts":[{"peer":"hypha-b","r":-66}]}
+EOF
+)"
+grep -q '^hypha-b[[:space:]]\+[[:space:]]\+[[:space:]]\+0[[:space:]]\+no-direct-out$' <<<"$EXPECTED"
+grep -q '^none[[:space:]]\+hypha-a[[:space:]]\+[[:space:]]\+0[[:space:]]\+not-directly-heard$' <<<"$EXPECTED"
+grep -q '^hypha-d[[:space:]]\+[[:space:]]\+[[:space:]]\+0[[:space:]]\+no-direct-out$' <<<"$EXPECTED"
+grep -q '^none[[:space:]]\+hypha-d[[:space:]]\+[[:space:]]\+0[[:space:]]\+not-directly-heard$' <<<"$EXPECTED"
+
 echo "hypha BLE peer snapshot parser: ok"
