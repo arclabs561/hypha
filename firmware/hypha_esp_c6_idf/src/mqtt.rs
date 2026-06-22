@@ -314,6 +314,9 @@ pub fn publish_adverts(
         if let Some(m) = &e.mfr {
             adverts.push_str(&format!(r#","mfr":"{}""#, m));
         }
+        if let Some(peer) = &e.peer {
+            adverts.push_str(&format!(r#","peer":"{}""#, peer));
+        }
         adverts.push('}');
     }
 

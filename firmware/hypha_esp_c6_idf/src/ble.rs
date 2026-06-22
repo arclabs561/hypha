@@ -12,7 +12,10 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
-use esp32_nimble::{BLEAdvertisedData, BLEAdvertisedDevice, BLEDevice, BLEScan};
+use esp32_nimble::{
+    enums::ConnMode, BLEAdvertisedData, BLEAdvertisedDevice, BLEDevice, BLEAdvertisementData,
+    BLEScan,
+};
 use esp_idf_svc::hal::task::block_on;
 use log::{info, warn};
 
@@ -26,6 +29,7 @@ pub struct AdvertEntry {
     pub rssi: i8,
     pub name: Option<String>,
     pub mfr: Option<String>,
+    pub peer: Option<String>,
 }
 
 pub type AdvertMap = Arc<Mutex<HashMap<AdvertKey, AdvertEntry>>>;
@@ -37,16 +41,21 @@ const MAP_CAP: usize = 256;
 const NAME_MAX: usize = 24;
 const MFR_MAX_BYTES: usize = 32;
 
-pub fn spawn_scan_thread(map: AdvertMap, stats: Arc<Stats>) -> anyhow::Result<()> {
+const HYPHA_MFR_COMPANY_ID: u16 = 0xffff;
+const HYPHA_MFR_PREFIX: &[u8; 3] = b"HY\x01";
+const BOARD_SUFFIX_LEN: usize = 4;
+
+pub fn spawn_scan_thread(map: AdvertMap, stats: Arc<Stats>, board_id: String) -> anyhow::Result<()> {
     thread::Builder::new()
         .name("ble_scan".into())
         .stack_size(8192)
-        .spawn(move || scan_loop(map, stats))?;
+        .spawn(move || scan_loop(map, stats, board_id))?;
     Ok(())
 }
 
-fn scan_loop(map: AdvertMap, stats: Arc<Stats>) {
+fn scan_loop(map: AdvertMap, stats: Arc<Stats>, board_id: String) {
     let device = BLEDevice::take();
+    advertise_self(device, &board_id);
     // Active scanning costs airtime (scan requests) and is unnecessary for
     // presence RSSI; opt in at build time with BLE_ACTIVE=1.
     let active = option_env!("BLE_ACTIVE") == Some("1");
@@ -82,7 +91,7 @@ fn scan_loop(map: AdvertMap, stats: Arc<Stats>) {
         // UNcoordinated -- synchronizing windows across vantages buys nothing for
         // RSSI localization (no cross-receiver timing term).
         let res = block_on(scan.start(device, 1000, |dev, data| {
-            record_advert(&map, &stats, dev, &data);
+            record_advert(&map, &stats, &board_id, dev, &data);
             None::<()>
         }));
 
@@ -96,6 +105,7 @@ fn scan_loop(map: AdvertMap, stats: Arc<Stats>) {
 fn record_advert(
     map: &AdvertMap,
     stats: &Stats,
+    local_board_id: &str,
     dev: &BLEAdvertisedDevice,
     data: &BLEAdvertisedData<&[u8]>,
 ) {
@@ -116,6 +126,7 @@ fn record_advert(
                 rssi: i8::MIN,
                 name: None,
                 mfr: None,
+                peer: None,
             })
         }
     };
@@ -133,6 +144,69 @@ fn record_advert(
             bytes.truncate(MFR_MAX_BYTES);
             hex(&bytes)
         });
+    }
+    if entry.peer.is_none() {
+        entry.peer = data
+            .manufacture_data()
+            .and_then(|md| peer_from_mfr(md.company_identifier, md.payload))
+            .filter(|peer| peer != local_board_id);
+    }
+}
+
+fn advertise_self(device: &BLEDevice, board_id: &str) {
+    let Some(suffix) = board_suffix(board_id) else {
+        warn!("BLE peer beacon disabled: unexpected board id {}", board_id);
+        return;
+    };
+    let mut mfr = Vec::with_capacity(2 + HYPHA_MFR_PREFIX.len() + BOARD_SUFFIX_LEN);
+    mfr.extend_from_slice(&HYPHA_MFR_COMPANY_ID.to_le_bytes());
+    mfr.extend_from_slice(HYPHA_MFR_PREFIX);
+    mfr.extend_from_slice(suffix.as_bytes());
+
+    let mut data = BLEAdvertisementData::new();
+    data.manufacturer_data(&mfr);
+    let advertising = device.get_advertising();
+    let mut advertising = advertising.lock();
+    advertising
+        .advertisement_type(ConnMode::Non)
+        .scan_response(false)
+        .min_interval(320)
+        .max_interval(480);
+    if let Err(e) = advertising.set_data(&mut data) {
+        warn!("BLE peer beacon data failed: {:?}", e);
+        return;
+    }
+    if let Err(e) = advertising.start() {
+        warn!("BLE peer beacon start failed: {:?}", e);
+    } else {
+        info!("BLE peer beacon advertising {}", board_id);
+    }
+}
+
+fn board_suffix(board_id: &str) -> Option<&str> {
+    let suffix = board_id.strip_prefix("hypha-")?;
+    if suffix.len() == BOARD_SUFFIX_LEN && suffix.bytes().all(|b| b.is_ascii_hexdigit()) {
+        Some(suffix)
+    } else {
+        None
+    }
+}
+
+fn peer_from_mfr(company_identifier: u16, payload: &[u8]) -> Option<String> {
+    if company_identifier != HYPHA_MFR_COMPANY_ID {
+        return None;
+    }
+    if payload.len() != HYPHA_MFR_PREFIX.len() + BOARD_SUFFIX_LEN {
+        return None;
+    }
+    if &payload[..HYPHA_MFR_PREFIX.len()] != HYPHA_MFR_PREFIX {
+        return None;
+    }
+    let suffix = core::str::from_utf8(&payload[HYPHA_MFR_PREFIX.len()..]).ok()?;
+    if suffix.bytes().all(|b| b.is_ascii_hexdigit()) {
+        Some(format!("hypha-{}", suffix))
+    } else {
+        None
     }
 }
 

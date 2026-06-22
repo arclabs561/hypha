@@ -31,16 +31,23 @@ Hypha firmware currently has two C6 lines with different transport meanings:
   red-orange firefly pulse is the isolated hue (`peer_count == 0`), with
   brightness still modulated by energy and firefly phase.
 - `hypha_esp_c6_idf` (XIAO/MQTT boards): WiFi STA connects to the AP, MQTT
-  connects to the broker, and board-to-board firefly pulses go through MQTT. An
-  amber slow breath means the MQTT bus has been unreachable for more than 120 s.
-  Retained health reports `boot`, configured `power_source`, `led_state`,
-  `led`, `uptime_s`, `wifi_rssi`, `mqtt_reconnects`, `peer_pulses`, `ota_state`,
-  `ota_checks`, `ota_failures`, and `placement_state`.
+  connects to the broker, board-to-board firefly pulses go through MQTT, and
+  each board emits a compact BLE marker so nearby XIAO boards can report direct
+  RF adjacency. An amber slow breath means the MQTT bus has been unreachable
+  for more than 120 s. Retained health reports `boot`, configured
+  `power_source`, `led_state`, `led`, `uptime_s`, `wifi_rssi`,
+  `mqtt_reconnects`, `peer_pulses`, `ota_state`, `ota_checks`, `ota_failures`,
+  and `placement_state`. Direct BLE adjacency is reported in live `hypha/+/ble`
+  payloads and summarized by `just mesh-doctor`.
 
 These are separate observations:
 
 - WiFi connected: the board joined an AP.
 - MQTT connected: the board can reach the broker and publish retained health.
+- MQTT peer pulses: the board hears broker-mediated firefly pulses from other
+  boards. This is mesh-bus liveness, not direct RF adjacency.
+- XIAO direct BLE peers: the board directly hears another XIAO board's Hypha BLE
+  marker and reports its RSSI in the BLE feed.
 - ESP-NOW peers: the board directly hears another ESP-NOW board on the current
   channel.
 - Mesh delivery: a message reached a destination, possibly through relays. That
@@ -88,8 +95,7 @@ the board's reported firmware version does not match it.
 `legacy-no-ota-state` means the board did not report secure OTA decision
 telemetry, so a blank OTA column should not be read as a successful check.
 `no-mqtt-peer-pulses` means the board has not heard MQTT firefly pulses from
-other boards; it is not the same thing as WiFi failure or direct ESP-NOW
-isolation.
+other boards; it is not the same thing as WiFi failure or direct RF isolation.
 `rssi-read-errors` means the firmware could not read WiFi RSSI during at least
 one health window.
 `mqtt-reconnected` means the MQTT client reconnected after its first connection.
@@ -130,5 +136,5 @@ just esp-c6-http-ota-sign /path/to/firmware.bin firmware/mesh_ota/keys/priv.pem
 ```
 
 The signed manifest version must be strictly greater than the running firmware
-version. The current IDF firmware version is `0.16.3`; boards reporting
-`0.16.2` will accept a correctly signed `0.16.3` image.
+version. The current IDF firmware version is `0.16.4`; boards reporting
+`0.16.3` will accept a correctly signed `0.16.4` image.

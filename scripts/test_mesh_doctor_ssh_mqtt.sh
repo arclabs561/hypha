@@ -54,6 +54,14 @@ if [[ $remote_cmd == *"mosquitto_sub"* \
   cat <<'JSON'
 hypha/hypha-remote/health {"board":"hypha-remote","fw":"0.16.1","boot":"remote","uptime_s":33,"power_source":"usb","wifi_rssi":-50,"peer_pulses":2,"led":"000000","led_state":"dark","mode":"auto","ota_state":"not_newer","loop_max_ms":40,"placement_state":"stable"}
 JSON
+elif [[ $remote_cmd == *"mosquitto_sub"* \
+  && $remote_cmd == *"broker.lan"* \
+  && $remote_cmd == *"-u operator"* \
+  && $remote_cmd == *"-P secret"* \
+  && $remote_cmd == *"hypha/+/ble"* ]]; then
+  cat <<'JSON'
+hypha/hypha-remote/ble {"board":"hypha-remote","boot":"remote","seq":1,"window_ms":2000,"adverts":[{"peer":"hypha-peer","r":-65}]}
+JSON
 else
   printf 'unexpected remote command: %s\n' "$remote_cmd" >&2
   exit 2
@@ -79,5 +87,7 @@ if grep -q 'secret' <<<"$OUT"; then
 fi
 grep -Eq 'hypha-remote.*healthy-dark' <<<"$OUT"
 grep -Eq 'hypha-remote.*not_newer.*healthy-dark' <<<"$OUT"
+grep -q 'direct ble peers' <<<"$OUT"
+grep -Eq 'hypha-remote.*hypha-peer.*-65.*direct' <<<"$OUT"
 
 printf 'mesh doctor ssh mqtt fallback: ok\n'

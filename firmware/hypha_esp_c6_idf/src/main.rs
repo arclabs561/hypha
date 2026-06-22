@@ -183,7 +183,7 @@ fn main() -> anyhow::Result<()> {
     // BLE scan starts after WiFi is up; ESP-IDF coex arbitrates the shared
     // radio from here on (scan windows yield to WiFi).
     let adverts: ble::AdvertMap = Arc::new(Mutex::new(HashMap::new()));
-    ble::spawn_scan_thread(adverts.clone(), stats.clone())?;
+    ble::spawn_scan_thread(adverts.clone(), stats.clone(), board_id.clone())?;
     let mut mqtt = mqtt::connect(&board_id, stats.clone())?;
     let mut seq: u32 = 0;
     // Subscribe to the cmd topic once per connection generation (the esp-idf
