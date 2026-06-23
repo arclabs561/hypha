@@ -26,8 +26,9 @@ need_cmd jq
 payloads="$(mktemp -t hypha-ble-peers.XXXXXX)"
 observed_sources="$(mktemp -t hypha-ble-sources.XXXXXX)"
 observed_peers="$(mktemp -t hypha-ble-peers-seen.XXXXXX)"
+observed_edges="$(mktemp -t hypha-ble-edges.XXXXXX)"
 cleanup() {
-  rm -f "$payloads" "$observed_sources" "$observed_peers"
+  rm -f "$payloads" "$observed_sources" "$observed_peers" "$observed_edges"
 }
 trap cleanup EXIT
 
@@ -91,6 +92,7 @@ if [[ -s $payloads ]]; then
       printf '%-18s %-18s %-5s %-4s %s\n' "$source" "$peer" "$rssi" "$seen" "$notes"
       printf '%s\n' "$source" >>"$observed_sources"
       printf '%s\n' "$peer" >>"$observed_peers"
+      printf '%s %s\n' "$source" "$peer" >>"$observed_edges"
     done <<<"$rows"
   else
     printf '%-18s %-18s %-5s %-4s %s\n' none "" "" "" "no-direct-peer-adverts"
@@ -101,8 +103,12 @@ fi
 
 if [[ -n ${HYPHA_EXPECTED_BOARDS:-} ]]; then
   expected="${HYPHA_EXPECTED_BOARDS//,/ }"
+  expected_file="$(mktemp -t hypha-ble-expected.XXXXXX)"
+  reached_file="$(mktemp -t hypha-ble-reached.XXXXXX)"
+  trap 'rm -f "$payloads" "$observed_sources" "$observed_peers" "$observed_edges" "$expected_file" "$reached_file"' EXIT
   for board in $expected; do
     [[ -n $board ]] || continue
+    printf '%s\n' "$board" >>"$expected_file"
     if ! grep -Fxq "$board" "$observed_sources"; then
       printf '%-18s %-18s %-5s %-4s %s\n' "$board" "" "" "0" "no-direct-out"
       [[ -n ${HYPHA_REQUIRE_DIRECT:-} ]] && status=2
@@ -112,6 +118,32 @@ if [[ -n ${HYPHA_EXPECTED_BOARDS:-} ]]; then
       [[ -n ${HYPHA_REQUIRE_DIRECT:-} ]] && status=2
     fi
   done
+
+  if [[ -n ${HYPHA_REQUIRE_DIRECT:-} && -s $expected_file ]]; then
+    head -n 1 "$expected_file" >"$reached_file"
+    changed=1
+    while [[ $changed -eq 1 ]]; do
+      changed=0
+      while read -r source peer; do
+        grep -Fxq "$source" "$expected_file" || continue
+        grep -Fxq "$peer" "$expected_file" || continue
+        if grep -Fxq "$source" "$reached_file" && ! grep -Fxq "$peer" "$reached_file"; then
+          printf '%s\n' "$peer" >>"$reached_file"
+          changed=1
+        fi
+        if grep -Fxq "$peer" "$reached_file" && ! grep -Fxq "$source" "$reached_file"; then
+          printf '%s\n' "$source" >>"$reached_file"
+          changed=1
+        fi
+      done <"$observed_edges"
+    done
+    while read -r board; do
+      if ! grep -Fxq "$board" "$reached_file"; then
+        printf '%-18s %-18s %-5s %-4s %s\n' "none" "$board" "" "0" "direct-graph-partition"
+        status=2
+      fi
+    done <"$expected_file"
+  fi
 fi
 
 exit "$status"

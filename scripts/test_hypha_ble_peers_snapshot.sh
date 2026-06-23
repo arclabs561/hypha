@@ -54,5 +54,23 @@ then
   echo "expected strict direct mode to fail when expected boards lack direct edges" >&2
   exit 1
 fi
+set +e
+PARTITIONED="$(
+  HYPHA_EXPECTED_BOARDS="hypha-a,hypha-b,hypha-c,hypha-d" \
+    HYPHA_REQUIRE_DIRECT=1 \
+    bash "$ROOT/scripts/hypha_ble_peers_snapshot.sh" <<'EOF'
+hypha/hypha-a/ble {"board":"hypha-a","adverts":[{"peer":"hypha-b","r":-66}]}
+hypha/hypha-b/ble {"board":"hypha-b","adverts":[{"peer":"hypha-a","r":-66}]}
+hypha/hypha-c/ble {"board":"hypha-c","adverts":[{"peer":"hypha-d","r":-66}]}
+hypha/hypha-d/ble {"board":"hypha-d","adverts":[{"peer":"hypha-c","r":-66}]}
+EOF
+)"
+partitioned_rc=$?
+set -e
+if [[ $partitioned_rc -eq 0 ]]; then
+  echo "expected strict direct mode to fail on disconnected direct graph" >&2
+  exit 1
+fi
+grep -q 'direct-graph-partition' <<<"$PARTITIONED"
 
 echo "hypha BLE peer snapshot parser: ok"
