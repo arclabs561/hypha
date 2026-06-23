@@ -65,6 +65,10 @@ hypha-health *args:
 mesh-doctor broker="192.168.1.9" port="1883":
     bash scripts/mesh_doctor.sh "{{broker}}" "{{port}}"
 
+# Fail unless expected boards publish live health and direct BLE in/out sightings.
+mesh-visibility-check broker="192.168.1.9" port="1883":
+    HYPHA_HEALTH_TIMEOUT="${HYPHA_HEALTH_TIMEOUT:-75}" HYPHA_BLE_TIMEOUT="${HYPHA_BLE_TIMEOUT:-20}" HYPHA_REQUIRE_LIVE=1 HYPHA_REQUIRE_DIRECT=1 bash scripts/mesh_doctor.sh "{{broker}}" "{{port}}"
+
 # Inspect host boot history and link-loss evidence after a power event.
 fleet-power-doctor:
     bash scripts/fleet_power_doctor.sh
@@ -96,7 +100,7 @@ check:
     cargo clippy --all-targets -- -D warnings
     cargo test
     cargo test --manifest-path firmware/host-tests/Cargo.toml
-    bash -n scripts/mesh_doctor.sh scripts/hypha_ble_peers_snapshot.sh scripts/test_hypha_ble_peers_snapshot.sh scripts/sign_http_ota.sh scripts/healthchecks_ping.sh
+    bash -n scripts/mesh_doctor.sh scripts/hypha_ble_peers_snapshot.sh scripts/hypha_health_snapshot.sh scripts/test_hypha_ble_peers_snapshot.sh scripts/test_hypha_health_snapshot.sh scripts/sign_http_ota.sh scripts/healthchecks_ping.sh
     bash scripts/test_hypha_ble_peers_snapshot.sh
     bash scripts/test_hypha_health_snapshot.sh
     bash scripts/test_mesh_doctor_ota_health.sh

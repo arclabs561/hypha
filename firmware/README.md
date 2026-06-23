@@ -77,6 +77,18 @@ To flag boards expected by a private deployment inventory, set
 `HYPHA_EXPECTED_BOARDS` to a comma- or space-separated board id list before
 running `just mesh-doctor`.
 
+To make that diagnostic fail when the fleet is not live and directly visible,
+use:
+
+```bash
+HYPHA_EXPECTED_BOARDS="hypha-..." just mesh-visibility-check
+```
+
+This waits long enough for a live health sample, then requires each expected
+board to show advancing uptime and at least one direct BLE inbound and outbound
+sighting. It is an adjacency check, not proof of routed mesh delivery or room
+identity.
+
 `healthy-dark` means the controllable LED is intentionally off in auto mode.
 `seen` is the number of health samples observed for that board in the current
 doctor run. `live-uptime-advanced` means multiple samples had the same boot ID

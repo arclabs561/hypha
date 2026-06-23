@@ -90,4 +90,27 @@ grep -Eq 'hypha-remote.*not_newer.*healthy-dark' <<<"$OUT"
 grep -q 'direct ble peers' <<<"$OUT"
 grep -Eq 'hypha-remote.*hypha-peer.*-65.*direct' <<<"$OUT"
 
+set +e
+STRICT_OUT="$(
+  PATH="$TMP:/usr/bin:/bin" \
+    HYPHA_HEALTH_COUNT=1 \
+    HYPHA_MQTT_SSH_HOST=broker-host \
+    HYPHA_MQTT_SSH_BROKER_HOST=broker.lan \
+    HYPHA_MQTT_USER=operator \
+    HYPHA_MQTT_PASS=secret \
+    HYPHA_EXPECTED_BOARDS="hypha-remote,hypha-peer" \
+    HYPHA_REQUIRE_LIVE=1 \
+    HYPHA_REQUIRE_DIRECT=1 \
+    bash "$ROOT/scripts/mesh_doctor.sh" 192.0.2.1 1883
+)"
+strict_rc=$?
+set -e
+if [[ $strict_rc -eq 0 ]]; then
+  printf 'strict mesh doctor should fail when live/direct acceptance is unmet\n' >&2
+  exit 1
+fi
+grep -q 'no-live-health-sample' <<<"$STRICT_OUT"
+grep -q 'direct ble peers' <<<"$STRICT_OUT"
+grep -Eq 'hypha-remote.*hypha-peer.*-65.*direct' <<<"$STRICT_OUT"
+
 printf 'mesh doctor ssh mqtt fallback: ok\n'

@@ -105,9 +105,11 @@ if [[ -n ${HYPHA_EXPECTED_BOARDS:-} ]]; then
     [[ -n $board ]] || continue
     if ! grep -Fxq "$board" "$observed_sources"; then
       printf '%-18s %-18s %-5s %-4s %s\n' "$board" "" "" "0" "no-direct-out"
+      [[ -n ${HYPHA_REQUIRE_DIRECT:-} ]] && status=2
     fi
     if ! grep -Fxq "$board" "$observed_peers"; then
       printf '%-18s %-18s %-5s %-4s %s\n' "none" "$board" "" "0" "not-directly-heard"
+      [[ -n ${HYPHA_REQUIRE_DIRECT:-} ]] && status=2
     fi
   done
 fi

@@ -8,12 +8,15 @@ BROKER_HOST="${1:-${HYPHA_MQTT_HOST:-192.168.1.9}}"
 BROKER_PORT="${2:-${HYPHA_MQTT_PORT:-1883}}"
 HEALTH_COUNT="${HYPHA_HEALTH_COUNT:-8}"
 BLE_COUNT="${HYPHA_BLE_COUNT:-48}"
+HEALTH_TIMEOUT="${HYPHA_HEALTH_TIMEOUT:-5}"
+BLE_TIMEOUT="${HYPHA_BLE_TIMEOUT:-8}"
 MQTT_SSH_HOST="${HYPHA_MQTT_SSH_HOST:-}"
 MQTT_SSH_BROKER_HOST="${HYPHA_MQTT_SSH_BROKER_HOST:-localhost}"
 MQTT_USER_VALUE="${HYPHA_MQTT_USER:-${MQTT_USER:-}}"
 MQTT_PASS_VALUE="${HYPHA_MQTT_PASS:-${MQTT_PASS:-}}"
 OTA_URL="${HYPHA_OTA_URL:-http://192.168.1.36:8930/fw/hypha/firmware.bin}"
 EXPECTED_FW_VERSION=""
+DOCTOR_STATUS=0
 
 have_cmd() {
   command -v "$1" >/dev/null 2>&1
@@ -23,13 +26,24 @@ section() {
   printf '\n%s\n' "$1"
 }
 
+run_checked() {
+  local rc
+  set +e
+  "$@"
+  rc=$?
+  set -e
+  if [[ $rc -ne 0 && $DOCTOR_STATUS -eq 0 ]]; then
+    DOCTOR_STATUS=$rc
+  fi
+}
+
 local_mqtt_health() {
   local auth_args=()
   [[ -n $MQTT_USER_VALUE ]] && auth_args+=("-u" "$MQTT_USER_VALUE")
   [[ -n $MQTT_PASS_VALUE ]] && auth_args+=("-P" "$MQTT_PASS_VALUE")
 
   if have_cmd timeout; then
-    { timeout 5 mosquitto_sub -h "$BROKER_HOST" -p "$BROKER_PORT" "${auth_args[@]}" -v -t 'hypha/+/health' -C "$HEALTH_COUNT" || true; } \
+    { timeout "$HEALTH_TIMEOUT" mosquitto_sub -h "$BROKER_HOST" -p "$BROKER_PORT" "${auth_args[@]}" -v -t 'hypha/+/health' -C "$HEALTH_COUNT" || true; } \
       | HYPHA_EXPECTED_FW="$EXPECTED_FW_VERSION" bash "$ROOT/scripts/hypha_health_snapshot.sh"
   else
     mosquitto_sub -h "$BROKER_HOST" -p "$BROKER_PORT" "${auth_args[@]}" -v -t 'hypha/+/health' -C "$HEALTH_COUNT" \
@@ -39,8 +53,8 @@ local_mqtt_health() {
 
 ssh_mqtt_health() {
   local remote_cmd
-  printf -v remote_cmd 'timeout 5 mosquitto_sub -h %q -p %q' \
-    "$MQTT_SSH_BROKER_HOST" "$BROKER_PORT"
+  printf -v remote_cmd 'timeout %q mosquitto_sub -h %q -p %q' \
+    "$HEALTH_TIMEOUT" "$MQTT_SSH_BROKER_HOST" "$BROKER_PORT"
   if [[ -n $MQTT_USER_VALUE ]]; then
     printf -v remote_cmd '%s -u %q' "$remote_cmd" "$MQTT_USER_VALUE"
   fi
@@ -59,7 +73,7 @@ local_mqtt_ble_peers() {
   [[ -n $MQTT_PASS_VALUE ]] && auth_args+=("-P" "$MQTT_PASS_VALUE")
 
   if have_cmd timeout; then
-    { timeout 8 mosquitto_sub -h "$BROKER_HOST" -p "$BROKER_PORT" "${auth_args[@]}" -v -t 'hypha/+/ble' -C "$BLE_COUNT" || true; } \
+    { timeout "$BLE_TIMEOUT" mosquitto_sub -h "$BROKER_HOST" -p "$BROKER_PORT" "${auth_args[@]}" -v -t 'hypha/+/ble' -C "$BLE_COUNT" || true; } \
       | bash "$ROOT/scripts/hypha_ble_peers_snapshot.sh"
   else
     mosquitto_sub -h "$BROKER_HOST" -p "$BROKER_PORT" "${auth_args[@]}" -v -t 'hypha/+/ble' -C "$BLE_COUNT" \
@@ -69,8 +83,8 @@ local_mqtt_ble_peers() {
 
 ssh_mqtt_ble_peers() {
   local remote_cmd
-  printf -v remote_cmd 'timeout 8 mosquitto_sub -h %q -p %q' \
-    "$MQTT_SSH_BROKER_HOST" "$BROKER_PORT"
+  printf -v remote_cmd 'timeout %q mosquitto_sub -h %q -p %q' \
+    "$BLE_TIMEOUT" "$MQTT_SSH_BROKER_HOST" "$BROKER_PORT"
   if [[ -n $MQTT_USER_VALUE ]]; then
     printf -v remote_cmd '%s -u %q' "$remote_cmd" "$MQTT_USER_VALUE"
   fi
@@ -161,10 +175,10 @@ if ! have_cmd nc; then
 elif ! nc -z -G 2 "$BROKER_HOST" "$BROKER_PORT" >/dev/null 2>&1; then
   printf 'skip: broker unreachable\n'
 elif have_cmd mosquitto_sub; then
-  local_mqtt_health
+  run_checked local_mqtt_health
 elif [[ -n $MQTT_SSH_HOST ]] && have_cmd ssh; then
   printf 'via ssh: %s broker=%s\n' "$MQTT_SSH_HOST" "$MQTT_SSH_BROKER_HOST"
-  ssh_mqtt_health
+  run_checked ssh_mqtt_health
 else
   printf 'skip: mosquitto_sub not installed; set HYPHA_MQTT_SSH_HOST to query through the broker host\n'
 fi
@@ -176,10 +190,10 @@ if ! have_cmd nc; then
 elif ! nc -z -G 2 "$BROKER_HOST" "$BROKER_PORT" >/dev/null 2>&1; then
   printf 'skip: broker unreachable\n'
 elif have_cmd mosquitto_sub; then
-  local_mqtt_ble_peers
+  run_checked local_mqtt_ble_peers
 elif [[ -n $MQTT_SSH_HOST ]] && have_cmd ssh; then
   printf 'via ssh: %s broker=%s\n' "$MQTT_SSH_HOST" "$MQTT_SSH_BROKER_HOST"
-  ssh_mqtt_ble_peers
+  run_checked ssh_mqtt_ble_peers
 else
   printf 'skip: mosquitto_sub not installed; set HYPHA_MQTT_SSH_HOST to query through the broker host\n'
 fi
@@ -187,3 +201,5 @@ fi
 section "fleet power"
 printf 'run: just fleet-power-doctor\n'
 printf 'checks: boot history, abrupt previous boots, link-loss windows, UPS client presence\n'
+
+exit "$DOCTOR_STATUS"

@@ -80,4 +80,18 @@ fi
 grep -q 'hypha-good' "$BAD_OUT"
 grep -q 'warn: skipped malformed health line' "$BAD_ERR"
 
+STRICT_OK="$(
+  HYPHA_EXPECTED_BOARDS="hypha-fc84" \
+    HYPHA_REQUIRE_LIVE=1 \
+    bash "$ROOT/scripts/hypha_health_snapshot.sh" "$TMP"
+)"
+grep -Eq 'hypha-fc84.*live-uptime-advanced' <<<"$STRICT_OK"
+if HYPHA_EXPECTED_BOARDS="hypha-stale,hypha-missing" \
+  HYPHA_REQUIRE_LIVE=1 \
+  bash "$ROOT/scripts/hypha_health_snapshot.sh" "$TMP" >/dev/null
+then
+  echo "expected strict live mode to fail on stale or missing expected boards" >&2
+  exit 1
+fi
+
 printf 'hypha-health snapshot parser: ok\n'
