@@ -5,9 +5,42 @@ set -euo pipefail
 
 HOSTS="${HYPHA_FLEET_HOSTS:-arcanine omastar starmie dratini metagross snorlax}"
 SSH_TIMEOUT="${HYPHA_SSH_TIMEOUT:-5}"
+TAILSCALE_STATUS="${HYPHA_TAILSCALE_STATUS:-}"
 
 section() {
   printf '\n== %s ==\n' "$1"
+}
+
+tailscale_status() {
+  if [[ -n $TAILSCALE_STATUS ]]; then
+    printf '%s\n' "$TAILSCALE_STATUS"
+  elif command -v tailscale >/dev/null 2>&1; then
+    tailscale status 2>/dev/null || true
+  fi
+}
+
+tailscale_ip_for() {
+  local host=$1
+  tailscale_status | awk -v host="$host" '$2 == host { print $1; exit }'
+}
+
+ssh_user_for() {
+  local host=$1
+  ssh -G "$host" 2>/dev/null | awk '$1 == "user" { print $2; exit }'
+}
+
+ssh_probe() {
+  local target=$1
+  local out rc
+  set +e
+  out="$(ssh -o BatchMode=yes -o ConnectTimeout="$SSH_TIMEOUT" "$target" "$remote_probe" 2>&1)"
+  rc=$?
+  set -e
+  if [[ $rc -eq 0 ]]; then
+    printf '%s\n' "$out"
+    return 0
+  fi
+  return "$rc"
 }
 
 remote_probe='
@@ -85,7 +118,18 @@ fi
 
 for host in $HOSTS; do
   section "$host"
-  if ! ssh -o BatchMode=yes -o ConnectTimeout="$SSH_TIMEOUT" "$host" "$remote_probe"; then
-    printf 'unreachable: ssh failed or timed out\n'
+  if ssh_probe "$host"; then
+    continue
   fi
+  ip="$(tailscale_ip_for "$host")"
+  if [[ -n $ip ]]; then
+    user="$(ssh_user_for "$host")"
+    target="$ip"
+    [[ -n $user ]] && target="${user}@${ip}"
+    printf 'retry: %s via tailscale ip %s\n' "$host" "$ip"
+    if ssh_probe "$target"; then
+      continue
+    fi
+  fi
+  printf 'unreachable: ssh failed or timed out\n'
 done
