@@ -110,11 +110,27 @@ if [[ -n ${HYPHA_EXPECTED_BOARDS:-} ]]; then
     [[ -n $board ]] || continue
     printf '%s\n' "$board" >>"$expected_file"
     if ! grep -Fxq "$board" "$observed_sources"; then
-      printf '%-18s %-18s %-5s %-4s %s\n' "$board" "" "" "0" "no-direct-out"
+      heard_by="$(
+        awk -v board="$board" '$2 == board && !seen[$1]++ { print $1 }' "$observed_edges" \
+          | paste -sd, -
+      )"
+      note="no-direct-out"
+      if [[ -n $heard_by ]]; then
+        note="${note},heard-by=${heard_by}"
+      fi
+      printf '%-18s %-18s %-5s %-4s %s\n' "$board" "" "" "0" "$note"
       [[ -n ${HYPHA_REQUIRE_DIRECT:-} ]] && status=2
     fi
     if ! grep -Fxq "$board" "$observed_peers"; then
-      printf '%-18s %-18s %-5s %-4s %s\n' "none" "$board" "" "0" "not-directly-heard"
+      hears="$(
+        awk -v board="$board" '$1 == board && !seen[$2]++ { print $2 }' "$observed_edges" \
+          | paste -sd, -
+      )"
+      note="not-directly-heard"
+      if [[ -n $hears ]]; then
+        note="${note},hears=${hears}"
+      fi
+      printf '%-18s %-18s %-5s %-4s %s\n' "none" "$board" "" "0" "$note"
       [[ -n ${HYPHA_REQUIRE_DIRECT:-} ]] && status=2
     fi
   done

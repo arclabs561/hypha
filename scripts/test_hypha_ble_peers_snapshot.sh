@@ -31,8 +31,8 @@ EXPECTED="$(
 hypha/hypha-a/ble {"board":"hypha-a","adverts":[{"peer":"hypha-b","r":-66}]}
 EOF
 )"
-grep -q '^hypha-b[[:space:]]\+[[:space:]]\+[[:space:]]\+0[[:space:]]\+no-direct-out$' <<<"$EXPECTED"
-grep -q '^none[[:space:]]\+hypha-a[[:space:]]\+[[:space:]]\+0[[:space:]]\+not-directly-heard$' <<<"$EXPECTED"
+grep -q '^hypha-b[[:space:]]\+[[:space:]]\+[[:space:]]\+0[[:space:]]\+no-direct-out,heard-by=hypha-a$' <<<"$EXPECTED"
+grep -q '^none[[:space:]]\+hypha-a[[:space:]]\+[[:space:]]\+0[[:space:]]\+not-directly-heard,hears=hypha-b$' <<<"$EXPECTED"
 grep -q '^hypha-d[[:space:]]\+[[:space:]]\+[[:space:]]\+0[[:space:]]\+no-direct-out$' <<<"$EXPECTED"
 grep -q '^none[[:space:]]\+hypha-d[[:space:]]\+[[:space:]]\+0[[:space:]]\+not-directly-heard$' <<<"$EXPECTED"
 

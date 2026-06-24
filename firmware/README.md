@@ -48,6 +48,12 @@ These are separate observations:
   boards. This is mesh-bus liveness, not direct RF adjacency.
 - XIAO direct BLE peers: the board directly hears another XIAO board's Hypha BLE
   marker and reports its RSSI in the BLE feed.
+- BLE shared peer view: the current implementation shares those direct BLE
+  observations through MQTT (`hypha/<board>/ble`). It does not yet carry
+  neighbor summaries inside BLE advertisements, and it is not Bluetooth Mesh.
+  A future BLE-only peer-sharing layer would need a compact sequence/age/TTL
+  format, duplicate suppression, and an ADR deciding whether to use the
+  ESP-BLE-MESH stack or keep Hypha's lighter manufacturer-data beacons.
 - ESP-NOW peers: the board directly hears another ESP-NOW board on the current
   channel.
 - Mesh delivery: a message reached a destination, possibly through relays. That

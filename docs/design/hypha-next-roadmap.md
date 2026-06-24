@@ -28,6 +28,12 @@ The power story has a protocol, not evidence. `docs/measurements/power/` has a
 schema and validator but no committed run summaries. That means ESP32-C6 sleep,
 RX-gating, LP-core, and battery-life claims remain blocked on measurement.
 
+The BLE story is direct-observation telemetry, not routed BLE mesh. The
+XIAO/IDF boards advertise a compact Hypha manufacturer-data marker, scan nearby
+markers, and publish the resulting direct adjacency view through MQTT. They do
+not yet exchange neighbor summaries over BLE, relay Hypha messages over BLE, or
+run ESP-BLE-MESH provisioning/models/friend/proxy behavior.
+
 Fleet power recovery is split correctly: Hypha keeps generic scripts and docs,
 while host-specific room, outlet, UPS, Wake-on-LAN, Healthchecks, and RTO facts
 belong in the private infra repo.
@@ -77,7 +83,36 @@ schema change cites ADR-0006 or a superseding ADR.
 Reversibility: partially reversible. Public schema changes are harder to
 unwind than docs and tests.
 
-## Phase 3: Capture Power Evidence
+## Phase 3: Define Direct-RF Peer Sharing
+
+Consumer: board placement diagnostics and any future store-carry-forward path
+that needs peer facts when the MQTT broker is unavailable.
+
+Progress 2026-06-24: `just mesh-doctor` summarizes direct BLE in/out sightings
+from `hypha/<board>/ble`, and missing expected boards now show whether they were
+heard by others or only heard others.
+
+Work:
+
+- Keep the current MQTT-shared BLE observations as the diagnostic baseline.
+- Decide whether the next transport step is a lighter Hypha manufacturer-data
+  neighbor-summary frame or ESP-BLE-MESH with provisioning, keys, models, relay,
+  friend, and proxy roles.
+- If Hypha keeps manufacturer-data beacons, define a compact versioned payload:
+  self id, sequence, age, TTL, and a bounded recent-peer summary with duplicate
+  suppression.
+- If Hypha adopts ESP-BLE-MESH, write an ADR first. That stack solves a broader
+  problem than current adjacency telemetry and changes provisioning, security,
+  and firmware surface area.
+
+Gate: a design note or ADR states whether Hypha is building direct-adjacency
+telemetry, BLE-carried neighbor summaries, or routed BLE delivery. Tests must
+distinguish those three cases.
+
+Reversibility: mixed. MQTT-side diagnostics are cheap. Firmware message-format
+changes and ESP-BLE-MESH provisioning are compatibility commitments.
+
+## Phase 4: Capture Power Evidence
 
 Consumer: ESP32-C6 firmware, sleeper-node design, and any future power claim.
 
@@ -96,7 +131,7 @@ board and firmware SHA.
 Reversibility: partially reversible. Measurement files are cheap; firmware
 power-mode changes are not.
 
-## Phase 4: Prove The Update Path
+## Phase 5: Prove The Update Path
 
 Consumer: deployed C6 boards that should recover without USB flashing.
 
@@ -114,7 +149,7 @@ end-to-end device update, not only host-side protocol tests.
 
 Reversibility: partially reversible. Bad OTA behavior can strand boards.
 
-## Phase 5: Decide The Sleeper Role
+## Phase 6: Decide The Sleeper Role
 
 Consumer: battery-powered C6 nodes.
 
@@ -151,6 +186,16 @@ Recommended: HTTP OTA first. It already has signed manifest support and health
 telemetry. ESP-NOW mesh OTA remains useful, but its design doc still records
 partial sender and receiver work.
 
+### BLE peer sharing
+
+Question: add compact Hypha neighbor summaries to the existing BLE marker or
+adopt ESP-BLE-MESH?
+
+Recommended: keep the current manufacturer-data marker for direct adjacency and
+add a Hypha-specific neighbor-summary frame only after the diagnostics prove the
+need. ESP-BLE-MESH is the right fork if Hypha needs standard provisioning,
+friend/low-power buffering, proxy access from phones, or routed BLE delivery.
+
 ### Power control
 
 Question: implement modem-save/RX-gating now or measure first?
@@ -160,14 +205,17 @@ block power-savings claims until current and delivery are measured.
 
 ## Guardrails
 
-Do not start sleeper-node implementation until Phase 3 has baseline
+Do not start sleeper-node implementation until Phase 4 has baseline
 measurements.
 
-Do not expose task allocation as a distributed auction until ADR-0006 is
-accepted and the examples name one local contract.
+Do not expose task allocation as a distributed auction until the examples name
+one local contract and a later ADR supersedes ADR-0005/ADR-0006 for distributed
+coordination.
 
 Do not treat retained MQTT health as liveness proof unless the payload reports
 enough freshness fields to support that claim.
+
+Do not describe direct BLE sightings as routed BLE mesh delivery.
 
 Do not add host-specific outlet, UPS, Healthchecks, or room facts to this repo.
 Those belong in infra.
