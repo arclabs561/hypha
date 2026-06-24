@@ -80,6 +80,11 @@ if [[ -s $payloads ]]; then
          then "healthy-dark" else empty end),
         (if (env.HYPHA_EXPECTED_FW // "") != "" and s("fw") != "" and s("fw") != env.HYPHA_EXPECTED_FW
          then "fw-not-ota-version" else empty end),
+        (if (env.HYPHA_EXPECTED_FW // "") != ""
+            and s("fw") != ""
+            and s("fw") != env.HYPHA_EXPECTED_FW
+            and s("ota_state") == "not_newer"
+         then "ota-not-newer-while-outdated" else empty end),
         (if s("led_state") == "fault" then "mqtt-bus-down-led" else empty end),
         (if has("boot") | not then "legacy-no-boot-id" else empty end),
         (if has("uptime_s") | not then "freshness-unknown" else empty end),

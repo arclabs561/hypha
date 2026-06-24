@@ -52,8 +52,13 @@ grep -q 'placement' <<<"$OUT"
 grep -Eq 'hypha-fc84.*moved' <<<"$OUT"
 grep -Eq 'hypha-fc84.*placement-moved' <<<"$OUT"
 grep -Eq 'hypha-fc84.*fw-not-ota-version' <<<"$OUT"
+grep -Eq 'hypha-fc84.*ota-not-newer-while-outdated' <<<"$OUT"
 if grep -q 'fw-not-ota-version' <<<"$NO_EXPECT_OUT"; then
   echo "expected fw-not-ota-version only when HYPHA_EXPECTED_FW is set" >&2
+  exit 1
+fi
+if grep -q 'ota-not-newer-while-outdated' <<<"$NO_EXPECT_OUT"; then
+  echo "expected ota-not-newer-while-outdated only when HYPHA_EXPECTED_FW is set" >&2
   exit 1
 fi
 grep -q 'healthy-dark' <<<"$OUT"
