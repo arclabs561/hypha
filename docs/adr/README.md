@@ -13,3 +13,4 @@ single chat session. Each record is one `NNNN-slug.md` file.
 | [0004](0004-firefly-is-telemetry-until-measured.md) | firefly is telemetry until measured | Accepted |
 | [0005](0005-tasks-do-not-reference-state-versions.md) | tasks do not reference state versions | Accepted |
 | [0006](0006-coordinate-with-typed-facts-and-one-bidding-contract.md) | coordinate with typed facts and one bidding contract | Accepted |
+| [0007](0007-ble-is-direct-adjacency-telemetry.md) | BLE is direct-adjacency telemetry | Accepted |

@@ -114,6 +114,12 @@ the board's reported firmware version does not match it.
 telemetry, so a blank OTA column should not be read as a successful check.
 `no-mqtt-peer-pulses` means the board has not heard MQTT firefly pulses from
 other boards; it is not the same thing as WiFi failure or direct RF isolation.
+`no-direct-out` means the board did not publish a live BLE window containing a
+direct Hypha peer. If the note includes `heard-by=...`, other boards directly
+heard that board, so the board is physically visible but not reporting its own
+BLE window in the doctor sample. `not-directly-heard` means no sampled board
+reported directly hearing that board. If the note includes `hears=...`, the
+board reported outbound sightings but no reciprocal sampled board heard it.
 `rssi-read-errors` means the firmware could not read WiFi RSSI during at least
 one health window.
 `mqtt-reconnected` means the MQTT client reconnected after its first connection.

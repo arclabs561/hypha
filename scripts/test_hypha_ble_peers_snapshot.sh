@@ -36,6 +36,15 @@ grep -q '^none[[:space:]]\+hypha-a[[:space:]]\+[[:space:]]\+0[[:space:]]\+not-di
 grep -q '^hypha-d[[:space:]]\+[[:space:]]\+[[:space:]]\+0[[:space:]]\+no-direct-out$' <<<"$EXPECTED"
 grep -q '^none[[:space:]]\+hypha-d[[:space:]]\+[[:space:]]\+0[[:space:]]\+not-directly-heard$' <<<"$EXPECTED"
 
+MULTI_HEARD="$(
+  HYPHA_EXPECTED_BOARDS="hypha-a,hypha-b,hypha-c" \
+    bash "$ROOT/scripts/hypha_ble_peers_snapshot.sh" <<'EOF'
+hypha/hypha-a/ble {"board":"hypha-a","adverts":[{"peer":"hypha-c","r":-66}]}
+hypha/hypha-b/ble {"board":"hypha-b","adverts":[{"peer":"hypha-c","r":-67}]}
+EOF
+)"
+grep -q '^hypha-c[[:space:]]\+[[:space:]]\+[[:space:]]\+0[[:space:]]\+no-direct-out,heard-by=hypha-a,hypha-b$' <<<"$MULTI_HEARD"
+
 STRICT_OK="$(
   HYPHA_EXPECTED_BOARDS="hypha-a,hypha-b" \
     HYPHA_REQUIRE_DIRECT=1 \
