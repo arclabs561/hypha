@@ -4,7 +4,7 @@
 //! agentic Spore logic.
 
 use crate::eval::MetricsCollector;
-use crate::mesh::TopicMesh;
+use crate::mesh::{TopicMesh, PRESSURE_SPIKE_THRESHOLD};
 use libp2p::{gossipsub, identity, noise, swarm::NetworkBehaviour, tcp, yamux, Multiaddr, Swarm};
 use std::error::Error;
 use std::sync::{Arc, Mutex};
@@ -61,12 +61,21 @@ impl From<libp2p::dcutr::Event> for MyceliumEvent {
     }
 }
 
-/// A rapid electrical spike signal (Adamatzky's fungal language)
+/// Prototype pressure spike telemetry.
+///
+/// This is not a typed, authenticated alert vocabulary. ADR-0006 keeps
+/// action-triggering alerts out of this primitive channel.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Spike {
     pub source: String,
     pub intensity: u8,  // 0-255
-    pub pattern_id: u8, // vocabulary index
+    pub pattern_id: u8, // reserved prototype pattern slot
+}
+
+impl Spike {
+    pub fn affects_mesh_pressure(&self) -> bool {
+        self.intensity > PRESSURE_SPIKE_THRESHOLD
+    }
 }
 
 pub struct Mycelium {

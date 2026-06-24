@@ -316,14 +316,16 @@ impl SporeNode {
         Mycelium::new_with_profile(keypair, self.mesh.clone(), self.metrics.clone(), profile)
     }
 
-    /// Trigger a network-wide synchrony spike to wake up neighbors and force relaying.
-    /// This is used when a node has critical tasks that aren't being picked up.
+    /// Trigger a local prototype mesh pressure spike.
+    ///
+    /// This is advisory pressure telemetry, not an authenticated alert or
+    /// wake protocol.
     pub fn trigger_sync_spike(&self, intensity: u8) -> Result<(), Box<dyn Error>> {
-        info!(peer_id = %self.peer_id, %intensity, "Triggering synchrony spike");
+        info!(peer_id = %self.peer_id, %intensity, "Triggering mesh pressure spike");
         let spike = Spike {
             source: self.peer_id.to_string(),
             intensity,
-            pattern_id: 0, // Default emergency pattern
+            pattern_id: 0,
         };
         let mut mesh = self.mesh.lock().unwrap();
         mesh.handle_spike(&spike.source, spike.intensity);
@@ -505,10 +507,15 @@ impl SporeNode {
                                 }
                             }
                         } else if message.topic == mycelium.spike_topic.hash() {
-                            // High-speed alert system
+                            // Prototype pressure telemetry. Not an alert bus.
                             if let Ok(spike) = serde_json::from_slice::<Spike>(&message.data) {
-                                if spike.intensity > 200 {
-                                    info!(peer_id = %self.peer_id, "RECEIVED DANGER SPIKE from {}", spike.source);
+                                if spike.affects_mesh_pressure() {
+                                    info!(
+                                        peer_id = %self.peer_id,
+                                        source = %spike.source,
+                                        intensity = spike.intensity,
+                                        "Received mesh pressure spike"
+                                    );
                                     let mut mesh = self.mesh.lock().unwrap();
                                     mesh.handle_spike(&spike.source, spike.intensity);
                                 }

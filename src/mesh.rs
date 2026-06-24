@@ -11,7 +11,9 @@
 //! This module provides a simulation-friendly mesh layer that can be evaluated
 //! without running a full libp2p swarm.
 
-pub use crate::core::mesh::{MeshConfig, MeshControl, MeshPeer, MeshStats, TopicMesh};
+pub use crate::core::mesh::{
+    MeshConfig, MeshControl, MeshPeer, MeshStats, TopicMesh, PRESSURE_SPIKE_THRESHOLD,
+};
 
 #[cfg(test)]
 mod tests {
@@ -122,17 +124,42 @@ mod tests {
         let initial_cond = mesh.known_peers.get("danger-node").unwrap().conductivity;
         let _initial_pressure = mesh.local_pressure;
 
-        // Handle danger spike
+        // Handle pressure spike
         mesh.handle_spike("danger-node", 255);
 
         assert_eq!(
             mesh.local_pressure, 10.0,
-            "Pressure should max out on danger spike"
+            "Pressure should max out on pressure spike"
         );
         let final_cond = mesh.known_peers.get("danger-node").unwrap().conductivity;
         assert!(
             final_cond >= initial_cond + 2.0,
             "Path should thicken significantly"
+        );
+    }
+
+    #[test]
+    fn spike_threshold_is_exclusive() {
+        let mut mesh = TopicMesh::new("test".to_string(), MeshConfig::default());
+        mesh.add_peer("quiet-node".to_string(), 0.5);
+
+        mesh.handle_spike("quiet-node", PRESSURE_SPIKE_THRESHOLD);
+
+        assert_eq!(mesh.local_pressure, 0.0);
+        let peer = mesh.known_peers.get("quiet-node").unwrap();
+        assert_eq!(peer.conductivity, 1.0);
+    }
+
+    #[test]
+    fn spike_from_unknown_source_only_raises_pressure() {
+        let mut mesh = TopicMesh::new("test".to_string(), MeshConfig::default());
+
+        mesh.handle_spike("unknown-node", PRESSURE_SPIKE_THRESHOLD + 1);
+
+        assert_eq!(mesh.local_pressure, 10.0);
+        assert!(
+            !mesh.known_peers.contains_key("unknown-node"),
+            "spike handling should not create peers implicitly"
         );
     }
 }

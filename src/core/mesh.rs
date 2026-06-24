@@ -4,6 +4,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 
+/// Prototype spike intensity that affects local mesh pressure.
+pub const PRESSURE_SPIKE_THRESHOLD: u8 = 200;
+
 /// Mesh configuration parameters for local graft/prune behavior.
 #[derive(Debug, Clone)]
 pub struct MeshConfig {
@@ -450,7 +453,7 @@ impl TopicMesh {
     }
 
     pub fn handle_spike(&mut self, source: &str, intensity: u8) {
-        if intensity > 200 {
+        if intensity > PRESSURE_SPIKE_THRESHOLD {
             self.set_pressure(10.0);
             if let Some(peer) = self.known_peers.get_mut(source) {
                 peer.conductivity += 2.0;
