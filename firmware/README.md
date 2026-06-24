@@ -116,6 +116,8 @@ currently alive.
 not set a specific `POWER_SOURCE`.
 `fw-not-ota-version` means `just mesh-doctor` found a signed OTA manifest and
 the board's reported firmware version does not match it.
+`ota_counts` shows `checks=<n>/fail=<n>` when the firmware reports OTA
+decision counters.
 `legacy-no-ota-state` means the board did not report secure OTA decision
 telemetry, so a blank OTA column should not be read as a successful check.
 `no-mqtt-peer-pulses` means the board has not heard MQTT firefly pulses from

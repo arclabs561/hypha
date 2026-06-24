@@ -67,8 +67,8 @@ while IFS= read -r line; do
   jq -r '.board // empty' <<<"$compact" >>"$observed"
 done < <(if [[ $# -gt 0 ]]; then cat "$@"; else cat; fi)
 
-printf '%-18s %-7s %-8s %-8s %-4s %-10s %-13s %-42s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \
-  board fw boot uptime seen power placement place_evidence led_state mode rssi peers ota loop notes
+printf '%-18s %-7s %-8s %-8s %-4s %-10s %-13s %-42s %-9s %-6s %-5s %-6s %-12s %-18s %-6s %s\n' \
+  board fw boot uptime seen power placement place_evidence led_state mode rssi peers ota ota_counts loop notes
 
 if [[ -s $payloads ]]; then
   jq -s -r '
@@ -77,6 +77,11 @@ if [[ -s $payloads ]]; then
     def place_evidence:
       if has("placement_aps") or has("placement_baseline_aps") or has("placement_common") or has("placement_shifted") or has("placement_jaccard_milli")
       then "aps=\(n("placement_aps"))/base=\(n("placement_baseline_aps"))/common=\(n("placement_common"))/shift=\(n("placement_shifted"))/j=\(n("placement_jaccard_milli"))"
+      else ""
+      end;
+    def ota_counts:
+      if has("ota_checks") or has("ota_failures")
+      then "checks=\(n("ota_checks"))/fail=\(n("ota_failures"))"
       else ""
       end;
     def note:
@@ -144,6 +149,7 @@ if [[ -s $payloads ]]; then
         (if has("wifi_rssi") then (n("wifi_rssi") | tostring) else "" end),
         (if has("peer_pulses") then (n("peer_pulses") | tostring) else "" end),
         (s("ota_state")),
+        ota_counts,
         (if has("loop_max_ms") then (n("loop_max_ms") | tostring) else "" end),
         note,
         (if live then "1" else "0" end)
@@ -158,16 +164,16 @@ if [[ -s $payloads ]]; then
         _first_boot: ($group[0].boot // "")
       })
     | row
-  ' "$payloads" | while IFS=$'\037' read -r board fw boot uptime seen power placement place_evidence led_state mode rssi peers ota loop notes live; do
-    printf '%-18s %-7s %-8s %-8s %-4s %-10s %-13s %-42s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \
-      "$board" "$fw" "$boot" "$uptime" "$seen" "$power" "$placement" "$place_evidence" "$led_state" "$mode" "$rssi" "$peers" "$ota" "$loop" "$notes"
+  ' "$payloads" | while IFS=$'\037' read -r board fw boot uptime seen power placement place_evidence led_state mode rssi peers ota ota_counts loop notes live; do
+    printf '%-18s %-7s %-8s %-8s %-4s %-10s %-13s %-42s %-9s %-6s %-5s %-6s %-12s %-18s %-6s %s\n' \
+      "$board" "$fw" "$boot" "$uptime" "$seen" "$power" "$placement" "$place_evidence" "$led_state" "$mode" "$rssi" "$peers" "$ota" "$ota_counts" "$loop" "$notes"
     if [[ $live == "1" ]]; then
       printf '%s\n' "$board" >>"$live_observed"
     fi
   done
 else
-  printf '%-18s %-7s %-8s %-8s %-4s %-10s %-13s %-42s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \
-    none "" "" "" "" "" "" "" "" "" "" "" "" "" "no-health-payloads"
+  printf '%-18s %-7s %-8s %-8s %-4s %-10s %-13s %-42s %-9s %-6s %-5s %-6s %-12s %-18s %-6s %s\n' \
+    none "" "" "" "" "" "" "" "" "" "" "" "" "" "" "no-health-payloads"
 fi
 
 if [[ -n ${HYPHA_EXPECTED_BOARDS:-} ]]; then
@@ -175,12 +181,12 @@ if [[ -n ${HYPHA_EXPECTED_BOARDS:-} ]]; then
   for board in $expected; do
     [[ -n $board ]] || continue
     if ! grep -Fxq "$board" "$observed"; then
-      printf '%-18s %-7s %-8s %-8s %-4s %-10s %-13s %-42s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \
-        "$board" "" "" "" "0" "" "" "" "" "" "" "" "" "" "missing-expected-health"
+      printf '%-18s %-7s %-8s %-8s %-4s %-10s %-13s %-42s %-9s %-6s %-5s %-6s %-12s %-18s %-6s %s\n' \
+        "$board" "" "" "" "0" "" "" "" "" "" "" "" "" "" "" "missing-expected-health"
       [[ -n ${HYPHA_REQUIRE_LIVE:-} ]] && status=2
     elif [[ -n ${HYPHA_REQUIRE_LIVE:-} ]] && ! grep -Fxq "$board" "$live_observed"; then
-      printf '%-18s %-7s %-8s %-8s %-4s %-10s %-13s %-42s %-9s %-6s %-5s %-6s %-12s %-6s %s\n' \
-        "$board" "" "" "" "0" "" "" "" "" "" "" "" "" "" "no-live-health-sample"
+      printf '%-18s %-7s %-8s %-8s %-4s %-10s %-13s %-42s %-9s %-6s %-5s %-6s %-12s %-18s %-6s %s\n' \
+        "$board" "" "" "" "0" "" "" "" "" "" "" "" "" "" "" "no-live-health-sample"
       status=2
     fi
   done

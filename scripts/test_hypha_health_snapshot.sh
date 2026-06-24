@@ -9,8 +9,8 @@ BAD_ERR="$(mktemp -t hypha-health-bad-err.XXXXXX)"
 trap 'rm -f "$TMP" "$BAD" "$BAD_OUT" "$BAD_ERR"' EXIT
 
 cat >"$TMP" <<'JSON'
-hypha/hypha-fc84/health {"board":"hypha-fc84","fw":"0.16.0","boot":"abc123ef","uptime_s":1234,"power_source":"usb","wifi_rssi":-62,"peer_pulses":3,"led":"000000","led_state":"dark","mode":"auto","ota_state":"not_newer","loop_max_ms":52,"placement_state":"moved","placement_aps":7,"placement_baseline_aps":6,"placement_common":2,"placement_shifted":2,"placement_jaccard_milli":250}
-hypha/hypha-fc84/health {"board":"hypha-fc84","fw":"0.16.0","boot":"abc123ef","uptime_s":1300,"power_source":"usb","wifi_rssi":-61,"peer_pulses":5,"led":"000000","led_state":"dark","mode":"auto","ota_state":"not_newer","loop_max_ms":53,"placement_state":"moved","placement_aps":7,"placement_baseline_aps":6,"placement_common":2,"placement_shifted":2,"placement_jaccard_milli":250}
+hypha/hypha-fc84/health {"board":"hypha-fc84","fw":"0.16.0","boot":"abc123ef","uptime_s":1234,"power_source":"usb","wifi_rssi":-62,"peer_pulses":3,"led":"000000","led_state":"dark","mode":"auto","ota_state":"not_newer","ota_checks":4,"ota_failures":1,"loop_max_ms":52,"placement_state":"moved","placement_aps":7,"placement_baseline_aps":6,"placement_common":2,"placement_shifted":2,"placement_jaccard_milli":250}
+hypha/hypha-fc84/health {"board":"hypha-fc84","fw":"0.16.0","boot":"abc123ef","uptime_s":1300,"power_source":"usb","wifi_rssi":-61,"peer_pulses":5,"led":"000000","led_state":"dark","mode":"auto","ota_state":"not_newer","ota_checks":5,"ota_failures":1,"loop_max_ms":53,"placement_state":"moved","placement_aps":7,"placement_baseline_aps":6,"placement_common":2,"placement_shifted":2,"placement_jaccard_milli":250}
 hypha/hypha-unknown/health {"board":"hypha-unknown","fw":"0.16.1","boot":"unkboot","uptime_s":120,"power_source":"unknown","wifi_rssi":-55,"rssi_err":1,"peer_pulses":2,"mqtt_reconnects":3,"led":"000000","led_state":"dark","mode":"auto","cmd_ignored":2,"ota_state":"not_newer","loop_max_ms":42,"placement_state":"stable"}
 hypha/hypha-old/health {"board":"hypha-old","fw":"0.16.0","wifi_rssi":-70,"led":"000000","led_state":"dark","mode":"auto","loop_max_ms":62}
 hypha/hypha-topic-only/health {"fw":"0.16.1","wifi_rssi":-64,"led":"000000","led_state":"dark","mode":"auto","loop_max_ms":52}
@@ -37,6 +37,7 @@ grep -q 'uptime' <<<"$OUT"
 grep -q 'seen' <<<"$OUT"
 grep -q 'power' <<<"$OUT"
 grep -q 'place_evidence' <<<"$OUT"
+grep -q 'ota_counts' <<<"$OUT"
 grep -q 'hypha-fc84' <<<"$OUT"
 grep -q 'hypha-topic-only' <<<"$OUT"
 grep -Eq 'hypha-missing.* 0 .*missing-expected-health' <<<"$OUT"
@@ -52,6 +53,7 @@ grep -q 'usb' <<<"$OUT"
 grep -q 'placement' <<<"$OUT"
 grep -Eq 'hypha-fc84.*moved' <<<"$OUT"
 grep -Eq 'hypha-fc84.*aps=7/base=6/common=2/shift=2/j=250' <<<"$OUT"
+grep -Eq 'hypha-fc84.*checks=5/fail=1' <<<"$OUT"
 grep -Eq 'hypha-fc84.*placement-moved' <<<"$OUT"
 grep -Eq 'hypha-fc84.*fw-not-ota-version' <<<"$OUT"
 grep -Eq 'hypha-fc84.*ota-not-newer-while-outdated' <<<"$OUT"
