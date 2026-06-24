@@ -67,7 +67,7 @@ mesh-doctor broker="192.168.1.9" port="1883":
 
 # Fail unless expected boards publish live health and direct BLE in/out sightings.
 mesh-visibility-check broker="192.168.1.9" port="1883":
-    HYPHA_HEALTH_TIMEOUT="${HYPHA_HEALTH_TIMEOUT:-75}" HYPHA_BLE_TIMEOUT="${HYPHA_BLE_TIMEOUT:-20}" HYPHA_REQUIRE_LIVE=1 HYPHA_REQUIRE_DIRECT=1 bash scripts/mesh_doctor.sh "{{broker}}" "{{port}}"
+    HYPHA_HEALTH_TIMEOUT="${HYPHA_HEALTH_TIMEOUT:-135}" HYPHA_BLE_TIMEOUT="${HYPHA_BLE_TIMEOUT:-20}" HYPHA_REQUIRE_LIVE=1 HYPHA_REQUIRE_DIRECT=1 bash scripts/mesh_doctor.sh "{{broker}}" "{{port}}"
 
 # Inspect host boot history and link-loss evidence after a power event.
 fleet-power-doctor:

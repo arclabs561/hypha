@@ -94,6 +94,9 @@ This waits long enough for a live health sample, then requires each expected
 board to show advancing uptime and at least one direct BLE inbound and outbound
 sighting. It is an adjacency check, not proof of routed mesh delivery or room
 identity.
+Strict mode defaults to a 135 second health window because XIAO/IDF boards
+publish retained health every 60 seconds; this spans two publish intervals plus
+margin. Override `HYPHA_HEALTH_TIMEOUT` when doing a quicker spot check.
 
 `healthy-dark` means the controllable LED is intentionally off in auto mode.
 `seen` is the number of health samples observed for that board in the current
