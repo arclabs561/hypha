@@ -37,8 +37,8 @@ Hypha firmware currently has two C6 lines with different transport meanings:
   for more than 120 s. Retained health reports `boot`, configured
   `power_source`, `led_state`, `led`, `uptime_s`, `wifi_rssi`,
   `mqtt_reconnects`, `peer_pulses`, `ota_state`, `ota_checks`, `ota_failures`,
-  and `placement_state`. Direct BLE adjacency is reported in live `hypha/+/ble`
-  payloads and summarized by `just mesh-doctor`.
+  `placement_state`, and placement evidence counts. Direct BLE adjacency is
+  reported in live `hypha/+/ble` payloads and summarized by `just mesh-doctor`.
 
 These are separate observations:
 
@@ -103,6 +103,9 @@ and the later sample reported higher `uptime_s`; that is a live-activity hint.
 uptime did not increase.
 `missing-expected-health` means a board listed in `HYPHA_EXPECTED_BOARDS` did
 not appear in the current health query.
+`place_evidence` summarizes the placement fingerprint evidence as
+`aps=<current>/base=<previous>/common=<overlap>/shift=<rssi-shifted>/j=<jaccard-milli>`.
+It is evidence for a possible move, not a room label.
 `freshness-unknown` means the retained payload came from legacy firmware that
 does not report `uptime_s`; treat it as last-known state, not proof the board is
 currently alive.
