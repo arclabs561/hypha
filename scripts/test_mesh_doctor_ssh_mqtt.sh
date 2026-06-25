@@ -90,6 +90,19 @@ grep -Eq 'hypha-remote.*not_newer.*healthy-dark' <<<"$OUT"
 grep -q 'direct ble peers' <<<"$OUT"
 grep -Eq 'hypha-remote.*hypha-peer.*-65.*direct' <<<"$OUT"
 
+EXPECTED_OUT="$(
+  PATH="$TMP:/usr/bin:/bin" \
+    HYPHA_HEALTH_COUNT=1 \
+    HYPHA_MQTT_SSH_HOST=broker-host \
+    HYPHA_MQTT_SSH_BROKER_HOST=broker.lan \
+    HYPHA_MQTT_USER=operator \
+    HYPHA_MQTT_PASS=secret \
+    HYPHA_EXPECTED_BOARDS="hypha-remote,hypha-peer" \
+    bash "$ROOT/scripts/mesh_doctor.sh" 192.0.2.1 1883
+)"
+grep -q 'correlated visibility' <<<"$EXPECTED_OUT"
+grep -Eq 'hypha-remote.*single-sample.*yes.*no.*run-visibility-check.*sample-window-too-short' <<<"$EXPECTED_OUT"
+
 set +e
 STRICT_OUT="$(
   PATH="$TMP:/usr/bin:/bin" \

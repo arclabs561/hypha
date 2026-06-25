@@ -117,6 +117,9 @@ visibility_action_for() {
     radio-visible-mqtt-stale)
       printf 'power-cycle-or-usb-log'
       ;;
+    sample-window-too-short)
+      printf 'run-visibility-check'
+      ;;
     health-live-ble-out-missing)
       printf 'wait-or-power-cycle'
       ;;
@@ -145,7 +148,9 @@ correlate_expected_visibility() {
     direct_out="$(bool_word has_direct_out "$board")"
     direct_in="$(bool_word has_direct_in "$board")"
 
-    if [[ $health != "live" && $direct_in == "yes" ]]; then
+    if [[ $health == "single-sample" ]]; then
+      hint="sample-window-too-short"
+    elif [[ $health != "live" && $direct_in == "yes" ]]; then
       hint="radio-visible-mqtt-stale"
     elif [[ $health == "live" && $direct_out == "no" ]]; then
       hint="health-live-ble-out-missing"

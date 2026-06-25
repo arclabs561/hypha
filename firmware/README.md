@@ -104,11 +104,14 @@ sightings, a next action, and a short hint per expected board.
 `radio-visible-mqtt-stale` means another board directly heard the board, but
 the board did not publish live health in the sampled window; use
 `power-cycle-or-usb-log` because OTA and MQTT commands are not reaching it.
-`health-live-ble-out-missing` means the board is alive on MQTT but did not
-report its own BLE neighbor window; use `wait-or-power-cycle` after another
-sample window. `radio-isolated` means neither direction of direct BLE adjacency
-was sampled; use `check-power-range-or-usb` because the board may be powered
-off, out of BLE range, or running firmware that needs a serial flash.
+`sample-window-too-short` means only one health sample was captured, so the
+doctor cannot distinguish retained state from live activity; use
+`run-visibility-check` for the longer strict window. `health-live-ble-out-missing`
+means the board is alive on MQTT but did not report its own BLE neighbor window;
+use `wait-or-power-cycle` after another sample window. `radio-isolated` means
+neither direction of direct BLE adjacency was sampled; use
+`check-power-range-or-usb` because the board may be powered off, out of BLE
+range, or running firmware that needs a serial flash.
 
 `healthy-dark` means the controllable LED is intentionally off in auto mode.
 `seen` is the number of health samples observed for that board in the current
