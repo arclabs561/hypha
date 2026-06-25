@@ -17,6 +17,13 @@ MQTT_PASS_VALUE="${HYPHA_MQTT_PASS:-${MQTT_PASS:-}}"
 OTA_URL="${HYPHA_OTA_URL:-http://192.168.1.36:8930/fw/hypha/firmware.bin}"
 EXPECTED_FW_VERSION=""
 DOCTOR_STATUS=0
+HEALTH_SUMMARY="$(mktemp -t hypha-health-summary.XXXXXX)"
+BLE_SUMMARY="$(mktemp -t hypha-ble-summary.XXXXXX)"
+
+cleanup() {
+  rm -f "$HEALTH_SUMMARY" "$BLE_SUMMARY"
+}
+trap cleanup EXIT
 
 have_cmd() {
   command -v "$1" >/dev/null 2>&1
@@ -35,6 +42,101 @@ run_checked() {
   if [[ $rc -ne 0 && $DOCTOR_STATUS -eq 0 ]]; then
     DOCTOR_STATUS=$rc
   fi
+}
+
+run_checked_capture() {
+  local out_file=$1
+  shift
+  local rc
+  set +e
+  "$@" | tee "$out_file"
+  rc=${PIPESTATUS[0]}
+  set -e
+  if [[ $rc -ne 0 && $DOCTOR_STATUS -eq 0 ]]; then
+    DOCTOR_STATUS=$rc
+  fi
+}
+
+has_live_health() {
+  local board=$1
+  grep -Eq "^${board}[[:space:]].*live-uptime-advanced" "$HEALTH_SUMMARY"
+}
+
+has_health_row() {
+  local board=$1
+  grep -Eq "^${board}[[:space:]]" "$HEALTH_SUMMARY"
+}
+
+has_no_live_health_row() {
+  local board=$1
+  grep -Eq "^${board}[[:space:]].*no-live-health-sample" "$HEALTH_SUMMARY"
+}
+
+has_missing_health_row() {
+  local board=$1
+  grep -Eq "^${board}[[:space:]].*missing-expected-health" "$HEALTH_SUMMARY"
+}
+
+has_direct_out() {
+  local board=$1
+  grep -Eq "^${board}[[:space:]]+[^[:space:]]+[[:space:]]+-?[0-9]+[[:space:]]+[0-9]+[[:space:]]+(direct|weak-direct-rssi)" "$BLE_SUMMARY"
+}
+
+has_direct_in() {
+  local board=$1
+  grep -Eq "^[^[:space:]]+[[:space:]]+${board}[[:space:]]+-?[0-9]+[[:space:]]+[0-9]+[[:space:]]+(direct|weak-direct-rssi)" "$BLE_SUMMARY" \
+    || grep -Eq "^${board}[[:space:]].*heard-by=" "$BLE_SUMMARY"
+}
+
+health_state_for() {
+  local board=$1
+  if ! has_health_row "$board" || has_missing_health_row "$board"; then
+    printf 'missing'
+  elif has_live_health "$board"; then
+    printf 'live'
+  elif has_no_live_health_row "$board"; then
+    printf 'retained-only'
+  else
+    printf 'single-sample'
+  fi
+}
+
+bool_word() {
+  if "$@"; then
+    printf 'yes'
+  else
+    printf 'no'
+  fi
+}
+
+correlate_expected_visibility() {
+  [[ -n ${HYPHA_EXPECTED_BOARDS:-} ]] || return 0
+  [[ -s $HEALTH_SUMMARY || -s $BLE_SUMMARY ]] || return 0
+
+  section "correlated visibility"
+  printf 'note: combines health freshness with direct BLE adjacency for expected boards\n'
+  printf '%-18s %-13s %-10s %-9s %s\n' board health direct_out direct_in hint
+
+  local expected board health direct_out direct_in hint
+  expected="${HYPHA_EXPECTED_BOARDS//,/ }"
+  for board in $expected; do
+    [[ -n $board ]] || continue
+    health="$(health_state_for "$board")"
+    direct_out="$(bool_word has_direct_out "$board")"
+    direct_in="$(bool_word has_direct_in "$board")"
+
+    if [[ $health != "live" && $direct_in == "yes" ]]; then
+      hint="radio-visible-mqtt-stale"
+    elif [[ $health == "live" && $direct_out == "no" ]]; then
+      hint="health-live-ble-out-missing"
+    elif [[ $direct_out == "no" && $direct_in == "no" ]]; then
+      hint="radio-isolated"
+    else
+      hint="ok"
+    fi
+
+    printf '%-18s %-13s %-10s %-9s %s\n' "$board" "$health" "$direct_out" "$direct_in" "$hint"
+  done
 }
 
 local_mqtt_health() {
@@ -175,10 +277,10 @@ if ! have_cmd nc; then
 elif ! nc -z -G 2 "$BROKER_HOST" "$BROKER_PORT" >/dev/null 2>&1; then
   printf 'skip: broker unreachable\n'
 elif have_cmd mosquitto_sub; then
-  run_checked local_mqtt_health
+  run_checked_capture "$HEALTH_SUMMARY" local_mqtt_health
 elif [[ -n $MQTT_SSH_HOST ]] && have_cmd ssh; then
   printf 'via ssh: %s broker=%s\n' "$MQTT_SSH_HOST" "$MQTT_SSH_BROKER_HOST"
-  run_checked ssh_mqtt_health
+  run_checked_capture "$HEALTH_SUMMARY" ssh_mqtt_health
 else
   printf 'skip: mosquitto_sub not installed; set HYPHA_MQTT_SSH_HOST to query through the broker host\n'
 fi
@@ -190,13 +292,15 @@ if ! have_cmd nc; then
 elif ! nc -z -G 2 "$BROKER_HOST" "$BROKER_PORT" >/dev/null 2>&1; then
   printf 'skip: broker unreachable\n'
 elif have_cmd mosquitto_sub; then
-  run_checked local_mqtt_ble_peers
+  run_checked_capture "$BLE_SUMMARY" local_mqtt_ble_peers
 elif [[ -n $MQTT_SSH_HOST ]] && have_cmd ssh; then
   printf 'via ssh: %s broker=%s\n' "$MQTT_SSH_HOST" "$MQTT_SSH_BROKER_HOST"
-  run_checked ssh_mqtt_ble_peers
+  run_checked_capture "$BLE_SUMMARY" ssh_mqtt_ble_peers
 else
   printf 'skip: mosquitto_sub not installed; set HYPHA_MQTT_SSH_HOST to query through the broker host\n'
 fi
+
+correlate_expected_visibility
 
 section "fleet power"
 printf 'run: just fleet-power-doctor\n'

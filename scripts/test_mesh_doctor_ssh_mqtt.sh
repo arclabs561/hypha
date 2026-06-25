@@ -112,5 +112,7 @@ fi
 grep -q 'no-live-health-sample' <<<"$STRICT_OUT"
 grep -q 'direct ble peers' <<<"$STRICT_OUT"
 grep -Eq 'hypha-remote.*hypha-peer.*-65.*direct' <<<"$STRICT_OUT"
+grep -q 'correlated visibility' <<<"$STRICT_OUT"
+grep -Eq 'hypha-peer.*missing.*no.*yes.*radio-visible-mqtt-stale' <<<"$STRICT_OUT"
 
 printf 'mesh doctor ssh mqtt fallback: ok\n'
