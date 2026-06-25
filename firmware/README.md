@@ -37,8 +37,9 @@ Hypha firmware currently has two C6 lines with different transport meanings:
   for more than 120 s. Retained health reports `boot`, configured
   `power_source`, `led_state`, `led`, `uptime_s`, `wifi_rssi`,
   `mqtt_reconnects`, `peer_pulses`, `ota_state`, `ota_checks`, `ota_failures`,
-  `placement_state`, and placement evidence counts. Direct BLE adjacency is
-  reported in live `hypha/+/ble` payloads and summarized by `just mesh-doctor`.
+  MQTT publish counters by channel, `placement_state`, and placement evidence
+  counts. Direct BLE adjacency is reported in live `hypha/+/ble` payloads and
+  summarized by `just mesh-doctor`.
 
 These are separate observations:
 
@@ -125,6 +126,10 @@ not set a specific `POWER_SOURCE`.
 the board's reported firmware version does not match it.
 `ota_counts` shows `checks=<n>/fail=<n>` when the firmware reports OTA
 decision counters.
+`tx_counts` shows MQTT publish outcomes as
+`ble=<ok>/<fail>;h=<ok>/<fail>;p=<ok>/<fail>` for BLE-window, retained-health,
+and pulse publishes. Non-zero failures mean the board observed publish errors
+before the retained health sample that reports them.
 `legacy-no-ota-state` means the board did not report secure OTA decision
 telemetry, so a blank OTA column should not be read as a successful check.
 `no-mqtt-peer-pulses` means the board has not heard MQTT firefly pulses from
@@ -175,5 +180,5 @@ just esp-c6-http-ota-sign /path/to/firmware.bin firmware/mesh_ota/keys/priv.pem
 ```
 
 The signed manifest version must be strictly greater than the running firmware
-version. The current IDF firmware version is `0.16.4`; boards reporting
-`0.16.3` will accept a correctly signed `0.16.4` image.
+version. The current IDF firmware version is `0.16.5`; boards reporting
+`0.16.3` or `0.16.4` will accept a correctly signed `0.16.5` image.

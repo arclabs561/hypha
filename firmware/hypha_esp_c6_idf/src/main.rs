@@ -78,8 +78,17 @@ pub struct Stats {
     pub mqtt_connected: AtomicBool,
     /// Operator-toggled locate blink (hypha/<board>/cmd {"locate":true|false}).
     pub locate: AtomicBool,
-    /// Advert-batch publishes; the LED reads increments as the firefly heartbeat.
+    /// Advert-batch publish successes; kept for compatibility with earlier health payloads.
     pub publishes: AtomicU32,
+    /// MQTT publish outcomes by channel. These make asymmetric fleet states
+    /// visible after recovery: a board can still BLE-advertise while its own
+    /// health/BLE MQTT publishes are failing.
+    pub pulse_tx_ok: AtomicU32,
+    pub pulse_tx_fail: AtomicU32,
+    pub ble_tx_ok: AtomicU32,
+    pub ble_tx_fail: AtomicU32,
+    pub health_tx_ok: AtomicU32,
+    pub health_tx_fail: AtomicU32,
     /// Last WiFi STA RSSI (dBm), refreshed each loop for the LED Link page.
     pub wifi_rssi: AtomicI32,
     /// LED carousel mode (led::MODE_*), set from the cmd topic.
@@ -244,7 +253,10 @@ fn main() -> anyhow::Result<()> {
         if fired {
             stats.fire.fetch_add(1, Ordering::Relaxed); // drives the LED heartbeat
             if let Err(e) = mqtt::publish_pulse(&mut mqtt, &board_id) {
+                stats.pulse_tx_fail.fetch_add(1, Ordering::Relaxed);
                 error!("{:?}", e);
+            } else {
+                stats.pulse_tx_ok.fetch_add(1, Ordering::Relaxed);
             }
         }
 
@@ -296,9 +308,11 @@ fn main() -> anyhow::Result<()> {
             stats.scan_windows.fetch_add(1, Ordering::Relaxed);
             seq = seq.wrapping_add(1);
             if let Err(e) = mqtt::publish_adverts(&mut mqtt, &board_id, &boot_id, seq, batch) {
+                stats.ble_tx_fail.fetch_add(1, Ordering::Relaxed);
                 error!("{:?}", e);
             } else {
                 stats.publishes.fetch_add(1, Ordering::Relaxed);
+                stats.ble_tx_ok.fetch_add(1, Ordering::Relaxed);
             }
 
             if last_health.map_or(true, |t| {
@@ -312,10 +326,15 @@ fn main() -> anyhow::Result<()> {
                     boot_time.elapsed().as_secs(),
                     &stats,
                 ) {
+                    stats.health_tx_fail.fetch_add(1, Ordering::Relaxed);
                     error!("{:?}", e);
+                } else {
+                    stats.health_tx_ok.fetch_add(1, Ordering::Relaxed);
+                    // Reset the per-window loop-stall high-water mark after a
+                    // successful report. Failed reports keep the evidence until
+                    // the next retained health publish.
+                    stats.loop_max_ms.store(0, Ordering::Relaxed);
                 }
-                // Reset the per-window loop-stall high-water mark after reporting.
-                stats.loop_max_ms.store(0, Ordering::Relaxed);
             }
 
             if last_ota_check.elapsed() >= Duration::from_secs(OTA_CHECK_INTERVAL_SECS) {

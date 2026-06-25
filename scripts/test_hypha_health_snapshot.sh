@@ -11,7 +11,7 @@ trap 'rm -f "$TMP" "$BAD" "$BAD_OUT" "$BAD_ERR"' EXIT
 cat >"$TMP" <<'JSON'
 hypha/hypha-fc84/health {"board":"hypha-fc84","fw":"0.16.0","boot":"abc123ef","uptime_s":1234,"power_source":"usb","wifi_rssi":-62,"peer_pulses":3,"led":"000000","led_state":"dark","mode":"auto","ota_state":"not_newer","ota_checks":4,"ota_failures":1,"loop_max_ms":52,"placement_state":"moved","placement_aps":7,"placement_baseline_aps":6,"placement_common":2,"placement_shifted":2,"placement_jaccard_milli":250}
 hypha/hypha-fc84/health {"board":"hypha-fc84","fw":"0.16.0","boot":"abc123ef","uptime_s":1300,"power_source":"usb","wifi_rssi":-61,"peer_pulses":5,"led":"000000","led_state":"dark","mode":"auto","ota_state":"not_newer","ota_checks":5,"ota_failures":1,"loop_max_ms":53,"placement_state":"moved","placement_aps":7,"placement_baseline_aps":6,"placement_common":2,"placement_shifted":2,"placement_jaccard_milli":250}
-hypha/hypha-unknown/health {"board":"hypha-unknown","fw":"0.16.1","boot":"unkboot","uptime_s":120,"power_source":"unknown","wifi_rssi":-55,"rssi_err":1,"peer_pulses":2,"mqtt_reconnects":3,"led":"000000","led_state":"dark","mode":"auto","cmd_ignored":2,"ota_state":"not_newer","loop_max_ms":42,"placement_state":"stable"}
+hypha/hypha-unknown/health {"board":"hypha-unknown","fw":"0.16.1","boot":"unkboot","uptime_s":120,"power_source":"unknown","wifi_rssi":-55,"rssi_err":1,"peer_pulses":2,"mqtt_reconnects":3,"pulse_tx_ok":4,"pulse_tx_fail":1,"ble_tx_ok":50,"ble_tx_fail":2,"health_tx_ok":1,"health_tx_fail":1,"led":"000000","led_state":"dark","mode":"auto","cmd_ignored":2,"ota_state":"not_newer","loop_max_ms":42,"placement_state":"stable"}
 hypha/hypha-old/health {"board":"hypha-old","fw":"0.16.0","wifi_rssi":-70,"led":"000000","led_state":"dark","mode":"auto","loop_max_ms":62}
 hypha/hypha-topic-only/health {"fw":"0.16.1","wifi_rssi":-64,"led":"000000","led_state":"dark","mode":"auto","loop_max_ms":52}
 hypha/hypha-stale/health {"board":"hypha-stale","fw":"0.16.1","boot":"stale123","uptime_s":900,"power_source":"usb","wifi_rssi":-60,"peer_pulses":1,"led":"000000","led_state":"dark","mode":"auto","ota_state":"not_newer","loop_max_ms":51,"placement_state":"stable"}
@@ -38,6 +38,7 @@ grep -q 'seen' <<<"$OUT"
 grep -q 'power' <<<"$OUT"
 grep -q 'place_evidence' <<<"$OUT"
 grep -q 'ota_counts' <<<"$OUT"
+grep -q 'tx_counts' <<<"$OUT"
 grep -q 'hypha-fc84' <<<"$OUT"
 grep -q 'hypha-topic-only' <<<"$OUT"
 grep -Eq 'hypha-missing.* 0 .*missing-expected-health' <<<"$OUT"
@@ -81,6 +82,10 @@ grep -Eq 'hypha-unknown.*power-source-unknown' <<<"$OUT"
 grep -Eq 'hypha-unknown.*rssi-read-errors' <<<"$OUT"
 grep -Eq 'hypha-unknown.*mqtt-reconnected' <<<"$OUT"
 grep -Eq 'hypha-unknown.*cmd-ignored' <<<"$OUT"
+grep -Eq 'hypha-unknown.*ble=50/2;h=1/1;p=4/1' <<<"$OUT"
+grep -Eq 'hypha-unknown.*ble-publish-failures' <<<"$OUT"
+grep -Eq 'hypha-unknown.*health-publish-failures' <<<"$OUT"
+grep -Eq 'hypha-unknown.*pulse-publish-failures' <<<"$OUT"
 grep -Eq '^none .*no-health-payloads' <<<"$EMPTY_OUT"
 if bash "$ROOT/scripts/hypha_health_snapshot.sh" "$BAD" >"$BAD_OUT" 2>"$BAD_ERR"; then
   echo "expected malformed health input to return nonzero" >&2

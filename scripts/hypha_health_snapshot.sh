@@ -67,8 +67,8 @@ while IFS= read -r line; do
   jq -r '.board // empty' <<<"$compact" >>"$observed"
 done < <(if [[ $# -gt 0 ]]; then cat "$@"; else cat; fi)
 
-printf '%-18s %-7s %-8s %-8s %-4s %-10s %-13s %-42s %-9s %-6s %-5s %-6s %-12s %-18s %-6s %s\n' \
-  board fw boot uptime seen power placement place_evidence led_state mode rssi peers ota ota_counts loop notes
+printf '%-18s %-7s %-8s %-8s %-4s %-10s %-13s %-42s %-9s %-6s %-5s %-6s %-12s %-18s %-28s %-6s %s\n' \
+  board fw boot uptime seen power placement place_evidence led_state mode rssi peers ota ota_counts tx_counts loop notes
 
 if [[ -s $payloads ]]; then
   jq -s -r '
@@ -82,6 +82,11 @@ if [[ -s $payloads ]]; then
     def ota_counts:
       if has("ota_checks") or has("ota_failures")
       then "checks=\(n("ota_checks"))/fail=\(n("ota_failures"))"
+      else ""
+      end;
+    def tx_counts:
+      if has("ble_tx_ok") or has("ble_tx_fail") or has("health_tx_ok") or has("health_tx_fail") or has("pulse_tx_ok") or has("pulse_tx_fail")
+      then "ble=\(n("ble_tx_ok"))/\(n("ble_tx_fail"));h=\(n("health_tx_ok"))/\(n("health_tx_fail"));p=\(n("pulse_tx_ok"))/\(n("pulse_tx_fail"))"
       else ""
       end;
     def note:
@@ -120,6 +125,9 @@ if [[ -s $payloads ]]; then
         (if n("cmd_ignored") > 0 then "cmd-ignored" else empty end),
         (if n("loop_max_ms") > 250 then "loop-starved" else empty end),
         (if n("ota_failures") > 0 then "ota-failures" else empty end),
+        (if n("ble_tx_fail") > 0 then "ble-publish-failures" else empty end),
+        (if n("health_tx_fail") > 0 then "health-publish-failures" else empty end),
+        (if n("pulse_tx_fail") > 0 then "pulse-publish-failures" else empty end),
         (if has("ota_state") | not then "legacy-no-ota-state" else empty end),
         (if (s("ota_state") | test("bad|mismatch|error")) then "ota-attention" else empty end),
         (if s("placement_state") == "moved" then "placement-moved"
@@ -150,6 +158,7 @@ if [[ -s $payloads ]]; then
         (if has("peer_pulses") then (n("peer_pulses") | tostring) else "" end),
         (s("ota_state")),
         ota_counts,
+        tx_counts,
         (if has("loop_max_ms") then (n("loop_max_ms") | tostring) else "" end),
         note,
         (if live then "1" else "0" end)
@@ -164,16 +173,16 @@ if [[ -s $payloads ]]; then
         _first_boot: ($group[0].boot // "")
       })
     | row
-  ' "$payloads" | while IFS=$'\037' read -r board fw boot uptime seen power placement place_evidence led_state mode rssi peers ota ota_counts loop notes live; do
-    printf '%-18s %-7s %-8s %-8s %-4s %-10s %-13s %-42s %-9s %-6s %-5s %-6s %-12s %-18s %-6s %s\n' \
-      "$board" "$fw" "$boot" "$uptime" "$seen" "$power" "$placement" "$place_evidence" "$led_state" "$mode" "$rssi" "$peers" "$ota" "$ota_counts" "$loop" "$notes"
+  ' "$payloads" | while IFS=$'\037' read -r board fw boot uptime seen power placement place_evidence led_state mode rssi peers ota ota_counts tx_counts loop notes live; do
+    printf '%-18s %-7s %-8s %-8s %-4s %-10s %-13s %-42s %-9s %-6s %-5s %-6s %-12s %-18s %-28s %-6s %s\n' \
+      "$board" "$fw" "$boot" "$uptime" "$seen" "$power" "$placement" "$place_evidence" "$led_state" "$mode" "$rssi" "$peers" "$ota" "$ota_counts" "$tx_counts" "$loop" "$notes"
     if [[ $live == "1" ]]; then
       printf '%s\n' "$board" >>"$live_observed"
     fi
   done
 else
-  printf '%-18s %-7s %-8s %-8s %-4s %-10s %-13s %-42s %-9s %-6s %-5s %-6s %-12s %-18s %-6s %s\n' \
-    none "" "" "" "" "" "" "" "" "" "" "" "" "" "" "no-health-payloads"
+  printf '%-18s %-7s %-8s %-8s %-4s %-10s %-13s %-42s %-9s %-6s %-5s %-6s %-12s %-18s %-28s %-6s %s\n' \
+    none "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "no-health-payloads"
 fi
 
 if [[ -n ${HYPHA_EXPECTED_BOARDS:-} ]]; then
@@ -181,12 +190,12 @@ if [[ -n ${HYPHA_EXPECTED_BOARDS:-} ]]; then
   for board in $expected; do
     [[ -n $board ]] || continue
     if ! grep -Fxq "$board" "$observed"; then
-      printf '%-18s %-7s %-8s %-8s %-4s %-10s %-13s %-42s %-9s %-6s %-5s %-6s %-12s %-18s %-6s %s\n' \
-        "$board" "" "" "" "0" "" "" "" "" "" "" "" "" "" "" "missing-expected-health"
+      printf '%-18s %-7s %-8s %-8s %-4s %-10s %-13s %-42s %-9s %-6s %-5s %-6s %-12s %-18s %-28s %-6s %s\n' \
+        "$board" "" "" "" "0" "" "" "" "" "" "" "" "" "" "" "" "missing-expected-health"
       [[ -n ${HYPHA_REQUIRE_LIVE:-} ]] && status=2
     elif [[ -n ${HYPHA_REQUIRE_LIVE:-} ]] && ! grep -Fxq "$board" "$live_observed"; then
-      printf '%-18s %-7s %-8s %-8s %-4s %-10s %-13s %-42s %-9s %-6s %-5s %-6s %-12s %-18s %-6s %s\n' \
-        "$board" "" "" "" "0" "" "" "" "" "" "" "" "" "" "" "no-live-health-sample"
+      printf '%-18s %-7s %-8s %-8s %-4s %-10s %-13s %-42s %-9s %-6s %-5s %-6s %-12s %-18s %-28s %-6s %s\n' \
+        "$board" "" "" "" "0" "" "" "" "" "" "" "" "" "" "" "" "no-live-health-sample"
       status=2
     fi
   done

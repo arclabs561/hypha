@@ -349,7 +349,7 @@ pub fn publish_health(
     let placement_state =
         crate::placement::State::from_code(stats.placement_state.load(Ordering::Relaxed)).name();
     let payload = format!(
-        r#"{{"board":"{}","fw":"{}","boot":"{}","power_source":"{}","uptime_s":{},"heap_free":{},"wifi_rssi":{},"rssi_err":{},"scan_windows":{},"adverts_seen":{},"mqtt_reconnects":{},"fires":{},"peer_pulses":{},"led":"{:06x}","led_state":"{}","mode":"{}","locate":{},"led_max":{},"cmd_ignored":{},"loop_max_ms":{},"ota_state":"{}","ota_checks":{},"ota_failures":{},"placement_state":"{}","placement_aps":{},"placement_baseline_aps":{},"placement_common":{},"placement_shifted":{},"placement_jaccard_milli":{}}}"#,
+        r#"{{"board":"{}","fw":"{}","boot":"{}","power_source":"{}","uptime_s":{},"heap_free":{},"wifi_rssi":{},"rssi_err":{},"scan_windows":{},"adverts_seen":{},"mqtt_reconnects":{},"pulse_tx_ok":{},"pulse_tx_fail":{},"ble_tx_ok":{},"ble_tx_fail":{},"health_tx_ok":{},"health_tx_fail":{},"fires":{},"peer_pulses":{},"led":"{:06x}","led_state":"{}","mode":"{}","locate":{},"led_max":{},"cmd_ignored":{},"loop_max_ms":{},"ota_state":"{}","ota_checks":{},"ota_failures":{},"placement_state":"{}","placement_aps":{},"placement_baseline_aps":{},"placement_common":{},"placement_shifted":{},"placement_jaccard_milli":{}}}"#,
         board_id,
         env!("CARGO_PKG_VERSION"),
         boot_id,
@@ -363,6 +363,12 @@ pub fn publish_health(
         stats.scan_windows.load(Ordering::Relaxed),
         stats.adverts_seen.load(Ordering::Relaxed),
         connects.saturating_sub(1),
+        stats.pulse_tx_ok.load(Ordering::Relaxed),
+        stats.pulse_tx_fail.load(Ordering::Relaxed),
+        stats.ble_tx_ok.load(Ordering::Relaxed),
+        stats.ble_tx_fail.load(Ordering::Relaxed),
+        stats.health_tx_ok.load(Ordering::Relaxed),
+        stats.health_tx_fail.load(Ordering::Relaxed),
         // local firefly fire count: telemetry compares this to received pulses
         // on hypha/sync/pulse to separate fire-rate from pulse-loss
         stats.fire.load(Ordering::Relaxed),
