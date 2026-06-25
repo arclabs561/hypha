@@ -109,15 +109,35 @@ bool_word() {
   fi
 }
 
+visibility_action_for() {
+  case "$1" in
+    ok)
+      printf 'none'
+      ;;
+    radio-visible-mqtt-stale)
+      printf 'power-cycle-or-usb-log'
+      ;;
+    health-live-ble-out-missing)
+      printf 'wait-or-power-cycle'
+      ;;
+    radio-isolated)
+      printf 'check-power-range-or-usb'
+      ;;
+    *)
+      printf 'inspect'
+      ;;
+  esac
+}
+
 correlate_expected_visibility() {
   [[ -n ${HYPHA_EXPECTED_BOARDS:-} ]] || return 0
   [[ -s $HEALTH_SUMMARY || -s $BLE_SUMMARY ]] || return 0
 
   section "correlated visibility"
   printf 'note: combines health freshness with direct BLE adjacency for expected boards\n'
-  printf '%-18s %-13s %-10s %-9s %s\n' board health direct_out direct_in hint
+  printf '%-18s %-13s %-10s %-9s %-27s %s\n' board health direct_out direct_in action hint
 
-  local expected board health direct_out direct_in hint
+  local expected board health direct_out direct_in hint action
   expected="${HYPHA_EXPECTED_BOARDS//,/ }"
   for board in $expected; do
     [[ -n $board ]] || continue
@@ -135,7 +155,8 @@ correlate_expected_visibility() {
       hint="ok"
     fi
 
-    printf '%-18s %-13s %-10s %-9s %s\n' "$board" "$health" "$direct_out" "$direct_in" "$hint"
+    action="$(visibility_action_for "$hint")"
+    printf '%-18s %-13s %-10s %-9s %-27s %s\n' "$board" "$health" "$direct_out" "$direct_in" "$action" "$hint"
   done
 }
 

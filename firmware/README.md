@@ -100,11 +100,15 @@ publish retained health every 60 seconds; this spans two publish intervals plus
 margin. Override `HYPHA_HEALTH_TIMEOUT` when doing a quicker spot check.
 When `HYPHA_EXPECTED_BOARDS` is set, `just mesh-doctor` also prints correlated
 visibility: health freshness, direct BLE outbound sightings, direct BLE inbound
-sightings, and a short hint per expected board. `radio-visible-mqtt-stale` means
-another board directly heard the board, but the board did not publish live
-health in the sampled window. `health-live-ble-out-missing` means the board is
-alive on MQTT but did not report its own BLE neighbor window. `radio-isolated`
-means neither direction of direct BLE adjacency was sampled.
+sightings, a next action, and a short hint per expected board.
+`radio-visible-mqtt-stale` means another board directly heard the board, but
+the board did not publish live health in the sampled window; use
+`power-cycle-or-usb-log` because OTA and MQTT commands are not reaching it.
+`health-live-ble-out-missing` means the board is alive on MQTT but did not
+report its own BLE neighbor window; use `wait-or-power-cycle` after another
+sample window. `radio-isolated` means neither direction of direct BLE adjacency
+was sampled; use `check-power-range-or-usb` because the board may be powered
+off, out of BLE range, or running firmware that needs a serial flash.
 
 `healthy-dark` means the controllable LED is intentionally off in auto mode.
 `seen` is the number of health samples observed for that board in the current
