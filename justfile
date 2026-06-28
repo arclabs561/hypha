@@ -61,6 +61,10 @@ esp-bridge-validate:
 hypha-health *args:
     bash scripts/hypha_health_snapshot.sh {{args}}
 
+# Send locate on/off commands to one or more boards. Use op run for secrets.
+hypha-locate mode *boards:
+    bash scripts/hypha_locate.sh "{{mode}}" {{boards}}
+
 # Inspect Tailscale, broker reachability, USB boards, and retained MQTT health.
 mesh-doctor broker="192.168.1.9" port="1883":
     bash scripts/mesh_doctor.sh "{{broker}}" "{{port}}"
@@ -100,9 +104,10 @@ check:
     cargo clippy --all-targets -- -D warnings
     cargo test
     cargo test --manifest-path firmware/host-tests/Cargo.toml
-    bash -n scripts/mesh_doctor.sh scripts/hypha_ble_peers_snapshot.sh scripts/hypha_health_snapshot.sh scripts/test_hypha_ble_peers_snapshot.sh scripts/test_hypha_health_snapshot.sh scripts/sign_http_ota.sh scripts/healthchecks_ping.sh
+    bash -n scripts/mesh_doctor.sh scripts/hypha_ble_peers_snapshot.sh scripts/hypha_health_snapshot.sh scripts/hypha_locate.sh scripts/test_hypha_ble_peers_snapshot.sh scripts/test_hypha_health_snapshot.sh scripts/test_hypha_locate.sh scripts/sign_http_ota.sh scripts/healthchecks_ping.sh
     bash scripts/test_hypha_ble_peers_snapshot.sh
     bash scripts/test_hypha_health_snapshot.sh
+    bash scripts/test_hypha_locate.sh
     bash scripts/test_mesh_doctor_ota_health.sh
     bash scripts/test_mesh_doctor_ssh_mqtt.sh
     bash scripts/test_mesh_doctor_tailscale.sh

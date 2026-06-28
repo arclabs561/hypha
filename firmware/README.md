@@ -84,6 +84,21 @@ To flag boards expected by a private deployment inventory, set
 `HYPHA_EXPECTED_BOARDS` to a comma- or space-separated board id list before
 running `just mesh-doctor`.
 
+To make a board blink for physical recovery, send a momentary locate command:
+
+```bash
+HYPHA_MQTT_PASS=op://fleet/hypha\ mqtt/password \
+HYPHA_MQTT_USER=hypha \
+HYPHA_MQTT_SSH_HOST=dratini \
+HYPHA_MQTT_SSH_BROKER_HOST=192.168.1.9 \
+op run -- just hypha-locate on hypha-fc84 hypha-b4bc
+```
+
+Turn it off with `just hypha-locate off ...`. Locate is sent over MQTT; if
+`mesh-doctor` says `radio-isolated` or `radio-visible-mqtt-stale`, a missing
+blink does not prove the board is absent. It only means the command path did not
+acknowledge during that attempt.
+
 To make that diagnostic fail when the fleet is not live and directly visible,
 use:
 
