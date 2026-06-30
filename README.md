@@ -43,6 +43,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 The examples are small demonstrations of current heuristics, not proofs of a
 distributed scheduling or routing model:
 
+Full gallery with commands and captured output: [`examples/README.md`](examples/README.md).
+
 ```bash
 cargo run --example mycelium_eval
 cargo run --example slime_mold_auction
