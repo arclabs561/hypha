@@ -166,15 +166,16 @@ correlate_expected_visibility() {
 }
 
 local_mqtt_health() {
-  local auth_args=()
-  [[ -n $MQTT_USER_VALUE ]] && auth_args+=("-u" "$MQTT_USER_VALUE")
-  [[ -n $MQTT_PASS_VALUE ]] && auth_args+=("-P" "$MQTT_PASS_VALUE")
+  local cmd=(mosquitto_sub -h "$BROKER_HOST" -p "$BROKER_PORT")
+  [[ -n $MQTT_USER_VALUE ]] && cmd+=("-u" "$MQTT_USER_VALUE")
+  [[ -n $MQTT_PASS_VALUE ]] && cmd+=("-P" "$MQTT_PASS_VALUE")
+  cmd+=(-v -t 'hypha/+/health' -C "$HEALTH_COUNT")
 
   if have_cmd timeout; then
-    { timeout "$HEALTH_TIMEOUT" mosquitto_sub -h "$BROKER_HOST" -p "$BROKER_PORT" "${auth_args[@]}" -v -t 'hypha/+/health' -C "$HEALTH_COUNT" || true; } \
+    { timeout "$HEALTH_TIMEOUT" "${cmd[@]}" || true; } \
       | HYPHA_EXPECTED_FW="$EXPECTED_FW_VERSION" bash "$ROOT/scripts/hypha_health_snapshot.sh"
   else
-    mosquitto_sub -h "$BROKER_HOST" -p "$BROKER_PORT" "${auth_args[@]}" -v -t 'hypha/+/health' -C "$HEALTH_COUNT" \
+    "${cmd[@]}" \
       | HYPHA_EXPECTED_FW="$EXPECTED_FW_VERSION" bash "$ROOT/scripts/hypha_health_snapshot.sh"
   fi
 }
@@ -196,15 +197,16 @@ ssh_mqtt_health() {
 }
 
 local_mqtt_ble_peers() {
-  local auth_args=()
-  [[ -n $MQTT_USER_VALUE ]] && auth_args+=("-u" "$MQTT_USER_VALUE")
-  [[ -n $MQTT_PASS_VALUE ]] && auth_args+=("-P" "$MQTT_PASS_VALUE")
+  local cmd=(mosquitto_sub -h "$BROKER_HOST" -p "$BROKER_PORT")
+  [[ -n $MQTT_USER_VALUE ]] && cmd+=("-u" "$MQTT_USER_VALUE")
+  [[ -n $MQTT_PASS_VALUE ]] && cmd+=("-P" "$MQTT_PASS_VALUE")
+  cmd+=(-v -t 'hypha/+/ble' -C "$BLE_COUNT")
 
   if have_cmd timeout; then
-    { timeout "$BLE_TIMEOUT" mosquitto_sub -h "$BROKER_HOST" -p "$BROKER_PORT" "${auth_args[@]}" -v -t 'hypha/+/ble' -C "$BLE_COUNT" || true; } \
+    { timeout "$BLE_TIMEOUT" "${cmd[@]}" || true; } \
       | bash "$ROOT/scripts/hypha_ble_peers_snapshot.sh"
   else
-    mosquitto_sub -h "$BROKER_HOST" -p "$BROKER_PORT" "${auth_args[@]}" -v -t 'hypha/+/ble' -C "$BLE_COUNT" \
+    "${cmd[@]}" \
       | bash "$ROOT/scripts/hypha_ble_peers_snapshot.sh"
   fi
 }
