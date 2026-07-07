@@ -1,7 +1,5 @@
 # hypha
 
-[![CI](https://github.com/arclabs561/hypha/actions/workflows/ci.yml/badge.svg)](https://github.com/arclabs561/hypha/actions/workflows/ci.yml)
-
 Power-aware coordination for local sensor and compute nodes.
 
 `hypha` models nodes as spores with a stable identity, a local store, a power
