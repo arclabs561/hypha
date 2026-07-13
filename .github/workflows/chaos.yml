@@ -54,6 +54,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -71,12 +73,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "duration_secs=${{ github.event.inputs.duration_secs }}" >> "$GITHUB_OUTPUT"
-          echo "relay_sleep_secs=${{ github.event.inputs.relay_sleep_secs }}" >> "$GITHUB_OUTPUT"
-          echo "relay_hard_kill=${{ github.event.inputs.relay_hard_kill }}" >> "$GITHUB_OUTPUT"
-          echo "sub_sleep_secs=${{ github.event.inputs.sub_sleep_secs }}" >> "$GITHUB_OUTPUT"
-          echo "malformed_first=${{ github.event.inputs.malformed_first }}" >> "$GITHUB_OUTPUT"
-          echo "metrics=${{ github.event.inputs.metrics }}" >> "$GITHUB_OUTPUT"
+          echo "duration_secs=${GITHUB_EVENT_INPUTS_DURATION_SECS}" >> "$GITHUB_OUTPUT"
+          echo "relay_sleep_secs=${GITHUB_EVENT_INPUTS_RELAY_SLEEP_SECS}" >> "$GITHUB_OUTPUT"
+          echo "relay_hard_kill=${GITHUB_EVENT_INPUTS_RELAY_HARD_KILL}" >> "$GITHUB_OUTPUT"
+          echo "sub_sleep_secs=${GITHUB_EVENT_INPUTS_SUB_SLEEP_SECS}" >> "$GITHUB_OUTPUT"
+          echo "malformed_first=${GITHUB_EVENT_INPUTS_MALFORMED_FIRST}" >> "$GITHUB_OUTPUT"
+          echo "metrics=${GITHUB_EVENT_INPUTS_METRICS}" >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_EVENT_INPUTS_DURATION_SECS: ${{ github.event.inputs.duration_secs }}
+          GITHUB_EVENT_INPUTS_RELAY_SLEEP_SECS: ${{ github.event.inputs.relay_sleep_secs }}
+          GITHUB_EVENT_INPUTS_RELAY_HARD_KILL: ${{ github.event.inputs.relay_hard_kill }}
+          GITHUB_EVENT_INPUTS_SUB_SLEEP_SECS: ${{ github.event.inputs.sub_sleep_secs }}
+          GITHUB_EVENT_INPUTS_MALFORMED_FIRST: ${{ github.event.inputs.malformed_first }}
+          GITHUB_EVENT_INPUTS_METRICS: ${{ github.event.inputs.metrics }}
 
       - name: Run chaos harness (seeded)
         shell: bash
@@ -87,16 +96,23 @@ jobs:
           # but the matrix is the canonical driver here.
           sudo -E env \
             HYPHA_CHAOS_DIR=/tmp/hypha_chaos \
-            HYPHA_CHAOS_RELAY_SLEEP_SECS="${{ steps.inputs.outputs.relay_sleep_secs }}" \
-            HYPHA_CHAOS_RELAY_HARD_KILL="${{ steps.inputs.outputs.relay_hard_kill }}" \
-            HYPHA_CHAOS_SUB_SLEEP_SECS="${{ steps.inputs.outputs.sub_sleep_secs }}" \
-            HYPHA_CHAOS_PUB_MALFORMED_FIRST="${{ steps.inputs.outputs.malformed_first }}" \
-            HYPHA_CHAOS_METRICS="${{ steps.inputs.outputs.metrics }}" \
+            HYPHA_CHAOS_RELAY_SLEEP_SECS="${STEPS_INPUTS_OUTPUTS_RELAY_SLEEP_SECS}" \
+            HYPHA_CHAOS_RELAY_HARD_KILL="${STEPS_INPUTS_OUTPUTS_RELAY_HARD_KILL}" \
+            HYPHA_CHAOS_SUB_SLEEP_SECS="${STEPS_INPUTS_OUTPUTS_SUB_SLEEP_SECS}" \
+            HYPHA_CHAOS_PUB_MALFORMED_FIRST="${STEPS_INPUTS_OUTPUTS_MALFORMED_FIRST}" \
+            HYPHA_CHAOS_METRICS="${STEPS_INPUTS_OUTPUTS_METRICS}" \
             scripts/chaos/netns_chaos.sh \
               "${{ matrix.topology }}" \
               "${{ matrix.transport }}" \
               "${{ matrix.seed }}" \
-              "${{ steps.inputs.outputs.duration_secs }}"
+              "${STEPS_INPUTS_OUTPUTS_DURATION_SECS}"
+        env:
+          STEPS_INPUTS_OUTPUTS_RELAY_SLEEP_SECS: ${{ steps.inputs.outputs.relay_sleep_secs }}
+          STEPS_INPUTS_OUTPUTS_RELAY_HARD_KILL: ${{ steps.inputs.outputs.relay_hard_kill }}
+          STEPS_INPUTS_OUTPUTS_SUB_SLEEP_SECS: ${{ steps.inputs.outputs.sub_sleep_secs }}
+          STEPS_INPUTS_OUTPUTS_MALFORMED_FIRST: ${{ steps.inputs.outputs.malformed_first }}
+          STEPS_INPUTS_OUTPUTS_METRICS: ${{ steps.inputs.outputs.metrics }}
+          STEPS_INPUTS_OUTPUTS_DURATION_SECS: ${{ steps.inputs.outputs.duration_secs }}
 
       - name: Upload chaos artifacts on failure
         if: failure()
