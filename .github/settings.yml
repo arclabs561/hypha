@@ -1,3 +1,4 @@
 repository:
   description: "Power-aware coordination for local sensor and compute nodes"
+  default_branch: main
   topics: rust, p2p, embedded, sensor-networks, libp2p
