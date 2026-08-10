@@ -33,7 +33,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     node.add_capability(Capability::Compute(100));
     node.set_power_mode(PowerMode::Normal);
 
-    println!("energy={:.2}", node.energy_score());
+    let energy = node.energy_score();
+    assert!(energy > 0.0 && energy <= 1.0);
     Ok(())
 }
 ```
@@ -61,7 +62,7 @@ should not be read as a formal Physarum, auction, or adversarial mesh protocol.
 - `firmware/`: ESP experiments and host-side firmware logic tests.
 - `tests/`: simulation, schema compatibility, adversarial input, and libp2p tests.
 
-## Embedded Split
+## Embedded split
 
 Embedded devices do not run the full host crate. They use `hypha-core` types and
 send readings to a host bridge. See [EMBEDDED.md](EMBEDDED.md) for the split and
