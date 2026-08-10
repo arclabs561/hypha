@@ -70,8 +70,8 @@ impl SharedState {
 
     /// Update a peer's status in the global "peers" map
     pub fn update_peer_status(&self, peer_id: &str, status: &str) {
-        let mut txn = self.doc.transact_mut();
         let peers = self.doc.get_or_insert_map("peers");
+        let mut txn = self.doc.transact_mut();
         peers.insert(&mut txn, peer_id, status);
     }
 }
