@@ -336,6 +336,11 @@ impl MetricsCollector {
         self.delivery.latencies_us.push(latency.as_micros() as u64);
     }
 
+    #[cfg(test)]
+    pub(crate) fn delivered_count(&self) -> u64 {
+        self.delivery.messages_delivered
+    }
+
     pub fn record_energy_snapshot(&mut self, scores: Vec<f32>) {
         let elapsed = self.start_time.map(|s| s.elapsed()).unwrap_or_default();
         self.energy_samples.push((elapsed, scores));

@@ -26,6 +26,21 @@ use crate::mesh::{MeshConfig, MeshControl, TopicMesh};
 use crate::mycelium::{Mycelium, MyceliumEvent, NetProfile, Spike};
 use crate::sync::{SharedState, SyncMessage};
 
+fn heartbeat_interval(period: Duration) -> tokio::time::Interval {
+    let start = tokio::time::Instant::now() + period;
+    let mut interval = tokio::time::interval_at(start, period);
+    interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+    interval
+}
+
+struct RunConfig {
+    run_for: Duration,
+    heartbeat_every: Duration,
+    pulse_delta: f32,
+    dynamic_heartbeat: bool,
+    on_listen: Option<tokio::sync::oneshot::Sender<Multiaddr>>,
+}
+
 pub struct SporeNode {
     pub peer_id: PeerId,
     pub power_mode: PowerMode,
@@ -338,18 +353,42 @@ impl SporeNode {
     /// Callers can optionally provide a one-shot to learn the first listen address.
     pub async fn run_for(
         &mut self,
-        mut mycelium: Mycelium,
+        mycelium: Mycelium,
         run_for: Duration,
         heartbeat_every: Duration,
         pulse_delta: f32,
         dynamic_heartbeat: bool,
-        mut on_listen: Option<tokio::sync::oneshot::Sender<Multiaddr>>,
+        on_listen: Option<tokio::sync::oneshot::Sender<Multiaddr>>,
     ) -> Result<Mycelium, Box<dyn Error>> {
+        self.run_for_with_sync_policy(
+            mycelium,
+            RunConfig {
+                run_for,
+                heartbeat_every,
+                pulse_delta,
+                dynamic_heartbeat,
+                on_listen,
+            },
+            || rng().random_bool(0.1),
+        )
+        .await
+    }
+
+    async fn run_for_with_sync_policy<F>(
+        &mut self,
+        mut mycelium: Mycelium,
+        config: RunConfig,
+        mut should_sync: F,
+    ) -> Result<Mycelium, Box<dyn Error>>
+    where
+        F: FnMut() -> bool,
+    {
         mycelium.subscribe_all()?;
         info!(peer_id = %self.peer_id, "Hypha Spore active");
 
-        let deadline = tokio::time::Instant::now() + run_for;
-        let mut heartbeat = tokio::time::interval(heartbeat_every);
+        let deadline = tokio::time::Instant::now() + config.run_for;
+        let mut heartbeat = heartbeat_interval(config.heartbeat_every);
+        let mut on_listen = config.on_listen;
         let mut listen_sent = false;
 
         loop {
@@ -358,6 +397,9 @@ impl SporeNode {
             }
 
             tokio::select! {
+                _ = tokio::time::sleep_until(deadline) => {
+                    return Ok(mycelium);
+                }
                 _ = heartbeat.tick() => {
                     // 1. Energy Status Advertisement
                     let (energy, is_mains, mah_remaining) = {
@@ -379,7 +421,7 @@ impl SporeNode {
 
                     let phase = {
                         let mut mesh = self.mesh.lock().unwrap();
-                        mesh.tick_pulse(pulse_delta);
+                        mesh.tick_pulse(config.pulse_delta);
                         mesh.pulse_phase
                     };
 
@@ -417,13 +459,13 @@ impl SporeNode {
                     }
 
                     // Adjust local heartbeat dynamically
-                    if dynamic_heartbeat {
-                        heartbeat = tokio::time::interval(self.heartbeat_interval());
+                    if config.dynamic_heartbeat {
+                        heartbeat = heartbeat_interval(self.heartbeat_interval());
                     }
 
                     // 3. Shared State Anti-Entropy (Probabilistic)
                     // Every few heartbeats, broadcast a SyncStep1 to pull missing updates.
-                    if rng().random_bool(0.1) {
+                    if should_sync() {
                         let state = self.shared_state.lock().unwrap();
                         let sync_msg = state.create_sync_step_1();
                         if let Ok(bytes) = serde_json::to_vec(&sync_msg) {
@@ -617,7 +659,261 @@ impl SporeNode {
 #[cfg(test)]
 mod eval_suite {
     use super::*;
+    use libp2p::swarm::dial_opts::DialOpts;
     use tempfile::tempdir;
+    use yrs::{ReadTxn, Transact};
+
+    async fn connect_swarms(
+        left: &mut Mycelium,
+        right: &mut Mycelium,
+        right_peer: PeerId,
+    ) -> Result<(), Box<dyn Error>> {
+        right.listen_on("/ip4/127.0.0.1/tcp/0".parse()?)?;
+        let address = loop {
+            if let SwarmEvent::NewListenAddr { address, .. } = right.swarm.select_next_some().await
+            {
+                break address;
+            }
+        };
+        left.swarm.dial(
+            DialOpts::peer_id(right_peer)
+                .addresses(vec![address])
+                .build(),
+        )?;
+
+        let left_peer = *left.swarm.local_peer_id();
+        let mut left_connected = false;
+        let mut right_connected = false;
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(3);
+        while !(left_connected && right_connected) && tokio::time::Instant::now() < deadline {
+            tokio::select! {
+                event = left.swarm.select_next_some() => {
+                    if matches!(event, SwarmEvent::ConnectionEstablished { peer_id, .. } if peer_id == right_peer) {
+                        left_connected = true;
+                    }
+                }
+                event = right.swarm.select_next_some() => {
+                    if matches!(event, SwarmEvent::ConnectionEstablished { peer_id, .. } if peer_id == left_peer) {
+                        right_connected = true;
+                    }
+                }
+            }
+        }
+        assert!(left_connected && right_connected, "swarms did not connect");
+        left.swarm
+            .behaviour_mut()
+            .gossipsub
+            .add_explicit_peer(&right_peer);
+        right
+            .swarm
+            .behaviour_mut()
+            .gossipsub
+            .add_explicit_peer(&left_peer);
+
+        let deadline = tokio::time::Instant::now() + Duration::from_millis(500);
+        while tokio::time::Instant::now() < deadline {
+            tokio::select! {
+                _ = left.swarm.select_next_some() => {}
+                _ = right.swarm.select_next_some() => {}
+                _ = tokio::time::sleep(Duration::from_millis(5)) => {}
+            }
+        }
+        Ok(())
+    }
+
+    fn state_vector(node: &SporeNode) -> yrs::StateVector {
+        node.shared_state
+            .lock()
+            .unwrap()
+            .doc
+            .transact()
+            .state_vector()
+    }
+
+    async fn disconnect_swarms(left: &mut Mycelium, right: &mut Mycelium, right_peer: PeerId) {
+        let left_peer = *left.swarm.local_peer_id();
+        assert!(left.swarm.disconnect_peer_id(right_peer).is_ok());
+        let mut left_closed = false;
+        let mut right_closed = false;
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(3);
+        while !(left_closed && right_closed) && tokio::time::Instant::now() < deadline {
+            tokio::select! {
+                event = left.swarm.select_next_some() => {
+                    if matches!(event, SwarmEvent::ConnectionClosed { peer_id, .. } if peer_id == right_peer) {
+                        left_closed = true;
+                    }
+                }
+                event = right.swarm.select_next_some() => {
+                    if matches!(event, SwarmEvent::ConnectionClosed { peer_id, .. } if peer_id == left_peer) {
+                        right_closed = true;
+                    }
+                }
+            }
+        }
+        assert!(left_closed && right_closed, "swarms did not disconnect");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn dynamic_heartbeat_reschedule_does_not_create_ready_loop() {
+        let tmp = tempdir().unwrap();
+        let mut node = SporeNode::new(tmp.path()).unwrap();
+        let mycelium = node.build_mycelium().unwrap();
+        let ticks = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let observed = ticks.clone();
+
+        node.run_for_with_sync_policy(
+            mycelium,
+            RunConfig {
+                run_for: Duration::from_millis(120),
+                heartbeat_every: Duration::from_millis(20),
+                pulse_delta: 0.1,
+                dynamic_heartbeat: true,
+                on_listen: None,
+            },
+            move || {
+                observed.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                false
+            },
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(ticks.load(std::sync::atomic::Ordering::Relaxed), 1);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn two_swarms_converge_after_quiescence_and_reconnect_with_bounded_sync() {
+        let tmp = tempdir().unwrap();
+        let left_path = tmp.path().join("left");
+        let right_path = tmp.path().join("right");
+        std::fs::create_dir_all(&left_path).unwrap();
+        std::fs::create_dir_all(&right_path).unwrap();
+        let mut left_node = SporeNode::new(&left_path).unwrap();
+        let mut right_node = SporeNode::new(&right_path).unwrap();
+        let right_peer = right_node.peer_id;
+        let mut left = left_node.build_mycelium().unwrap();
+        let mut right = right_node.build_mycelium().unwrap();
+        left.subscribe_all().unwrap();
+        right.subscribe_all().unwrap();
+        connect_swarms(&mut left, &mut right, right_peer)
+            .await
+            .unwrap();
+
+        left_node
+            .shared_state
+            .lock()
+            .unwrap()
+            .update_peer_status("left-before", "ready");
+        right_node
+            .shared_state
+            .lock()
+            .unwrap()
+            .update_peer_status("right-before", "ready");
+
+        let left_requests = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let right_requests = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let count_left = left_requests.clone();
+        let count_right = right_requests.clone();
+        let (left_result, right_result) = tokio::join!(
+            left_node.run_for_with_sync_policy(
+                left,
+                RunConfig {
+                    run_for: Duration::from_millis(900),
+                    heartbeat_every: Duration::from_millis(100),
+                    pulse_delta: 0.1,
+                    dynamic_heartbeat: false,
+                    on_listen: None,
+                },
+                move || {
+                    count_left.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    true
+                },
+            ),
+            right_node.run_for_with_sync_policy(
+                right,
+                RunConfig {
+                    run_for: Duration::from_millis(900),
+                    heartbeat_every: Duration::from_millis(100),
+                    pulse_delta: 0.1,
+                    dynamic_heartbeat: false,
+                    on_listen: None,
+                },
+                move || {
+                    count_right.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    true
+                },
+            ),
+        );
+        let mut left = left_result.unwrap();
+        let mut right = right_result.unwrap();
+        assert_eq!(state_vector(&left_node), state_vector(&right_node));
+
+        disconnect_swarms(&mut left, &mut right, right_peer).await;
+        left_node
+            .shared_state
+            .lock()
+            .unwrap()
+            .update_peer_status("left-partition", "ready");
+        right_node
+            .shared_state
+            .lock()
+            .unwrap()
+            .update_peer_status("right-partition", "ready");
+        assert_ne!(state_vector(&left_node), state_vector(&right_node));
+
+        connect_swarms(&mut left, &mut right, right_peer)
+            .await
+            .unwrap();
+        let count_left = left_requests.clone();
+        let count_right = right_requests.clone();
+        let (left_result, right_result) = tokio::join!(
+            left_node.run_for_with_sync_policy(
+                left,
+                RunConfig {
+                    run_for: Duration::from_millis(900),
+                    heartbeat_every: Duration::from_millis(100),
+                    pulse_delta: 0.1,
+                    dynamic_heartbeat: false,
+                    on_listen: None,
+                },
+                move || {
+                    count_left.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    true
+                },
+            ),
+            right_node.run_for_with_sync_policy(
+                right,
+                RunConfig {
+                    run_for: Duration::from_millis(900),
+                    heartbeat_every: Duration::from_millis(100),
+                    pulse_delta: 0.1,
+                    dynamic_heartbeat: false,
+                    on_listen: None,
+                },
+                move || {
+                    count_right.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    true
+                },
+            ),
+        );
+        left_result.unwrap();
+        right_result.unwrap();
+
+        assert_eq!(state_vector(&left_node), state_vector(&right_node));
+        for (node, requests) in [(&left_node, left_requests), (&right_node, right_requests)] {
+            let requests = requests.load(std::sync::atomic::Ordering::Relaxed);
+            assert!(
+                (16..=20).contains(&requests),
+                "unexpected sync request count: {requests}"
+            );
+            let deliveries = node.metrics.lock().unwrap().delivered_count();
+            assert!(deliveries > 0, "the real wire path delivered no messages");
+            assert!(
+                deliveries <= (requests as u64 * 4),
+                "unbounded receive amplification: {deliveries} deliveries for {requests} requests"
+            );
+        }
+    }
 
     #[test]
     fn test_quorum_sensing_efficiency() {
