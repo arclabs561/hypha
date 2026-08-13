@@ -1,7 +1,6 @@
 use ed25519_dalek::SigningKey;
 use fjall::{Database, Keyspace, KeyspaceCreateOptions};
 use libp2p::{futures::StreamExt, gossipsub, swarm::SwarmEvent, Multiaddr, PeerId};
-use rand::{rng, Rng};
 use rand_core::OsRng;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
@@ -33,6 +32,61 @@ fn heartbeat_interval(period: Duration) -> tokio::time::Interval {
     interval
 }
 
+const MAX_ANTI_ENTROPY_HEARTBEATS: u8 = 20;
+
+/// Peer-seeded retry schedule with a bounded, jittered interval.
+///
+/// The previous independent Bernoulli trial had the same approximate mean
+/// interval but no upper bound. Keeping the schedule local avoids synchronized
+/// fleet-wide pulses while guaranteeing another attempt within twenty
+/// heartbeats.
+struct AntiEntropySchedule {
+    state: u64,
+    remaining: u8,
+}
+
+impl AntiEntropySchedule {
+    fn new(peer_id: &PeerId) -> Self {
+        // FNV-1a gives a stable seed without tying protocol behavior to
+        // `DefaultHasher`, whose algorithm is intentionally unspecified.
+        let mut state = 0xcbf2_9ce4_8422_2325_u64;
+        for byte in peer_id.to_bytes() {
+            state ^= u64::from(byte);
+            state = state.wrapping_mul(0x0000_0100_0000_01b3);
+        }
+        if state == 0 {
+            state = 0x9e37_79b9_7f4a_7c15;
+        }
+
+        let mut schedule = Self {
+            state,
+            remaining: 0,
+        };
+        schedule.reset();
+        schedule
+    }
+
+    fn reset(&mut self) {
+        // xorshift64: deterministic per persisted peer identity and cheap on a
+        // heartbeat path. Full jitter in 1..=20 keeps the mean near the old
+        // ten-heartbeat Bernoulli policy while adding a hard retry bound.
+        self.state ^= self.state << 13;
+        self.state ^= self.state >> 7;
+        self.state ^= self.state << 17;
+        self.remaining = (self.state % u64::from(MAX_ANTI_ENTROPY_HEARTBEATS)) as u8 + 1;
+    }
+
+    fn tick(&mut self) -> bool {
+        self.remaining -= 1;
+        if self.remaining == 0 {
+            self.reset();
+            true
+        } else {
+            false
+        }
+    }
+}
+
 struct RunConfig {
     run_for: Duration,
     heartbeat_every: Duration,
@@ -53,6 +107,7 @@ pub struct SporeNode {
     pub mesh: Arc<Mutex<TopicMesh>>,
     pub metrics: Arc<Mutex<MetricsCollector>>,
     pub shared_state: Arc<Mutex<SharedState>>,
+    anti_entropy_schedule: Arc<Mutex<AntiEntropySchedule>>,
 }
 
 impl SporeNode {
@@ -94,6 +149,7 @@ impl SporeNode {
         )));
         let metrics = Arc::new(Mutex::new(MetricsCollector::new()));
         let shared_state = Arc::new(Mutex::new(SharedState::new("hypha_global_state")));
+        let anti_entropy_schedule = Arc::new(Mutex::new(AntiEntropySchedule::new(&peer_id)));
 
         Ok(Self {
             peer_id,
@@ -107,6 +163,7 @@ impl SporeNode {
             mesh,
             metrics,
             shared_state,
+            anti_entropy_schedule,
         })
     }
 
@@ -360,6 +417,7 @@ impl SporeNode {
         dynamic_heartbeat: bool,
         on_listen: Option<tokio::sync::oneshot::Sender<Multiaddr>>,
     ) -> Result<Mycelium, Box<dyn Error>> {
+        let sync_schedule = self.anti_entropy_schedule.clone();
         self.run_for_with_sync_policy(
             mycelium,
             RunConfig {
@@ -369,7 +427,7 @@ impl SporeNode {
                 dynamic_heartbeat,
                 on_listen,
             },
-            || rng().random_bool(0.1),
+            move || sync_schedule.lock().unwrap().tick(),
         )
         .await
     }
@@ -779,6 +837,107 @@ mod eval_suite {
         .unwrap();
 
         assert_eq!(ticks.load(std::sync::atomic::Ordering::Relaxed), 1);
+    }
+
+    #[test]
+    fn anti_entropy_schedule_is_deterministic_bounded_and_peer_jittered() {
+        let peer_id = PeerId::random();
+        let mut left = AntiEntropySchedule::new(&peer_id);
+        let mut right = AntiEntropySchedule::new(&peer_id);
+        let mut intervals = Vec::new();
+        let mut since_sync = 0_u8;
+
+        while intervals.len() < 1_000 {
+            since_sync += 1;
+            let left_syncs = left.tick();
+            assert_eq!(left_syncs, right.tick());
+            if left_syncs {
+                intervals.push(since_sync);
+                since_sync = 0;
+            }
+        }
+
+        assert!(
+            intervals
+                .iter()
+                .all(|interval| (1..=MAX_ANTI_ENTROPY_HEARTBEATS).contains(interval)),
+            "anti-entropy interval escaped its hard bound: {intervals:?}"
+        );
+        let mean =
+            intervals.iter().map(|&value| f64::from(value)).sum::<f64>() / intervals.len() as f64;
+        assert!((9.5..=11.5).contains(&mean), "unexpected mean: {mean}");
+
+        let other_peer_id = PeerId::random();
+        assert_ne!(peer_id, other_peer_id);
+        let mut first = AntiEntropySchedule::new(&peer_id);
+        let mut second = AntiEntropySchedule::new(&other_peer_id);
+        let first_ticks: Vec<_> = (0..100).map(|_| first.tick()).collect();
+        let second_ticks: Vec<_> = (0..100).map(|_| second.tick()).collect();
+        assert_ne!(
+            first_ticks, second_ticks,
+            "distinct peer identities produced a synchronized retry sequence"
+        );
+    }
+
+    #[test]
+    fn node_schedule_crosses_repeated_short_run_windows() {
+        let tmp = tempdir().unwrap();
+        let node = SporeNode::new(tmp.path()).unwrap();
+        let schedule = node.anti_entropy_schedule.clone();
+        let mut attempts = 0;
+
+        // Seven three-heartbeat windows exceed the maximum interval. The
+        // node-owned schedule must continue across those boundaries rather
+        // than replaying its initial prefix for every `run_for` call.
+        for _window in 0..7 {
+            for _heartbeat in 0..3 {
+                attempts += usize::from(schedule.lock().unwrap().tick());
+            }
+        }
+
+        assert!(attempts > 0, "short run windows starved anti-entropy");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn production_schedule_converges_two_swarms_within_maximum_interval() {
+        let tmp = tempdir().unwrap();
+        let left_path = tmp.path().join("production-left");
+        let right_path = tmp.path().join("production-right");
+        std::fs::create_dir_all(&left_path).unwrap();
+        std::fs::create_dir_all(&right_path).unwrap();
+        let mut left_node = SporeNode::new(&left_path).unwrap();
+        let mut right_node = SporeNode::new(&right_path).unwrap();
+        let right_peer = right_node.peer_id;
+        let mut left = left_node.build_mycelium().unwrap();
+        let mut right = right_node.build_mycelium().unwrap();
+        left.subscribe_all().unwrap();
+        right.subscribe_all().unwrap();
+        connect_swarms(&mut left, &mut right, right_peer)
+            .await
+            .unwrap();
+
+        left_node
+            .shared_state
+            .lock()
+            .unwrap()
+            .update_peer_status("production-left", "ready");
+        right_node
+            .shared_state
+            .lock()
+            .unwrap()
+            .update_peer_status("production-right", "ready");
+        assert_ne!(state_vector(&left_node), state_vector(&right_node));
+
+        let heartbeat = Duration::from_millis(50);
+        let run_for = heartbeat * u32::from(MAX_ANTI_ENTROPY_HEARTBEATS + 4);
+        let (left_result, right_result) = tokio::join!(
+            left_node.run_for(left, run_for, heartbeat, 0.1, false, None),
+            right_node.run_for(right, run_for, heartbeat, 0.1, false, None),
+        );
+        left_result.unwrap();
+        right_result.unwrap();
+
+        assert_eq!(state_vector(&left_node), state_vector(&right_node));
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
